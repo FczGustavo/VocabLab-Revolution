@@ -47,6 +47,8 @@ export function FolderCard({
   isReview = false,
   subtitle,
 }: FolderCardProps) {
+  const keepCuratedTitleOnOneLine = name === "Phrasal Verbs Essentials"
+
   return (
     <button
       type="button"
@@ -88,7 +90,16 @@ export function FolderCard({
           <div className="flex min-w-0 items-start gap-2 text-left">
             <Folder className={cn("mt-0.5 size-4 shrink-0", iconColors[gradient])} />
             <div className="min-w-0 space-y-1">
-              <h3 className="break-words text-[15px] font-semibold leading-snug text-foreground/80">{name}</h3>
+              <h3
+                className={cn(
+                  "text-[15px] font-semibold leading-snug text-foreground/80",
+                  keepCuratedTitleOnOneLine
+                    ? "whitespace-nowrap"
+                    : "break-words",
+                )}
+              >
+                {name}
+              </h3>
               <p className="text-[12px] leading-snug text-muted-foreground/70">
               {subtitle ?? (isReview ? `${wordCount} words to review` : `Notes & Journaling · ${wordCount}`)}
               </p>
@@ -103,7 +114,7 @@ export function FolderCard({
               onClick={(e) => { e.stopPropagation(); onSettings(e) }}
               onContextMenu={(e) => e.stopPropagation()}
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onSettings(e as any) }}
-              className="flex size-8 items-center justify-center rounded-full bg-white/50 text-muted-foreground/60 opacity-0 backdrop-blur-sm transition-all hover:bg-white/80 hover:text-foreground group-hover:opacity-100 cursor-pointer dark:bg-white/[0.06] dark:hover:bg-white/[0.1]"
+              className="absolute bottom-4 right-4 flex size-8 cursor-pointer items-center justify-center rounded-full bg-white/50 text-muted-foreground/60 opacity-0 backdrop-blur-sm transition-all hover:bg-white/80 hover:text-foreground group-hover:opacity-100 dark:bg-white/[0.06] dark:hover:bg-white/[0.1]"
               title="Folder settings"
             >
               <Settings className="size-4" />

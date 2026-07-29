@@ -101,7 +101,7 @@ export function AutoSyncProvider() {
     }
 
     schedule(350)
-    const interval = window.setInterval(() => schedule(0), 20_000)
+    const interval = window.setInterval(() => schedule(0), 30_000)
     const onFocus = () => schedule(100)
     const onOnline = () => schedule(100)
     window.addEventListener("focus", onFocus)

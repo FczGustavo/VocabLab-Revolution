@@ -133,7 +133,7 @@ export function SettingsDialog() {
   })
   const [identityBusy, setIdentityBusy] = useState<"claim" | "pair-start" | "pair-complete" | null>(null)
   const [identityError, setIdentityError] = useState("")
-  const [identityTaken, setIdentityTaken] = useState(false)
+  const [syncSetupMode, setSyncSetupMode] = useState<"create" | "pair">("create")
   const [pairingCode, setPairingCode] = useState("")
   const [pairingExpiresAt, setPairingExpiresAt] = useState("")
   const [pairingInput, setPairingInput] = useState("")
@@ -151,7 +151,6 @@ export function SettingsDialog() {
   useEffect(() => {
     if (isIdentityLocked) return
     setIdentityError("")
-    setIdentityTaken(false)
     setPairingInput("")
   }, [isIdentityLocked, syncPin, syncWord])
 
@@ -172,11 +171,10 @@ export function SettingsDialog() {
     try {
       const result = await claimSyncIdentity(syncCode)
       if (!result.ok) {
-        setIdentityTaken(result.taken)
+        if (result.taken) setSyncSetupMode("pair")
         setIdentityError(result.error)
         return
       }
-      setIdentityTaken(false)
       setIdentityLocked(true)
     } catch (error) {
       setIdentityError(error instanceof Error ? error.message : "Não foi possível confirmar.")
@@ -206,9 +204,13 @@ export function SettingsDialog() {
     setIdentityError("")
     try {
       await completeSyncPairing(syncCode, pairingInput)
-      setIdentityTaken(false)
       setPairingInput("")
       setIdentityLocked(true)
+      setSyncSetupMode("create")
+      publishAutoSyncState({
+        state: "connecting",
+        message: "Dispositivo autorizado. Recebendo os dados sincronizados…",
+      })
     } catch (error) {
       setIdentityError(error instanceof Error ? error.message : "Não foi possível concluir o pareamento.")
     } finally {
@@ -403,14 +405,50 @@ export function SettingsDialog() {
                     <p className="mt-1 text-[11px] text-muted-foreground">Envio e recebimento automáticos, separados por Lab e protegidos contra sobrescritas concorrentes.</p>
                   </div>
                   <section className="space-y-4 rounded-xl border border-border/50 bg-background/55 p-4">
+                    {!isIdentityLocked && (
+                      <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
+                        <Button
+                          type="button"
+                          variant={syncSetupMode === "create" ? "secondary" : "ghost"}
+                          size="sm"
+                          className="h-9"
+                          onClick={() => {
+                            setSyncSetupMode("create")
+                            setIdentityError("")
+                          }}
+                        >
+                          Criar sincronização
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={syncSetupMode === "pair" ? "secondary" : "ghost"}
+                          size="sm"
+                          className="h-9"
+                          onClick={() => {
+                            setSyncSetupMode("pair")
+                            setIdentityError("")
+                          }}
+                        >
+                          Conectar dispositivo
+                        </Button>
+                      </div>
+                    )}
                     <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_104px]">
                       <div>
-                        <Label htmlFor="sync-word" className="mb-1.5 block text-xs">Sua palavra</Label>
+                        <Label htmlFor="sync-word" className="mb-1.5 block text-xs">
+                          {syncSetupMode === "pair" && !isIdentityLocked ? "Palavra existente" : "Sua palavra"}
+                        </Label>
                         <Input id="sync-word" value={syncWord} onChange={(event) => setSyncWord(event.target.value)} placeholder="Ex.: gustavo" autoComplete="off" disabled={isIdentityLocked} />
-                        <p className="mt-1.5 text-[10px] text-muted-foreground">Use de 2 a 24 letras ou números e confirme para conectar.</p>
+                        <p className="mt-1.5 text-[10px] text-muted-foreground">
+                          {syncSetupMode === "pair" && !isIdentityLocked
+                            ? "Digite a mesma palavra usada no dispositivo principal."
+                            : "Use de 2 a 24 letras ou números e confirme para conectar."}
+                        </p>
                       </div>
                       <div>
-                        <Label htmlFor="sync-pin" className="mb-1.5 block text-xs">PIN do navegador</Label>
+                        <Label htmlFor="sync-pin" className="mb-1.5 block text-xs">
+                          {syncSetupMode === "pair" && !isIdentityLocked ? "PIN existente" : "PIN do navegador"}
+                        </Label>
                         <Input
                           id="sync-pin"
                           value={syncPin}
@@ -422,55 +460,68 @@ export function SettingsDialog() {
                           aria-label="PIN de sincronização"
                           disabled={isIdentityLocked}
                         />
-                        <p className="mt-1.5 text-[10px] text-muted-foreground">Gerado uma vez. Digite outro apenas para conectar um código existente.</p>
+                        <p className="mt-1.5 text-[10px] text-muted-foreground">
+                          {syncSetupMode === "pair" && !isIdentityLocked
+                            ? "Digite o mesmo PIN de quatro dígitos."
+                            : "Gerado uma vez e usado junto com sua palavra."}
+                        </p>
                       </div>
                     </div>
-                    <Button
-                      type="button"
-                      variant={isIdentityLocked ? "outline" : "default"}
-                      className="w-full"
-                      disabled={identityBusy !== null || (!isIdentityLocked && !isSyncCodeValid)}
-                      onClick={() => void handleIdentityButton()}
-                    >
-                      {identityBusy === "claim"
-                        ? <><Loader2 className="mr-2 size-4 animate-spin" />Verificando disponibilidade…</>
-                        : isIdentityLocked
-                        ? <><UnlockKeyhole className="mr-2 size-4" />Desbloquear e trocar dados</>
-                        : <><LockKeyhole className="mr-2 size-4" />Confirmar palavra e PIN</>}
-                    </Button>
+                    {!isIdentityLocked && syncSetupMode === "pair" ? (
+                      <div className="space-y-2 rounded-xl border border-primary/20 bg-primary/[0.05] p-3">
+                        <div>
+                          <Label htmlFor="sync-pairing-code" className="text-xs">Código temporário de pareamento</Label>
+                          <p className="mt-0.5 text-[10px] leading-relaxed text-muted-foreground">
+                            No dispositivo já conectado, escolha “Gerar código”. Digite aqui os seis dígitos exibidos.
+                          </p>
+                        </div>
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                          <Input
+                            id="sync-pairing-code"
+                            value={pairingInput}
+                            onChange={(event) => setPairingInput(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                            inputMode="numeric"
+                            maxLength={6}
+                            placeholder="000000"
+                            className="font-mono text-center tracking-[0.2em]"
+                            aria-label="Código temporário de pareamento"
+                          />
+                          <Button
+                            type="button"
+                            className="sm:min-w-32"
+                            disabled={!isSyncCodeValid || !/^\d{6}$/.test(pairingInput) || identityBusy !== null}
+                            onClick={() => void handleCompletePairing()}
+                          >
+                            {identityBusy === "pair-complete" && <Loader2 className="mr-2 size-4 animate-spin" />}
+                            Conectar
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant={isIdentityLocked ? "outline" : "default"}
+                        className="w-full"
+                        disabled={identityBusy !== null || (!isIdentityLocked && !isSyncCodeValid)}
+                        onClick={() => void handleIdentityButton()}
+                      >
+                        {identityBusy === "claim"
+                          ? <><Loader2 className="mr-2 size-4 animate-spin" />Verificando disponibilidade…</>
+                          : isIdentityLocked
+                          ? <><UnlockKeyhole className="mr-2 size-4" />Desbloquear e trocar dados</>
+                          : <><LockKeyhole className="mr-2 size-4" />Criar e conectar</>}
+                      </Button>
+                    )}
                     <p className="text-[10px] leading-relaxed text-muted-foreground">
                       {isIdentityLocked
                         ? "Os campos estão protegidos. Desbloqueie somente para conectar outro conjunto de dados; a sincronização será pausada enquanto você edita."
-                        : "A sincronização está pausada. Revise os dados e confirme para bloquear os campos e iniciar o envio e recebimento."}
+                        : syncSetupMode === "pair"
+                          ? "O código temporário autoriza este navegador sem compartilhar a chave privada do primeiro dispositivo."
+                          : "Use esta opção somente para uma identificação nova. Para abrir dados existentes, escolha “Conectar dispositivo”."}
                     </p>
                     {identityError && (
                       <div className="rounded-xl border border-destructive/25 bg-destructive/[0.06] px-3 py-3">
                         <p className="text-xs font-medium text-destructive">{identityError}</p>
-                        {identityTaken && (
-                          <div className="mt-3 space-y-2 border-t border-destructive/15 pt-3">
-                            <p className="text-[10px] leading-relaxed text-muted-foreground">Para acessar esta identificação em um novo aparelho, gere um código no navegador já autorizado e digite-o abaixo.</p>
-                            <div className="flex gap-2">
-                              <Input
-                                value={pairingInput}
-                                onChange={(event) => setPairingInput(event.target.value.replace(/\D/g, "").slice(0, 6))}
-                                inputMode="numeric"
-                                maxLength={6}
-                                placeholder="Código de 6 dígitos"
-                                className="font-mono text-center tracking-[0.16em]"
-                                aria-label="Código de pareamento"
-                              />
-                              <Button
-                                type="button"
-                                variant="outline"
-                                disabled={!/^\d{6}$/.test(pairingInput) || identityBusy !== null}
-                                onClick={() => void handleCompletePairing()}
-                              >
-                                {identityBusy === "pair-complete" && <Loader2 className="mr-2 size-4 animate-spin" />}
-                                Parear
-                              </Button>
-                            </div>
-                          </div>
-                        )}
                       </div>
                     )}
                     {isIdentityLocked && (

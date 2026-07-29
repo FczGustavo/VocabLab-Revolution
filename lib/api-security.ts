@@ -147,6 +147,19 @@ export function safeApiError(error: unknown, fallback: string) {
       { status: 503 },
     )
   }
+  if (
+    /Supabase sync is not configured/i.test(providerMessage)
+    || /SYNC_CODE_PEPPER must contain at least 32 characters/i.test(providerMessage)
+  ) {
+    return NextResponse.json(
+      {
+        error: "A sincronização não está configurada neste ambiente. Verifique as variáveis do Supabase e o SYNC_CODE_PEPPER.",
+        code: "SYNC_ENV_MISSING",
+        requestId,
+      },
+      { status: 503 },
+    )
+  }
   if (/key limit exceeded|insufficient credits|credit balance|quota exceeded/i.test(providerMessage)) {
     return NextResponse.json(
       {

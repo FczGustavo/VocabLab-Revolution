@@ -125,6 +125,23 @@ export function useSyncCode() {
     return true
   }
 
+  const activateIdentity = (wordValue: string, pinValue: string) => {
+    const word = normalizeSyncWord(wordValue)
+    const pin = pinValue.replace(/\D/g, "").slice(0, 4)
+    const code = word && /^\d{4}$/.test(pin) ? `${word}-${pin}` : ""
+    if (!code || !getSyncOwnerToken(code)) return false
+
+    localStorage.setItem(SYNC_WORD_KEY, word)
+    localStorage.setItem(SYNC_PIN_KEY, pin)
+    localStorage.setItem(SYNC_IDENTITY_LOCKED_KEY, "true")
+    setSyncWordState(word)
+    setSyncPinState(pin)
+    setRevisionState(readRevisions()[code] ?? 0)
+    setIsIdentityLockedState(true)
+    window.dispatchEvent(new Event(SYNC_IDENTITY_UPDATED_EVENT))
+    return true
+  }
+
   return {
     syncWord,
     syncPin,
@@ -136,6 +153,7 @@ export function useSyncCode() {
     isValid,
     isIdentityLocked,
     setIdentityLocked,
+    activateIdentity,
     isLoaded,
   }
 }

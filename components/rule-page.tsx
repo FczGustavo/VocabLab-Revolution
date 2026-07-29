@@ -6,6 +6,7 @@ import { useRuleDB } from "@/hooks/use-rule-db"
 import { useCardShape } from "@/hooks/use-card-shape"
 import { useFolder } from "@/components/folder-context"
 import { FolderCard, NewFolderCard } from "@/components/folder-card"
+import { FolderDeleteChoice, FolderDeleteOptions } from "@/components/folder-delete-dialog"
 import { LongPressButton } from "@/components/long-press-button"
 import { RuleStudyMode, type RuleStudyKind } from "@/components/rule-study-mode"
 import { Button } from "@/components/ui/button"
@@ -116,7 +117,39 @@ export function RulePage() {
     <Dialog open={editorOpen} onOpenChange={setEditorOpen}><DialogContent className="sm:max-w-lg"><DialogHeader><DialogTitle>{editingCard ? "Edit card" : "Add rule card"}</DialogTitle></DialogHeader><div className="space-y-4"><label className="block text-sm font-medium">Front<Textarea value={front} onChange={(event) => setFront(event.target.value)} className="mt-1.5 min-h-24" placeholder="Rule, question or prompt" /></label><label className="block text-sm font-medium">Back<Textarea value={back} onChange={(event) => setBack(event.target.value)} className="mt-1.5 min-h-28" placeholder="Answer, explanation or example" /></label>{formError && <p className="text-sm text-destructive">{formError}</p>}</div><DialogFooter><Button onClick={() => void saveCard()}>{editingCard ? "Save changes" : "Add card"}</Button></DialogFooter></DialogContent></Dialog>
     <Dialog open={studyPickerOpen} onOpenChange={setStudyPickerOpen}><DialogContent className="sm:max-w-md"><DialogHeader><DialogTitle>Start study</DialogTitle></DialogHeader><div className="grid gap-2"><Button variant="outline" className="h-auto justify-start p-4 text-left" onClick={() => startStudy("recall")}><span><span className="block text-sm">Active Recall</span><span className="mt-1 block text-xs font-normal text-muted-foreground">Write an answer before revealing the back.</span></span></Button><Button variant="outline" className="h-auto justify-start p-4 text-left" onClick={() => startStudy("flip")}><span><span className="block text-sm">Flip Cards</span><span className="mt-1 block text-xs font-normal text-muted-foreground">Turn the card and rate whether you knew it.</span></span></Button></div></DialogContent></Dialog>
     <Dialog open={Boolean(managerFolder)} onOpenChange={(open) => !open && setManagerFolder(null)}><DialogContent className="max-w-[92vw] sm:max-w-sm"><DialogHeader><DialogTitle>Manage Folder</DialogTitle><p className="text-sm text-muted-foreground">Manage the “{managerFolder?.name}” folder.</p></DialogHeader><div className="mt-2 space-y-4"><div className="space-y-2"><label className="text-[12px] font-medium text-muted-foreground">Folder name</label><div className="flex gap-2"><Input value={managerName} onChange={(event) => setManagerName(event.target.value)} onKeyDown={(event) => event.key === "Enter" && void saveFolder()} /><Button variant="outline" onClick={() => void saveFolder()} disabled={!managerName.trim()}>Rename</Button></div></div><div className="space-y-2"><label className="text-[12px] font-medium text-muted-foreground">Folder color</label><div className="flex gap-2">{colorOptions.map((color) => <button key={color} type="button" onClick={() => managerFolder && setColor(managerFolder.id, color)} className={cn("size-8 rounded-full transition-all", colorClass[color], colors[managerFolder?.id ?? ""] === color ? "ring-2 ring-offset-2 ring-foreground/30" : "hover:scale-110")} aria-label={color} />)}</div></div><div className="space-y-3 border-t border-border/30 pt-2"><LongPressButton onLongPress={() => { setDeleteMode("transfer"); setTransferTarget(""); setDeleteOpen(true) }} className="h-10 w-full rounded-md border border-destructive/20 bg-destructive/5 text-destructive transition-colors hover:bg-destructive/10"><Trash2 className="size-4 text-muted-foreground" /><span>Hold to delete</span></LongPressButton></div>{managerFolder && folders.filter((folder) => folder.id !== managerFolder.id).length > 0 && <div className="space-y-2 border-t border-border/30 pt-2"><label className="text-[12px] font-medium text-muted-foreground">Transfer all cards to</label><div className="flex flex-wrap gap-2">{folders.filter((folder) => folder.id !== managerFolder.id).map((folder) => <button key={folder.id} type="button" onClick={() => void transferAndDeleteFolder(folder.id)} className="rounded-full border border-border/30 px-3 py-1 text-[12px] text-muted-foreground transition-colors hover:border-border/60 hover:text-foreground">{folder.name}</button>)}</div></div>}</div></DialogContent></Dialog>
-    <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}><AlertDialogContent className="max-w-[92vw] sm:max-w-sm"><AlertDialogHeader><AlertDialogTitle>Delete folder?</AlertDialogTitle><AlertDialogDescription>Delete “{managerFolder?.name}”? Choose whether to move or permanently delete its cards.</AlertDialogDescription></AlertDialogHeader><div className="space-y-2"><label className="text-[12px] font-medium text-muted-foreground">What should happen to its cards?</label><div className="flex flex-wrap gap-2">{folders.filter((folder) => folder.id !== managerFolder?.id).map((folder) => <button key={folder.id} type="button" onClick={() => { setDeleteMode("transfer"); setTransferTarget(folder.id) }} className={cn("rounded-full border px-3 py-1 text-[12px] transition-colors", deleteMode === "transfer" && transferTarget === folder.id ? "border-primary/40 bg-primary/10 text-primary" : "border-border/30 text-muted-foreground hover:border-border/60")}>{folder.name}</button>)}<button type="button" onClick={() => setDeleteMode("delete")} className={cn("rounded-full border px-3 py-1 text-[12px] transition-colors", deleteMode === "delete" ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-destructive/20 text-destructive/80 hover:bg-destructive/5")}>Delete cards</button></div></div><AlertDialogFooter><AlertDialogCancel onClick={() => { setDeleteMode("transfer"); setTransferTarget("") }}>Cancel</AlertDialogCancel><AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => void performFolderDelete()} disabled={deleteMode === "transfer" && !transferTarget}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+    <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+      <AlertDialogContent className="max-w-[92vw] sm:max-w-sm">
+        <AlertDialogHeader className="pr-8">
+          <AlertDialogTitle>Delete folder?</AlertDialogTitle>
+          <AlertDialogDescription>Delete “{managerFolder?.name}”? Choose whether to move or permanently delete its cards.</AlertDialogDescription>
+        </AlertDialogHeader>
+        <FolderDeleteOptions label="What should happen to its cards?">
+          {folders.filter((folder) => folder.id !== managerFolder?.id).map((folder) => (
+            <FolderDeleteChoice
+              key={folder.id}
+              onClick={() => {
+                setDeleteMode("transfer")
+                setTransferTarget(folder.id)
+              }}
+              selected={deleteMode === "transfer" && transferTarget === folder.id}
+            >
+              {folder.name}
+            </FolderDeleteChoice>
+          ))}
+          <FolderDeleteChoice
+            onClick={() => setDeleteMode("delete")}
+            selected={deleteMode === "delete"}
+            danger
+          >
+            Delete cards
+          </FolderDeleteChoice>
+        </FolderDeleteOptions>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => { setDeleteMode("transfer"); setTransferTarget("") }}>Cancel</AlertDialogCancel>
+          <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => void performFolderDelete()} disabled={deleteMode === "transfer" && !transferTarget}>Delete</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>
 }
 

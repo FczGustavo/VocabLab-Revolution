@@ -52,8 +52,15 @@ function requestResult<T>(request: IDBRequest<T>) {
 function transactionDone(transaction: IDBTransaction) {
   return new Promise<void>((resolve, reject) => {
     transaction.oncomplete = () => resolve()
-    transaction.onerror = () => reject(transaction.error)
-    transaction.onabort = () => reject(transaction.error)
+    transaction.onerror = (event) => {
+      const requestError = event.target && "error" in event.target
+        ? (event.target as IDBRequest).error
+        : null
+      reject(requestError ?? transaction.error ?? new Error("A transação de sincronização falhou."))
+    }
+    transaction.onabort = () => reject(
+      transaction.error ?? new Error("A transação de sincronização foi cancelada."),
+    )
   })
 }
 
@@ -97,10 +104,16 @@ export function payloadFingerprint(payload: SyncLabPayload) {
   return stable({ stores: payload.stores, preferences: payload.preferences })
 }
 
-function recordKey(value: unknown, index: number) {
+function recordKey(storeName: string, value: unknown, index: number) {
   if (value && typeof value === "object") {
     const record = value as Record<string, unknown>
-    for (const key of ["id", "key", "questionId", "catalogId"]) {
+    if (typeof record.catalogId === "string" || typeof record.catalogId === "number") {
+      return `catalogId:${String(record.catalogId)}`
+    }
+    if (storeName === "folders" && typeof record.name === "string") {
+      return `name:${record.name.trim().toLocaleLowerCase()}`
+    }
+    for (const key of ["id", "key", "questionId"]) {
       if (typeof record[key] === "string" || typeof record[key] === "number") {
         return `${key}:${String(record[key])}`
       }
@@ -138,9 +151,14 @@ function mergeValue<T>(
   return timestamp(remote) > timestamp(local) ? remote : local
 }
 
-function mergeStore(base: unknown[], local: unknown[], remote: unknown[]) {
+function mergeStore(
+  storeName: string,
+  base: unknown[],
+  local: unknown[],
+  remote: unknown[],
+) {
   const toMap = (values: unknown[]) => new Map(
-    values.map((value, index) => [recordKey(value, index), value]),
+    values.map((value, index) => [recordKey(storeName, value, index), value]),
   )
   const baseMap = toMap(base)
   const localMap = toMap(local)
@@ -148,10 +166,51 @@ function mergeStore(base: unknown[], local: unknown[], remote: unknown[]) {
   const keys = new Set([...baseMap.keys(), ...localMap.keys(), ...remoteMap.keys()])
   const merged: unknown[] = []
   for (const key of keys) {
-    const value = mergeValue(baseMap.get(key), localMap.get(key), remoteMap.get(key))
+    const hasNoBaseline = !baseMap.has(key)
+    const existsOnBothSides = localMap.has(key) && remoteMap.has(key)
+    const value = hasNoBaseline && existsOnBothSides
+      ? remoteMap.get(key)
+      : mergeValue(baseMap.get(key), localMap.get(key), remoteMap.get(key))
     if (value !== undefined) merged.push(value)
   }
   return merged
+}
+
+function folderAliases(
+  sources: unknown[][],
+  mergedFolders: unknown[],
+) {
+  const canonicalByName = new Map<string, string>()
+  for (const value of mergedFolders) {
+    if (!value || typeof value !== "object") continue
+    const folder = value as Record<string, unknown>
+    if (typeof folder.id !== "string" || typeof folder.name !== "string") continue
+    canonicalByName.set(folder.name.trim().toLocaleLowerCase(), folder.id)
+  }
+
+  const aliases = new Map<string, string>()
+  for (const values of sources) {
+    for (const value of values) {
+      if (!value || typeof value !== "object") continue
+      const folder = value as Record<string, unknown>
+      if (typeof folder.id !== "string" || typeof folder.name !== "string") continue
+      const canonicalId = canonicalByName.get(folder.name.trim().toLocaleLowerCase())
+      if (canonicalId) aliases.set(folder.id, canonicalId)
+    }
+  }
+  return aliases
+}
+
+function remapFolderReferences(values: unknown[], aliases: Map<string, string>) {
+  return values.map((value) => {
+    if (!value || typeof value !== "object") return value
+    const record = value as Record<string, unknown>
+    if (typeof record.folderId !== "string") return value
+    const canonicalId = aliases.get(record.folderId)
+    return canonicalId && canonicalId !== record.folderId
+      ? { ...record, folderId: canonicalId }
+      : value
+  })
 }
 
 export function mergeLabPayloads(
@@ -165,12 +224,30 @@ export function mergeLabPayloads(
     ...Object.keys(local.stores),
     ...Object.keys(remote.stores),
   ])
+  if (storeNames.has("folders")) {
+    stores.folders = mergeStore(
+      "folders",
+      base?.stores.folders ?? [],
+      local.stores.folders ?? [],
+      remote.stores.folders ?? [],
+    )
+  }
+  const aliases = folderAliases(
+    [
+      base?.stores.folders ?? [],
+      local.stores.folders ?? [],
+      remote.stores.folders ?? [],
+    ],
+    stores.folders ?? [],
+  )
   for (const storeName of storeNames) {
-    stores[storeName] = mergeStore(
+    if (storeName === "folders") continue
+    stores[storeName] = remapFolderReferences(mergeStore(
+      storeName,
       base?.stores[storeName] ?? [],
       local.stores[storeName] ?? [],
       remote.stores[storeName] ?? [],
-    )
+    ), aliases)
   }
 
   const preferences: Record<string, string> = {}

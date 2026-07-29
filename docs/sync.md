@@ -66,7 +66,7 @@ dados**. A sincronização é pausada imediatamente enquanto os campos estiverem
 editáveis.
 
 Ao criar, editar, mover ou excluir conteúdo, o app aguarda um pequeno intervalo
-e sincroniza somente o Lab afetado. A cada 20 segundos, ao recuperar a conexão
+e sincroniza somente o Lab afetado. A cada 30 segundos, ao recuperar a conexão
 ou ao voltar para a janela, também procura atualizações.
 
 Antes de enviar, o cliente:

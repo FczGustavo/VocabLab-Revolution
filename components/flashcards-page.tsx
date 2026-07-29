@@ -15,6 +15,7 @@ import { VocabularyChoiceMode } from "./vocabulary-choice-mode"
 
 import { WritingMode } from "./writing-mode"
 import { FolderCard, NewFolderCard } from "./folder-card"
+import { FolderDeleteChoice, FolderDeleteOptions } from "./folder-delete-dialog"
 import { LongPressButton } from "./long-press-button"
 import { useFolder } from "./folder-context"
 import { Button } from "@/components/ui/button"
@@ -1882,8 +1883,8 @@ export function FlashcardsPage() {
 
       {/* ── Delete Folder Confirmation Dialog ─────────────────── */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent className="min-h-[360px] max-w-[92vw] sm:max-w-sm">
-          <AlertDialogHeader>
+        <AlertDialogContent className="max-w-[92vw] sm:max-w-sm">
+          <AlertDialogHeader className="pr-8">
             <AlertDialogTitle>Delete folder?</AlertDialogTitle>
             <AlertDialogDescription>
               {editingFolderId === null 
@@ -1894,46 +1895,30 @@ export function FlashcardsPage() {
           
           {/* Folder selection for moving cards - regular folders */}
           {editingFolderId !== null && (
-            <div className="space-y-2">
-              <label className="text-[12px] font-medium text-muted-foreground">What should happen to its cards?</label>
-              <div className="flex flex-wrap gap-2">
+            <FolderDeleteOptions label="What should happen to its cards?">
                 {/* Other user folders */}
                 {folders.filter(f => f.id !== editingFolderId).map((folder) => (
-                  <button
+                  <FolderDeleteChoice
                     key={folder.id}
-                    type="button"
                     onClick={() => setDeleteTargetFolderId(folder.id)}
-                    className={cn(
-                      "rounded-full border px-3 py-1 text-[12px] transition-colors",
-                      deleteTargetFolderId === folder.id 
-                        ? "border-primary/40 bg-primary/10 text-primary" 
-                        : "border-border/30 text-muted-foreground hover:border-border/60"
-                    )}
+                    selected={deleteTargetFolderId === folder.id}
                   >
                     {folder.name}
-                  </button>
+                  </FolderDeleteChoice>
                 ))}
-                <button
-                  type="button"
+                <FolderDeleteChoice
                   onClick={() => setDeleteTargetFolderId("__delete__")}
-                  className={cn(
-                    "rounded-full border px-3 py-1 text-[12px] transition-colors",
-                    deleteTargetFolderId === "__delete__"
-                      ? "border-destructive/40 bg-destructive/10 text-destructive"
-                      : "border-destructive/20 text-destructive/80 hover:bg-destructive/5"
-                  )}
+                  selected={deleteTargetFolderId === "__delete__"}
+                  danger
                 >
                   Delete cards
-                </button>
-              </div>
-            </div>
+                </FolderDeleteChoice>
+            </FolderDeleteOptions>
           )}
 
           {/* Folder selection for moving review cards */}
           {editingFolderId !== null && isEditingReviewFolder && selectedReviewFolderId && (
-            <div className="space-y-2">
-              <label className="text-[12px] font-medium text-muted-foreground">Move review cards to</label>
-              <div className="flex flex-wrap gap-2">
+            <FolderDeleteOptions label="Move review cards to">
                 {Object.keys(reviewFoldersByParent)
                   .filter(id => id !== selectedReviewFolderId)
                   .map((parentFolderId) => {
@@ -1941,26 +1926,19 @@ export function FlashcardsPage() {
                       ? generalFolderName 
                       : folders.find(f => f.id === parentFolderId)?.name || "Unknown"
                     return (
-                      <button
+                      <FolderDeleteChoice
                         key={parentFolderId}
-                        type="button"
                         onClick={() => setDeleteTargetFolderId(parentFolderId)}
-                        className={cn(
-                          "rounded-full border px-3 py-1 text-[12px] transition-colors",
-                          deleteTargetFolderId === parentFolderId 
-                            ? "border-primary/40 bg-primary/10 text-primary" 
-                            : "border-border/30 text-muted-foreground hover:border-border/60"
-                        )}
+                        selected={deleteTargetFolderId === parentFolderId}
                       >
                         {reviewFolderTitle(parentFolderName, VOCAB_CURATED_FOLDER_NAMES)}
-                      </button>
+                      </FolderDeleteChoice>
                     )
                   })}
                 {Object.keys(reviewFoldersByParent).filter(id => id !== selectedReviewFolderId).length === 0 && (
                   <p className="text-[11px] text-muted-foreground/60">No other review folders. Cards will be removed from review.</p>
                 )}
-              </div>
-            </div>
+            </FolderDeleteOptions>
           )}
           
           <AlertDialogFooter>

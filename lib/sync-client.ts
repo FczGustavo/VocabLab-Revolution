@@ -245,7 +245,12 @@ function openDatabase(definition: DatabaseDefinition): Promise<IDBDatabase> {
 function transactionDone(transaction: IDBTransaction) {
   return new Promise<void>((resolve, reject) => {
     transaction.oncomplete = () => resolve()
-    transaction.onerror = () => reject(transaction.error)
+    transaction.onerror = (event) => {
+      const requestError = event.target && "error" in event.target
+        ? (event.target as IDBRequest).error
+        : null
+      reject(requestError ?? transaction.error ?? new Error("A transação local falhou."))
+    }
     transaction.onabort = () => reject(
       transaction.error ?? new Error("A transação local foi cancelada."),
     )

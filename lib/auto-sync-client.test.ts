@@ -52,4 +52,59 @@ describe("mergeLabPayloads", () => {
       expect.objectContaining({ word: "remote" }),
     ])
   })
+
+  it("deduplicates generated catalog cards by catalogId on a new device", () => {
+    const merged = mergeLabPayloads(
+      undefined,
+      payload({
+        folders: [{ id: "local-folder", name: "Phrasal Verbs Essentials" }],
+        flashcards: [{
+          id: "local-random-id",
+          catalogId: "pv-work-out",
+          folderId: "local-folder",
+          word: "work out",
+          partOfSpeech: "phrasal-verb",
+        }],
+      }),
+      payload({
+        folders: [{ id: "remote-folder", name: "Phrasal Verbs Essentials" }],
+        flashcards: [{
+          id: "remote-random-id",
+          catalogId: "pv-work-out",
+          folderId: "remote-folder",
+          word: "work out",
+          partOfSpeech: "phrasal-verb",
+        }],
+      }),
+    )
+
+    expect(merged.stores.folders).toEqual([
+      expect.objectContaining({ id: "remote-folder" }),
+    ])
+    expect(merged.stores.flashcards).toEqual([
+      expect.objectContaining({
+        id: "remote-random-id",
+        folderId: "remote-folder",
+      }),
+    ])
+  })
+
+  it("remaps local records when equal folder names have different device IDs", () => {
+    const merged = mergeLabPayloads(
+      undefined,
+      payload({
+        folders: [{ id: "local-folder", name: "Shared" }],
+        flashcards: [{ id: "local-card", folderId: "local-folder", word: "local" }],
+      }),
+      payload({
+        folders: [{ id: "remote-folder", name: "Shared" }],
+        flashcards: [{ id: "remote-card", folderId: "remote-folder", word: "remote" }],
+      }),
+    )
+
+    expect(merged.stores.flashcards).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "local-card", folderId: "remote-folder" }),
+      expect.objectContaining({ id: "remote-card", folderId: "remote-folder" }),
+    ]))
+  })
 })

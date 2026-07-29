@@ -38,6 +38,16 @@ const EVENT_LABS: Record<string, SyncLabId[]> = {
   "regencylab-folder-colors-updated": ["regency"],
 }
 
+function syncErrorMessage(error: unknown) {
+  if (error instanceof Error && error.message) return error.message
+  if (error && typeof error === "object" && "message" in error) {
+    const message = String((error as { message?: unknown }).message ?? "").trim()
+    if (message) return message
+  }
+  if (typeof error === "string" && error.trim()) return error
+  return "Falha de sincronização."
+}
+
 export function AutoSyncProvider() {
   const { syncCode, isValid, isIdentityLocked, isLoaded } = useSyncCode()
 
@@ -83,7 +93,7 @@ export function AutoSyncProvider() {
         if (!disposed) {
           publishAutoSyncState({
             state: "error",
-            message: error instanceof Error ? error.message : "Falha de sincronização.",
+            message: syncErrorMessage(error),
             updatedAt: Date.now(),
             labs: revisions,
           })

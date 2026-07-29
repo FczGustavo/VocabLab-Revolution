@@ -51,6 +51,7 @@ import {
   completeSyncPairing,
   startSyncPairing,
 } from "@/lib/sync-identity-client"
+import { normalizeSyncWord } from "@/lib/sync-schema"
 import { cn } from "@/lib/utils"
 
 type ColorPalette = "blue" | "sage" | "terracotta" | "ocean"
@@ -104,6 +105,7 @@ export function SettingsDialog() {
     isValid: isSyncCodeValid,
     isIdentityLocked,
     setIdentityLocked,
+    activateIdentity,
   } = useSyncCode()
   const { model, setModel } = useGptModel()
   const {
@@ -134,11 +136,15 @@ export function SettingsDialog() {
   const [identityBusy, setIdentityBusy] = useState<"claim" | "pair-start" | "pair-complete" | null>(null)
   const [identityError, setIdentityError] = useState("")
   const [syncSetupMode, setSyncSetupMode] = useState<"create" | "pair">("create")
+  const [pairWord, setPairWord] = useState("")
+  const [pairPin, setPairPin] = useState("")
   const [pairingCode, setPairingCode] = useState("")
   const [pairingExpiresAt, setPairingExpiresAt] = useState("")
   const [pairingInput, setPairingInput] = useState("")
   const [activeTab, setActiveTab] = useState<"general" | "sync" | "vocab" | "regency" | "read" | "rule" | "wiki">("general")
   const contentRef = useRef<HTMLDivElement>(null)
+  const pairSyncCode = pairWord && /^\d{4}$/.test(pairPin) ? `${pairWord}-${pairPin}` : ""
+  const isPairIdentityValid = /^[a-z0-9]{2,24}-\d{4}$/.test(pairSyncCode)
 
   useEffect(() => { if (contentRef.current) contentRef.current.scrollTop = 0 }, [activeTab])
 
@@ -171,7 +177,11 @@ export function SettingsDialog() {
     try {
       const result = await claimSyncIdentity(syncCode)
       if (!result.ok) {
-        if (result.taken) setSyncSetupMode("pair")
+        if (result.taken) {
+          setPairWord(syncWord)
+          setPairPin(syncPin)
+          setSyncSetupMode("pair")
+        }
         setIdentityError(result.error)
         return
       }
@@ -199,13 +209,17 @@ export function SettingsDialog() {
   }
 
   const handleCompletePairing = async () => {
-    if (!syncCode || !/^\d{6}$/.test(pairingInput) || identityBusy) return
+    if (!isPairIdentityValid || !/^\d{6}$/.test(pairingInput) || identityBusy) return
     setIdentityBusy("pair-complete")
     setIdentityError("")
     try {
-      await completeSyncPairing(syncCode, pairingInput)
+      await completeSyncPairing(pairSyncCode, pairingInput)
+      if (!activateIdentity(pairWord, pairPin)) {
+        throw new Error("O dispositivo foi autorizado, mas não foi possível ativar a identificação local.")
+      }
       setPairingInput("")
-      setIdentityLocked(true)
+      setPairWord("")
+      setPairPin("")
       setSyncSetupMode("create")
       publishAutoSyncState({
         state: "connecting",
@@ -427,6 +441,9 @@ export function SettingsDialog() {
                           onClick={() => {
                             setSyncSetupMode("pair")
                             setIdentityError("")
+                            setPairWord("")
+                            setPairPin("")
+                            setPairingInput("")
                           }}
                         >
                           Conectar dispositivo
@@ -438,7 +455,20 @@ export function SettingsDialog() {
                         <Label htmlFor="sync-word" className="mb-1.5 block text-xs">
                           {syncSetupMode === "pair" && !isIdentityLocked ? "Palavra existente" : "Sua palavra"}
                         </Label>
-                        <Input id="sync-word" value={syncWord} onChange={(event) => setSyncWord(event.target.value)} placeholder="Ex.: gustavo" autoComplete="off" disabled={isIdentityLocked} />
+                        <Input
+                          id="sync-word"
+                          value={syncSetupMode === "pair" && !isIdentityLocked ? pairWord : syncWord}
+                          onChange={(event) => {
+                            if (syncSetupMode === "pair" && !isIdentityLocked) {
+                              setPairWord(normalizeSyncWord(event.target.value))
+                            } else {
+                              setSyncWord(event.target.value)
+                            }
+                          }}
+                          placeholder="Ex.: gustavo"
+                          autoComplete="off"
+                          disabled={isIdentityLocked}
+                        />
                         <p className="mt-1.5 text-[10px] text-muted-foreground">
                           {syncSetupMode === "pair" && !isIdentityLocked
                             ? "Digite a mesma palavra usada no dispositivo principal."
@@ -451,8 +481,14 @@ export function SettingsDialog() {
                         </Label>
                         <Input
                           id="sync-pin"
-                          value={syncPin}
-                          onChange={(event) => setSyncPin(event.target.value)}
+                          value={syncSetupMode === "pair" && !isIdentityLocked ? pairPin : syncPin}
+                          onChange={(event) => {
+                            if (syncSetupMode === "pair" && !isIdentityLocked) {
+                              setPairPin(event.target.value.replace(/\D/g, "").slice(0, 4))
+                            } else {
+                              setSyncPin(event.target.value)
+                            }
+                          }}
                           inputMode="numeric"
                           pattern="[0-9]{4}"
                           maxLength={4}
@@ -489,7 +525,7 @@ export function SettingsDialog() {
                           <Button
                             type="button"
                             className="sm:min-w-32"
-                            disabled={!isSyncCodeValid || !/^\d{6}$/.test(pairingInput) || identityBusy !== null}
+                            disabled={!isPairIdentityValid || !/^\d{6}$/.test(pairingInput) || identityBusy !== null}
                             onClick={() => void handleCompletePairing()}
                           >
                             {identityBusy === "pair-complete" && <Loader2 className="mr-2 size-4 animate-spin" />}

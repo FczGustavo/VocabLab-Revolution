@@ -36,6 +36,7 @@ import { cn } from "@/lib/utils"
 import { TOPICS } from "@/lib/grammar-topics"
 import type { GrammarQuestion, GrammarFolder, GrammarList, GrammarQuestionOption } from "@/lib/types"
 import { FolderCard, NewFolderCard } from "@/components/folder-card"
+import { FolderDeleteChoice, FolderDeleteOptions } from "@/components/folder-delete-dialog"
 import { LongPressButton } from "@/components/long-press-button"
 
 // ── Topic taxonomy ─────────────────────────────────────────────────────────────
@@ -958,8 +959,8 @@ export function GrammarPage() {
       </Dialog>
 
       <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
-        <AlertDialogContent className="min-h-[360px] max-w-[92vw] sm:max-w-sm">
-          <AlertDialogHeader>
+        <AlertDialogContent className="max-w-[92vw] sm:max-w-sm">
+          <AlertDialogHeader className="pr-8">
             <AlertDialogTitle>Delete folder?</AlertDialogTitle>
             <AlertDialogDescription>
               {editingFolderId === null
@@ -968,15 +969,12 @@ export function GrammarPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           {editingFolderId !== null && (
-          <div className="space-y-2">
-            <label className="text-[12px] font-medium text-muted-foreground">Move lists to</label>
-            <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => setDeleteTargetFolderId(null)} className={cn("rounded-full border px-3 py-1 text-[12px] transition-colors", deleteTargetFolderId === null ? "border-primary/40 bg-primary/10 text-primary" : "border-border/30 text-muted-foreground hover:border-border/60")}>{generalFolderName}</button>
+          <FolderDeleteOptions label="Move lists to">
+              <FolderDeleteChoice onClick={() => setDeleteTargetFolderId(null)} selected={deleteTargetFolderId === null}>{generalFolderName}</FolderDeleteChoice>
               {folders.filter((folder) => folder.id !== editingFolderId).map((folder) => (
-                <button key={folder.id} type="button" onClick={() => setDeleteTargetFolderId(folder.id)} className={cn("rounded-full border px-3 py-1 text-[12px] transition-colors", deleteTargetFolderId === folder.id ? "border-primary/40 bg-primary/10 text-primary" : "border-border/30 text-muted-foreground hover:border-border/60")}>{folder.name}</button>
+                <FolderDeleteChoice key={folder.id} onClick={() => setDeleteTargetFolderId(folder.id)} selected={deleteTargetFolderId === folder.id}>{folder.name}</FolderDeleteChoice>
               ))}
-            </div>
-          </div>
+          </FolderDeleteOptions>
           )}
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => { setIsDeleteConfirmOpen(false); setDeleteTargetFolderId(null) }}>Cancel</AlertDialogCancel>

@@ -43,11 +43,19 @@ export async function POST(request: Request) {
       .eq("sync_code", syncHash)
       .maybeSingle()
     if (error) throw error
+    if (!data) {
+      return NextResponse.json(
+        {
+          error: "Nenhuma sincronização foi encontrada para esta palavra e PIN. Confirme os dados e a configuração do ambiente.",
+          code: "SYNC_IDENTITY_NOT_FOUND",
+        },
+        { status: 404 },
+      )
+    }
 
-    const expiresAt = Date.parse(String(data?.pairing_expires_at ?? ""))
+    const expiresAt = Date.parse(String(data.pairing_expires_at ?? ""))
     if (
-      !data
-      || data.pairing_code_hash !== pairingHash
+      data.pairing_code_hash !== pairingHash
       || !Number.isFinite(expiresAt)
       || expiresAt <= Date.now()
     ) {

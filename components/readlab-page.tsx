@@ -6,6 +6,7 @@ import { useReadlabDB } from "@/hooks/use-readlab-db"
 import { useGptModel } from "@/hooks/use-gpt-model"
 import { useFolder } from "@/components/folder-context"
 import { FolderCard, NewFolderCard } from "@/components/folder-card"
+import { FolderDeleteChoice, FolderDeleteOptions } from "@/components/folder-delete-dialog"
 import { TextCard } from "@/components/text-card"
 import { ReadTextView } from "@/components/read-text-view"
 import { LongPressButton } from "@/components/long-press-button"
@@ -183,7 +184,7 @@ export function ReadlabPage() {
 
     const textsToMove = allTexts.filter((t) => t.folderId === folderId)
     let textsHandled = true
-    if (targetFolderId) {
+    if (targetFolderId && targetFolderId !== "__delete__") {
       for (const text of textsToMove) {
         if (!await updateText({ ...text, folderId: targetFolderId === "__general__" ? null : targetFolderId })) textsHandled = false
       }
@@ -203,7 +204,7 @@ export function ReadlabPage() {
     }
 
     const folderName = folders.find((f) => f.id === folderId)?.name || "Unknown"
-    const targetName = targetFolderId
+    const targetName = targetFolderId && targetFolderId !== "__delete__"
       ? targetFolderId === "__general__" ? generalFolderName : folders.find((f) => f.id === targetFolderId)?.name || "Unknown"
       : null
 
@@ -958,8 +959,8 @@ export function ReadlabPage() {
 
       {/* ═══ DELETE FOLDER CONFIRMATION ═══ */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent className="min-h-[360px] max-w-[92vw] sm:max-w-sm">
-          <AlertDialogHeader>
+        <AlertDialogContent className="max-w-[92vw] sm:max-w-sm">
+          <AlertDialogHeader className="pr-8">
             <AlertDialogTitle>Delete folder?</AlertDialogTitle>
             <AlertDialogDescription>
               {editingFolderId === null
@@ -969,38 +970,30 @@ export function ReadlabPage() {
           </AlertDialogHeader>
 
           {editingFolderId !== null && (
-            <div className="space-y-2">
-              <label className="text-[12px] font-medium text-muted-foreground">Move texts to</label>
-              <div className="flex flex-wrap gap-2">
-                {!generalFolderDeleted && <button
-                  type="button"
+            <FolderDeleteOptions label="What should happen to its texts?">
+                {!generalFolderDeleted && <FolderDeleteChoice
                   onClick={() => setDeleteTargetFolderId("__general__")}
-                  className={cn(
-                    "rounded-full border px-3 py-1 text-[12px] transition-colors",
-                    deleteTargetFolderId === "__general__"
-                      ? "border-primary/40 bg-primary/10 text-primary"
-                      : "border-border/30 text-muted-foreground hover:border-border/60"
-                  )}
+                  selected={deleteTargetFolderId === "__general__"}
                 >
                   {generalFolderName}
-                </button>}
+                </FolderDeleteChoice>}
                 {folders.filter((f) => f.id !== editingFolderId).map((folder) => (
-                  <button
+                  <FolderDeleteChoice
                     key={folder.id}
-                    type="button"
                     onClick={() => setDeleteTargetFolderId(folder.id)}
-                    className={cn(
-                      "rounded-full border px-3 py-1 text-[12px] transition-colors",
-                      deleteTargetFolderId === folder.id
-                        ? "border-primary/40 bg-primary/10 text-primary"
-                        : "border-border/30 text-muted-foreground hover:border-border/60"
-                    )}
+                    selected={deleteTargetFolderId === folder.id}
                   >
                     {folder.name}
-                  </button>
+                  </FolderDeleteChoice>
                 ))}
-              </div>
-            </div>
+                <FolderDeleteChoice
+                  onClick={() => setDeleteTargetFolderId("__delete__")}
+                  selected={deleteTargetFolderId === "__delete__"}
+                  danger
+                >
+                  Delete texts
+                </FolderDeleteChoice>
+            </FolderDeleteOptions>
           )}
 
           <AlertDialogFooter>
@@ -1009,6 +1002,7 @@ export function ReadlabPage() {
             </AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive hover:bg-destructive/90"
+              disabled={editingFolderId !== null && !deleteTargetFolderId}
               onClick={() => handleDeleteFolderWithMigration(editingFolderId, deleteTargetFolderId)}
             >
               Delete

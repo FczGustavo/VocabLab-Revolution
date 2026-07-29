@@ -7,6 +7,7 @@ import { useRegencyPreferences, type RegencyDisplayPreferences } from "@/hooks/u
 import { useCardShape } from "@/hooks/use-card-shape"
 import { useFolder } from "@/components/folder-context"
 import { FolderCard, NewFolderCard } from "@/components/folder-card"
+import { FolderDeleteChoice, FolderDeleteOptions } from "@/components/folder-delete-dialog"
 import { LongPressButton } from "@/components/long-press-button"
 import { RegencyStudyMode, type RegencyStudyKind } from "@/components/regency-study-mode"
 
@@ -379,19 +380,16 @@ export function RegencyPage() {
       </Dialog>
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent className="min-h-[360px] max-w-[92vw] sm:max-w-sm">
-          <AlertDialogHeader>
+        <AlertDialogContent className="max-w-[92vw] sm:max-w-sm">
+          <AlertDialogHeader className="pr-8">
             <AlertDialogTitle>Delete folder?</AlertDialogTitle>
             <AlertDialogDescription>{editingFolder ? `Delete "${editingFolder.name}"? Choose whether to move or permanently delete its cards.` : `Delete "${generalFolderName}" folder and all its cards?`}</AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="space-y-2">
-            <label className="text-[12px] font-medium text-muted-foreground">What should happen to its cards?</label>
-            <div className="flex flex-wrap gap-2">
-              {editingFolder && <button type="button" onClick={() => setDeleteTarget("__general__")} className={cn("rounded-full border px-3 py-1 text-[12px] transition-colors", deleteTarget === "__general__" ? "border-primary/40 bg-primary/10 text-primary" : "border-border/30 text-muted-foreground hover:border-border/60")}>{generalFolderName}</button>}
-              {folders.filter((folder) => folder.id !== editingFolder?.id).map((folder) => <button key={folder.id} type="button" onClick={() => setDeleteTarget(folder.id)} className={cn("rounded-full border px-3 py-1 text-[12px] transition-colors", deleteTarget === folder.id ? "border-primary/40 bg-primary/10 text-primary" : "border-border/30 text-muted-foreground hover:border-border/60")}>{folder.name}</button>)}
-              <button type="button" onClick={() => setDeleteTarget("__delete__")} className={cn("rounded-full border px-3 py-1 text-[12px] transition-colors", deleteTarget === "__delete__" ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-destructive/20 text-destructive/80 hover:bg-destructive/5")}>Delete cards</button>
-            </div>
-          </div>
+          <FolderDeleteOptions label="What should happen to its cards?">
+            {editingFolder && <FolderDeleteChoice onClick={() => setDeleteTarget("__general__")} selected={deleteTarget === "__general__"}>{generalFolderName}</FolderDeleteChoice>}
+            {folders.filter((folder) => folder.id !== editingFolder?.id).map((folder) => <FolderDeleteChoice key={folder.id} onClick={() => setDeleteTarget(folder.id)} selected={deleteTarget === folder.id}>{folder.name}</FolderDeleteChoice>)}
+            <FolderDeleteChoice onClick={() => setDeleteTarget("__delete__")} selected={deleteTarget === "__delete__"} danger>Delete cards</FolderDeleteChoice>
+          </FolderDeleteOptions>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setDeleteTarget("__general__")}>Cancel</AlertDialogCancel>
             <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => void confirmDeleteFolder()}>Delete</AlertDialogAction>

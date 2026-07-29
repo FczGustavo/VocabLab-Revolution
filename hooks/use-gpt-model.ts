@@ -12,6 +12,7 @@ const BUILTIN_MODELS = [
   { id: "openai/gpt-5.4-nano", label: "GPT-5.4 Nano (OpenAI)" },
   { id: "x-ai/grok-4.1-fast", label: "Grok 4.1 Fast (xAI)" },
   { id: "deepseek/deepseek-v4-flash", label: "DeepSeek V4 Flash" },
+  { id: "minimax/minimax-m3:nitro", label: "MiniMax M3 Nitro" },
 ] as const
 
 export const AVAILABLE_MODELS =

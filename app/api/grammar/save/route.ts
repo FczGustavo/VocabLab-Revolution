@@ -1,17 +1,40 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
-import type { GrammarQuestion } from "@/lib/types"
+import { z } from "zod"
+
+import { guardApiRequest, readJsonWithLimit, safeApiError } from "@/lib/api-security"
+
+const QuestionSchema = z.object({
+  id: z.string().min(1).max(120),
+  topic: z.string().min(1).max(120),
+  subtopic: z.string().max(160).optional(),
+  questionType: z.enum(["correct", "incorrect"]),
+  questionText: z.string().min(1).max(4_000),
+  options: z.array(z.object({
+    letter: z.enum(["A", "B", "C", "D", "E"]),
+    text: z.string().max(2_000),
+    isAnswer: z.boolean(),
+    explanation: z.string().max(4_000),
+  })).min(2).max(5),
+  createdAt: z.number().int().nonnegative(),
+})
 
 export async function POST(req: Request) {
+  const blocked = guardApiRequest(req, "grammar:save", { limit: 10 })
+  if (blocked) return blocked
   try {
-    const body = await req.json()
-    const questions: GrammarQuestion[] = Array.isArray(body?.questions) ? body.questions : []
+    const body = await readJsonWithLimit<Record<string, unknown>>(req, 500_000)
+    const parsed = z.array(QuestionSchema).max(50).safeParse(body.questions)
+    if (!parsed.success && body.questions !== undefined) {
+      return NextResponse.json({ error: "Invalid grammar question payload." }, { status: 400 })
+    }
+    const questions = parsed.success ? parsed.data : []
 
     if (!questions.length) {
       return NextResponse.json({ ok: true })
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
     if (!supabaseUrl || !serviceKey) {
@@ -38,16 +61,11 @@ export async function POST(req: Request) {
       .upsert(rows, { onConflict: "id" })
 
     if (error) {
-      console.error("[grammar/save]", error.message)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      throw error
     }
 
     return NextResponse.json({ ok: true })
   } catch (err) {
-    console.error("[grammar/save] unexpected error:", err)
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Erro desconhecido" },
-      { status: 500 }
-    )
+    return safeApiError(err, "Não foi possível salvar as questões.")
   }
 }

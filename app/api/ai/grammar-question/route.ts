@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { generateGrammarQuestion, evaluateGrammarQuestion, GRAMMAR_AI_MODEL, REVISOR_AI_MODEL } from "@/lib/openai"
 
+import { guardApiRequest, readJsonWithLimit, resolveAllowedAiModel, safeApiError } from "@/lib/api-security"
+
 function normalizeForSimilarity(value: string): string[] {
   return value
     .toLowerCase()
@@ -51,18 +53,23 @@ function isWeakGrammarItem(input: {
 }
 
 export async function POST(req: Request) {
+  const blocked = guardApiRequest(req, "ai:grammar-question", { limit: 10 })
+  if (blocked) return blocked
   try {
-    const body = await req.json()
-    const topicLabel: string = body?.topicLabel ?? ""
+    const body = await readJsonWithLimit<Record<string, unknown>>(req, 100_000)
+    const topicLabel = typeof body.topicLabel === "string" ? body.topicLabel : ""
     // Accept subtopics[] (new) or single subtopic (legacy fallback)
     const subtopics: string[] = Array.isArray(body?.subtopics)
-      ? body.subtopics
-      : body?.subtopic
+      ? body.subtopics.filter((value): value is string => typeof value === "string")
+      : typeof body.subtopic === "string"
       ? [body.subtopic]
       : []
-    const questionType: "correct" | "incorrect" = body?.questionType ?? "correct"
-    const model: string = body?.model ?? GRAMMAR_AI_MODEL
-    const userWords: string[] | undefined = Array.isArray(body?.userWords) ? body.userWords : undefined
+    const questionType: "correct" | "incorrect" =
+      body.questionType === "incorrect" ? "incorrect" : "correct"
+    const model = resolveAllowedAiModel(body?.model, GRAMMAR_AI_MODEL)
+    const userWords: string[] | undefined = Array.isArray(body?.userWords)
+      ? body.userWords.filter((value): value is string => typeof value === "string").slice(0, 100)
+      : undefined
     const recentContexts: string[] = Array.isArray(body?.recentContexts)
       ? body.recentContexts.filter((v: unknown): v is string => typeof v === "string" && v.trim().length > 0).slice(-8)
       : []
@@ -93,7 +100,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json(reviewedRetry)
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Erro ao gerar questão"
-    return NextResponse.json({ error: message }, { status: 500 })
+    return safeApiError(err, "Could not generate the grammar question.")
   }
 }

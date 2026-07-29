@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server"
 import { reviseFlashcardByTranslation, DEFAULT_AI_MODEL } from "@/lib/openai"
+import { guardApiRequest, readJsonWithLimit, resolveAllowedAiModel, safeApiError } from "@/lib/api-security"
 
 export async function POST(req: Request) {
+  const blocked = guardApiRequest(req, "ai:revise", { limit: 30 })
+  if (blocked) return blocked
   try {
-    const body = await req.json()
-    const model: string = body?.model ?? DEFAULT_AI_MODEL
+    const body = await readJsonWithLimit<Record<string, any>>(req, 200_000)
+    const model = resolveAllowedAiModel(body?.model, DEFAULT_AI_MODEL)
     const input = body?.input
 
     if (!input?.word || !input?.partOfSpeech || !input?.translation) {
@@ -14,7 +17,6 @@ export async function POST(req: Request) {
     const data = await reviseFlashcardByTranslation(input, model)
     return NextResponse.json(data)
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Erro ao revisar flashcard"
-    return NextResponse.json({ error: message }, { status: 500 })
+    return safeApiError(err, "Erro ao revisar flashcard")
   }
 }

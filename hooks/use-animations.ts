@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 
 export function useAnimations() {
-  const [enabled, setEnabled] = useState<boolean>(false)
+  const [enabled, setEnabled] = useState<boolean>(true)
 
   useEffect(() => {
     const saved = localStorage.getItem("vocab-lab-animations")

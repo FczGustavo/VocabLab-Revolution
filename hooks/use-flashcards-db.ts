@@ -2,12 +2,33 @@
 
 import { useState, useEffect, useCallback } from "react"
 import type { Flashcard, Folder } from "@/lib/types"
+import { FLASHCARDS_UPDATED_EVENT } from "@/lib/constants"
+import {
+  VOCAB_DEFAULT_CATALOG,
+  VOCAB_DEFAULT_CATALOG_VERSION,
+  VOCAB_DEFAULT_FOLDER_COLOR,
+  VOCAB_DEFAULT_FOLDER_NAME,
+  validateVocabDefaultCatalog,
+  vocabCatalogContentHash,
+  vocabCatalogLegacyContentHash,
+} from "@/lib/vocab-default-catalog"
+import { VOCAB_IDIOMS_CATALOG, VOCAB_IDIOMS_CATALOG_VERSION, VOCAB_IDIOMS_FOLDER_COLOR, VOCAB_IDIOMS_FOLDER_NAME, validateVocabIdiomsCatalog, vocabIdiomsContentHash, vocabIdiomsLegacyContentHash } from "@/lib/vocab-idioms-catalog"
 
 const DB_NAME = "vocab-lab-db"
-const DB_VERSION = 5
+const DB_VERSION = 6
 const FLASHCARDS_STORE = "flashcards"
 const FOLDERS_STORE = "folders"
-const FLASHCARDS_UPDATED_EVENT = "vocablab-flashcards-updated"
+const META_STORE = "catalogMeta"
+const DEFAULT_CATALOG_META_KEY = "vocab-default-catalog"
+const IDIOMS_CATALOG_META_KEY = "vocab-idioms-catalog"
+const FOLDER_COLORS_UPDATED_EVENT = "vocablab-folder-colors-updated"
+
+interface VocabCatalogMeta {
+  key: string
+  version: number
+  folderId: string | null
+  seenCatalogIds: string[]
+}
 
 function notifyFlashcardsUpdated() {
   if (typeof window === "undefined") return
@@ -32,10 +53,14 @@ function openDatabase(): Promise<IDBDatabase> {
         flashcardsStore.createIndex("word_pos", ["word", "partOfSpeech"], { unique: true })
         flashcardsStore.createIndex("createdAt", "createdAt", { unique: false })
         flashcardsStore.createIndex("folderId", "folderId", { unique: false })
+        flashcardsStore.createIndex("catalogId", "catalogId", { unique: false })
       } else {
         const transaction = (event.target as IDBOpenDBRequest).transaction
         const flashcardsStore = transaction?.objectStore(FLASHCARDS_STORE)
         if (flashcardsStore) {
+          if (!flashcardsStore.indexNames.contains("catalogId")) {
+            flashcardsStore.createIndex("catalogId", "catalogId", { unique: false })
+          }
           const seen = new Map<string, { id: string; createdAt: number }>()
           const cursorRequest = flashcardsStore.openCursor()
 
@@ -89,7 +114,233 @@ function openDatabase(): Promise<IDBDatabase> {
         foldersStore.createIndex("name", "name", { unique: true })
         foldersStore.createIndex("createdAt", "createdAt", { unique: false })
       }
+      if (!db.objectStoreNames.contains(META_STORE)) db.createObjectStore(META_STORE, { keyPath: "key" })
     }
+  })
+}
+
+function requestResult<T>(request: IDBRequest<T>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () => reject(request.error)
+  })
+}
+
+function transactionComplete(transaction: IDBTransaction): Promise<void> {
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => resolve()
+    transaction.onerror = () => reject(transaction.error)
+    transaction.onabort = () => reject(transaction.error ?? new Error("IndexedDB transaction aborted"))
+  })
+}
+
+function applyDefaultFolderColor(folderId: string, color = VOCAB_DEFAULT_FOLDER_COLOR) {
+  try {
+    const key = "vocablab_folder_colors"
+    const stored = localStorage.getItem(key)
+    const colors = stored ? JSON.parse(stored) as Record<string, string> : {}
+    if (!colors[folderId]) localStorage.setItem(key, JSON.stringify({ ...colors, [folderId]: color }))
+    window.dispatchEvent(new Event(FOLDER_COLORS_UPDATED_EVENT))
+  } catch {
+    // A malformed visual preference must not invalidate the catalog transaction.
+  }
+}
+
+function migrateIdiomsFolderColor(folderId: string) {
+  try {
+    const key = "vocablab_folder_colors"
+    const stored = localStorage.getItem(key)
+    const colors = stored ? JSON.parse(stored) as Record<string, string> : {}
+    if (!colors[folderId] || colors[folderId] === "violet") {
+      localStorage.setItem(key, JSON.stringify({ ...colors, [folderId]: VOCAB_IDIOMS_FOLDER_COLOR }))
+      window.dispatchEvent(new Event(FOLDER_COLORS_UPDATED_EVENT))
+    }
+  } catch {
+    // Preserve catalog installation even if a visual preference is malformed.
+  }
+}
+
+async function ensureDefaultCatalog(db: IDBDatabase): Promise<void> {
+  validateVocabDefaultCatalog()
+  const transaction = db.transaction([FLASHCARDS_STORE, FOLDERS_STORE, META_STORE], "readwrite")
+  const done = transactionComplete(transaction)
+  const cardsStore = transaction.objectStore(FLASHCARDS_STORE)
+  const foldersStore = transaction.objectStore(FOLDERS_STORE)
+  const metaStore = transaction.objectStore(META_STORE)
+  const [cards, folders, existingMeta] = await Promise.all([
+    requestResult(cardsStore.getAll()) as Promise<Flashcard[]>,
+    requestResult(foldersStore.getAll()) as Promise<Folder[]>,
+    requestResult(metaStore.get(DEFAULT_CATALOG_META_KEY)) as Promise<VocabCatalogMeta | undefined>,
+  ])
+
+  const firstInstallation = !existingMeta
+  let folderId = existingMeta?.folderId ?? null
+  if (firstInstallation) {
+    const existingFolder = folders.find((folder) => folder.name === VOCAB_DEFAULT_FOLDER_NAME)
+    if (existingFolder) {
+      folderId = existingFolder.id
+    } else {
+      const folder: Folder = { id: crypto.randomUUID(), name: VOCAB_DEFAULT_FOLDER_NAME, createdAt: Date.now() }
+      foldersStore.add(folder)
+      folders.push(folder)
+      folderId = folder.id
+    }
+  }
+
+  const destinationFolderId = folderId && folders.some((folder) => folder.id === folderId) ? folderId : null
+  const seen = new Set(existingMeta?.seenCatalogIds ?? [])
+  const cardsByCatalogId = new Map(cards.filter((card) => card.catalogId).map((card) => [card.catalogId as string, card]))
+  const cardsByWordPos = new Map(cards.map((card) => [`${card.word.toLowerCase()}__${card.partOfSpeech}`, card]))
+  const now = Date.now()
+
+  VOCAB_DEFAULT_CATALOG.forEach((entry, index) => {
+    const canonicalHash = vocabCatalogContentHash(entry)
+    const current = cardsByCatalogId.get(entry.catalogId as string)
+    if (current) {
+      seen.add(entry.catalogId as string)
+      const isUntouched = Boolean(current.catalogContentHash) && (
+        vocabCatalogContentHash(current) === current.catalogContentHash
+        || (current.catalogRevision === 1 && vocabCatalogLegacyContentHash(current) === current.catalogContentHash)
+      )
+      const mustNormalizePhrasalShape = current.partOfSpeech !== "phrasal-verb" || current.alternativeForms.length > 0
+      const mustRemoveCatalogContext = Boolean(current.usageNote || current.usageNoteEn)
+      if (mustNormalizePhrasalShape || mustRemoveCatalogContext || (isUntouched && (current.catalogContentHash !== canonicalHash || current.catalogRevision !== entry.catalogRevision))) {
+        cardsStore.put({
+          ...current,
+          ...(isUntouched ? entry : {}),
+          partOfSpeech: "phrasal-verb",
+          alternativeForms: [],
+          usageNote: "",
+          usageNoteEn: "",
+          catalogRevision: entry.catalogRevision,
+          ...(isUntouched ? { catalogContentHash: canonicalHash } : {}),
+        })
+      }
+      return
+    }
+    if (seen.has(entry.catalogId as string)) return
+
+    const wordKey = `${entry.word.toLowerCase()}__${entry.partOfSpeech}`
+    if (cardsByWordPos.has(wordKey)) {
+      // A personal card always wins; remember the candidate so it is not retried on every load.
+      seen.add(entry.catalogId as string)
+      return
+    }
+    const card: Flashcard = {
+      ...entry,
+      id: crypto.randomUUID(),
+      catalogContentHash: canonicalHash,
+      folderId: destinationFolderId,
+      createdAt: now - index,
+    }
+    cardsStore.add(card)
+    cardsByWordPos.set(wordKey, card)
+    seen.add(entry.catalogId as string)
+  })
+
+  metaStore.put({
+    key: DEFAULT_CATALOG_META_KEY,
+    version: VOCAB_DEFAULT_CATALOG_VERSION,
+    folderId,
+    seenCatalogIds: [...seen],
+  } satisfies VocabCatalogMeta)
+  await done
+  if (firstInstallation && folderId) applyDefaultFolderColor(folderId)
+}
+
+async function ensureIdiomsCatalog(db: IDBDatabase): Promise<void> {
+  validateVocabIdiomsCatalog()
+  const transaction = db.transaction([FLASHCARDS_STORE, FOLDERS_STORE, META_STORE], "readwrite")
+  const done = transactionComplete(transaction)
+  const cardsStore = transaction.objectStore(FLASHCARDS_STORE)
+  const foldersStore = transaction.objectStore(FOLDERS_STORE)
+  const metaStore = transaction.objectStore(META_STORE)
+  const [cards, folders, existingMeta] = await Promise.all([
+    requestResult(cardsStore.getAll()) as Promise<Flashcard[]>,
+    requestResult(foldersStore.getAll()) as Promise<Folder[]>,
+    requestResult(metaStore.get(IDIOMS_CATALOG_META_KEY)) as Promise<VocabCatalogMeta | undefined>,
+  ])
+
+  const firstInstallation = !existingMeta
+  const needsIdentityMigration = Boolean(existingMeta && existingMeta.version < 3)
+  let folderId = existingMeta?.folderId ?? null
+  if (firstInstallation) {
+    const existingFolder = folders.find((folder) => folder.name === VOCAB_IDIOMS_FOLDER_NAME)
+    if (existingFolder) folderId = existingFolder.id
+    else {
+      const folder: Folder = { id: crypto.randomUUID(), name: VOCAB_IDIOMS_FOLDER_NAME, createdAt: Date.now() }
+      foldersStore.add(folder)
+      folders.push(folder)
+      folderId = folder.id
+    }
+  }
+
+  if (!firstInstallation && folderId) {
+    const catalogFolder = folders.find((folder) => folder.id === folderId)
+    const nameAlreadyUsed = folders.some((folder) => folder.id !== folderId && folder.name === VOCAB_IDIOMS_FOLDER_NAME)
+    if (catalogFolder?.name === "Idiomatic Expressions Essentials" && !nameAlreadyUsed) {
+      const renamed = { ...catalogFolder, name: VOCAB_IDIOMS_FOLDER_NAME }
+      foldersStore.put(renamed)
+      const index = folders.findIndex((folder) => folder.id === folderId)
+      if (index >= 0) folders[index] = renamed
+    }
+  }
+
+  const destinationFolderId = folderId && folders.some((folder) => folder.id === folderId) ? folderId : null
+  const seen = new Set(existingMeta?.seenCatalogIds ?? [])
+  const cardsByCatalogId = new Map(cards.filter((card) => card.catalogId).map((card) => [card.catalogId as string, card]))
+  const cardsByWordPos = new Map(cards.map((card) => [`${card.word.toLowerCase()}__${card.partOfSpeech}`, card]))
+  const now = Date.now()
+
+  VOCAB_IDIOMS_CATALOG.forEach((entry, index) => {
+    const canonicalHash = vocabIdiomsContentHash(entry)
+    const current = cardsByCatalogId.get(entry.catalogId as string)
+    if (current) {
+      seen.add(entry.catalogId as string)
+      const isUntouched = Boolean(current.catalogContentHash) && (vocabIdiomsContentHash(current) === current.catalogContentHash || vocabIdiomsLegacyContentHash(current) === current.catalogContentHash)
+      if (isUntouched && (current.catalogContentHash !== canonicalHash || current.catalogRevision !== entry.catalogRevision)) {
+        cardsStore.put({ ...current, ...entry, catalogContentHash: canonicalHash })
+      }
+      return
+    }
+    if (seen.has(entry.catalogId as string)) return
+    const wordKey = `${entry.word.toLowerCase()}__${entry.partOfSpeech}`
+    if (cardsByWordPos.has(wordKey)) { seen.add(entry.catalogId as string); return }
+    const card: Flashcard = { ...entry, id: crypto.randomUUID(), catalogContentHash: canonicalHash, folderId: destinationFolderId, createdAt: now - index }
+    cardsStore.add(card)
+    cardsByWordPos.set(wordKey, card)
+    seen.add(entry.catalogId as string)
+  })
+
+  metaStore.put({ key: IDIOMS_CATALOG_META_KEY, version: VOCAB_IDIOMS_CATALOG_VERSION, folderId, seenCatalogIds: [...seen] } satisfies VocabCatalogMeta)
+  await done
+  if (firstInstallation && folderId) applyDefaultFolderColor(folderId, VOCAB_IDIOMS_FOLDER_COLOR)
+  else if (needsIdentityMigration && folderId) migrateIdiomsFolderColor(folderId)
+}
+
+export async function readAllFlashcardsFromDB(): Promise<Flashcard[]> {
+  const db = await openDatabase()
+  return new Promise((resolve) => {
+    const tx = db.transaction(FLASHCARDS_STORE, "readonly")
+    const store = tx.objectStore(FLASHCARDS_STORE)
+    const req = store.getAll()
+    req.onsuccess = () => resolve(req.result as Flashcard[])
+    req.onerror = () => resolve([])
+  })
+}
+
+export async function readAllFoldersFromDB(): Promise<Folder[]> {
+  const db = await openDatabase()
+  return new Promise((resolve) => {
+    const tx = db.transaction(FOLDERS_STORE, "readonly")
+    const store = tx.objectStore(FOLDERS_STORE)
+    const req = store.getAll()
+    req.onsuccess = () => {
+      const folders = (req.result as Folder[]) || []
+      folders.sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0))
+      resolve(folders)
+    }
+    req.onerror = () => resolve([])
   })
 }
 
@@ -102,6 +353,8 @@ export function useFlashcardsDB() {
   const loadData = useCallback(async () => {
     try {
       const db = await openDatabase()
+      await ensureDefaultCatalog(db)
+      await ensureIdiomsCatalog(db)
       
       // Load folders
       const foldersTransaction = db.transaction(FOLDERS_STORE, "readonly")
@@ -110,7 +363,7 @@ export function useFlashcardsDB() {
 
       foldersRequest.onsuccess = () => {
         const loadedFolders = foldersRequest.result as Folder[]
-        loadedFolders.sort((a, b) => a.name.localeCompare(b.name))
+        loadedFolders.sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0))
         setFolders(loadedFolders)
       }
 
@@ -163,7 +416,7 @@ export function useFlashcardsDB() {
         const request = store.add(folder)
 
         request.onsuccess = () => {
-          setFolders((prev) => [...prev, folder].sort((a, b) => a.name.localeCompare(b.name)))
+          setFolders((prev) => [...prev, folder].sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0)))
           notifyFlashcardsUpdated()
           resolve(folder)
         }
@@ -182,50 +435,74 @@ export function useFlashcardsDB() {
   const deleteFolder = useCallback(async (id: string): Promise<boolean> => {
     try {
       const db = await openDatabase()
-      
-      // First, update all flashcards in this folder to have no folder
-      const flashcardsTransaction = db.transaction(FLASHCARDS_STORE, "readwrite")
-      const flashcardsStore = flashcardsTransaction.objectStore(FLASHCARDS_STORE)
-      
+      const transaction = db.transaction([FLASHCARDS_STORE, FOLDERS_STORE], "readwrite")
+      const done = transactionComplete(transaction)
+      const flashcardsStore = transaction.objectStore(FLASHCARDS_STORE)
+      const foldersStore = transaction.objectStore(FOLDERS_STORE)
       const cardsInFolder = flashcards.filter(f => f.folderId === id)
       for (const card of cardsInFolder) {
-        const updatedCard = { ...card, folderId: null }
-        flashcardsStore.put(updatedCard)
+        flashcardsStore.put({ ...card, folderId: null })
       }
-      
-      // Then delete the folder
-      const foldersTransaction = db.transaction(FOLDERS_STORE, "readwrite")
-      const foldersStore = foldersTransaction.objectStore(FOLDERS_STORE)
-
-      return new Promise((resolve) => {
-        const request = foldersStore.delete(id)
-
-        request.onsuccess = () => {
-          setFolders((prev) => prev.filter((f) => f.id !== id))
-          setFlashcards((prev) => prev.map(card => 
-            card.folderId === id ? { ...card, folderId: null } : card
-          ))
-          if (selectedFolderId === id) {
-            setSelectedFolderId(null)
-          }
-          notifyFlashcardsUpdated()
-          resolve(true)
-        }
-
-        request.onerror = () => {
-          console.error("Error deleting folder:", request.error)
-          resolve(false)
-        }
-      })
+      foldersStore.delete(id)
+      await done
+      setFolders((prev) => prev.filter((f) => f.id !== id))
+      setFlashcards((prev) => prev.map(card =>
+        card.folderId === id ? { ...card, folderId: null } : card
+      ))
+      if (selectedFolderId === id) setSelectedFolderId(null)
+      notifyFlashcardsUpdated()
+      return true
     } catch (error) {
       console.error("Error deleting folder:", error)
       return false
     }
   }, [flashcards, selectedFolderId])
 
+  const renameFolder = useCallback(async (id: string, newName: string): Promise<boolean> => {
+    try {
+      const db = await openDatabase()
+      const transaction = db.transaction(FOLDERS_STORE, "readwrite")
+      const store = transaction.objectStore(FOLDERS_STORE)
+
+      return new Promise((resolve) => {
+        const getRequest = store.get(id)
+        
+        getRequest.onsuccess = () => {
+          const folder = getRequest.result
+          if (!folder) {
+            resolve(false)
+            return
+          }
+
+          const updatedFolder = { ...folder, name: newName.trim() }
+          const putRequest = store.put(updatedFolder)
+
+          putRequest.onsuccess = () => {
+            setFolders((prev) => prev.map(f => f.id === id ? updatedFolder : f).sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0)))
+            notifyFlashcardsUpdated()
+            resolve(true)
+          }
+
+          putRequest.onerror = () => {
+            console.error("Error renaming folder:", putRequest.error)
+            resolve(false)
+          }
+        }
+
+        getRequest.onerror = () => {
+          console.error("Error getting folder:", getRequest.error)
+          resolve(false)
+        }
+      })
+    } catch (error) {
+      console.error("Error renaming folder:", error)
+      return false
+    }
+  }, [])
+
   // Flashcard operations
   const addFlashcard = useCallback(
-    async (flashcard: Flashcard): Promise<boolean> => {
+    async (flashcard: Flashcard, explicitFolderId?: string | null): Promise<boolean> => {
       try {
         const db = await openDatabase()
         const transaction = db.transaction(FLASHCARDS_STORE, "readwrite")
@@ -233,10 +510,16 @@ export function useFlashcardsDB() {
 
         const normalizedWord = String(flashcard.word ?? "").trim().toLowerCase()
 
+        // An explicit folder (even null = "General") wins over the hook's
+        // selectedFolderId. Callers that don't pass anything fall back to the
+        // hook state, preserving the existing VocabLab behavior.
+        const resolvedFolderId =
+          explicitFolderId !== undefined ? explicitFolderId : selectedFolderId
+
         const flashcardWithFolder = {
           ...flashcard,
           word: normalizedWord,
-          folderId: selectedFolderId,
+          folderId: resolvedFolderId,
         }
 
         return new Promise((resolve) => {
@@ -455,7 +738,7 @@ export function useFlashcardsDB() {
         tx.oncomplete = () => {
           safeFolders.sort((a, b) => a.name.localeCompare(b.name))
           safeCards.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
-          setFolders(safeFolders)
+          setFolders(safeFolders.sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0)))
           setFlashcards(safeCards)
           setSelectedFolderId(null)
           notifyFlashcardsUpdated()
@@ -507,6 +790,7 @@ export function useFlashcardsDB() {
     moveFlashcardToFolder,
     addFolder,
     deleteFolder,
+    renameFolder,
     addToReviewFolder,
     removeFromReviewFolder,
     getRandomFlashcards,

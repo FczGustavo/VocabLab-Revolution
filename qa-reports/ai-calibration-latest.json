@@ -1,0 +1,1945 @@
+{
+  "generatedAt": "2026-07-29T20:08:17.419Z",
+  "baseUrl": "http://localhost:3000",
+  "vocabulary": [
+    {
+      "test": {
+        "word": "pathway",
+        "pos": "noun",
+        "form": "base-form",
+        "alternatives": true
+      },
+      "status": 200,
+      "latencyMs": 4577,
+      "output": {
+        "word": "pathway",
+        "partOfSpeech": "noun",
+        "grammaticalForm": "base-form",
+        "translation": "caminho / trilha",
+        "ipa": "ˈpæθweɪ",
+        "usageNote": "Um caminho ou trilha, geralmente feito para pedestres, que leva de um lugar a outro.",
+        "usageNoteEn": "A path or track, usually made for people to walk on, that leads from one place to another.",
+        "example": "A narrow stone pathway led through the garden to the front door.",
+        "exampleTranslation": "Um caminho estreito de pedra levava através do jardim até a porta da frente.",
+        "verbType": null,
+        "conjugations": null,
+        "synonyms": [
+          {
+            "word": "path",
+            "type": "literal"
+          },
+          {
+            "word": "trail",
+            "type": "literal"
+          },
+          {
+            "word": "walkway",
+            "type": "literal"
+          }
+        ],
+        "antonyms": [],
+        "alternativeForms": []
+      },
+      "issues": []
+    },
+    {
+      "test": {
+        "word": "scrutinize",
+        "pos": "verb",
+        "form": "base-form",
+        "alternatives": true
+      },
+      "status": 200,
+      "latencyMs": 4659,
+      "output": {
+        "word": "scrutinize",
+        "partOfSpeech": "verb",
+        "grammaticalForm": "base-form",
+        "translation": "examinar minuciosamente / analisar detalhadamente",
+        "ipa": "ˈskruːtənaɪz",
+        "usageNote": "Examinar algo com muita atenção para encontrar detalhes ou falhas.",
+        "usageNoteEn": "To examine something very carefully in order to discover details or flaws.",
+        "example": "The detective began to scrutinize the evidence for any hidden clues.",
+        "exampleTranslation": "O detetive começou a examinar minuciosamente as evidências em busca de pistas escondidas.",
+        "verbType": "regular",
+        "conjugations": {
+          "simplePresent": "scrutinize / scrutinizes",
+          "simplePast": "scrutinized",
+          "presentContinuous": "am/is/are scrutinizing",
+          "pastContinuous": "was/were scrutinizing",
+          "presentPerfect": "have/has scrutinized",
+          "pastPerfect": "had scrutinized"
+        },
+        "synonyms": [
+          {
+            "word": "examine",
+            "type": "literal"
+          },
+          {
+            "word": "inspect",
+            "type": "literal"
+          },
+          {
+            "word": "analyze",
+            "type": "abstract"
+          }
+        ],
+        "antonyms": [
+          {
+            "word": "ignore",
+            "type": "abstract"
+          },
+          {
+            "word": "overlook",
+            "type": "abstract"
+          }
+        ],
+        "alternativeForms": [
+          {
+            "word": "scrutiny",
+            "partOfSpeech": "noun",
+            "translation": "exame minucioso / escrutínio",
+            "example": "The proposal is under close scrutiny by the committee."
+          }
+        ]
+      },
+      "issues": []
+    },
+    {
+      "test": {
+        "word": "wrote",
+        "pos": "verb",
+        "form": "past",
+        "preserve": true
+      },
+      "status": 200,
+      "latencyMs": 2398,
+      "output": {
+        "word": "wrote",
+        "partOfSpeech": "verb",
+        "grammaticalForm": "past",
+        "translation": "escreveu / redigiu",
+        "ipa": "roʊt",
+        "usageNote": "O passado do verbo escrever, usado para indicar a ação de registrar palavras ou símbolos em uma superfície.",
+        "usageNoteEn": "The past tense of the verb write, used to indicate the action of recording words or symbols on a surface.",
+        "example": "She wrote a long letter to her friend yesterday.",
+        "exampleTranslation": "Ela escreveu uma longa carta para sua amiga ontem.",
+        "verbType": "irregular",
+        "conjugations": {
+          "simplePresent": "write / writes",
+          "simplePast": "wrote",
+          "presentContinuous": "am/is/are writing",
+          "pastContinuous": "was/were writing",
+          "presentPerfect": "have/has written",
+          "pastPerfect": "had written"
+        },
+        "synonyms": [
+          {
+            "word": "penned",
+            "type": "literal"
+          },
+          {
+            "word": "recorded",
+            "type": "literal"
+          },
+          {
+            "word": "authored",
+            "type": "literal"
+          }
+        ],
+        "antonyms": [],
+        "alternativeForms": []
+      },
+      "issues": []
+    },
+    {
+      "test": {
+        "word": "written",
+        "pos": "verb",
+        "form": "past-participle",
+        "preserve": true
+      },
+      "status": 200,
+      "latencyMs": 2390,
+      "output": {
+        "word": "written",
+        "partOfSpeech": "verb",
+        "grammaticalForm": "past-participle",
+        "translation": "escrito / redigido",
+        "ipa": "ˈrɪtən",
+        "usageNote": "Refere-se a algo que foi registrado por meio de palavras ou símbolos em uma superfície.",
+        "usageNoteEn": "Refers to something that has been recorded by means of words or symbols on a surface.",
+        "example": "The report was written by the committee last month.",
+        "exampleTranslation": "O relatório foi escrito pelo comitê no mês passado.",
+        "verbType": "irregular",
+        "conjugations": {
+          "simplePresent": "write / writes",
+          "simplePast": "wrote",
+          "presentContinuous": "am/is/are writing",
+          "pastContinuous": "was/were writing",
+          "presentPerfect": "have/has written",
+          "pastPerfect": "had written"
+        },
+        "synonyms": [
+          {
+            "word": "recorded",
+            "type": "literal"
+          },
+          {
+            "word": "composed",
+            "type": "literal"
+          },
+          {
+            "word": "penned",
+            "type": "literal"
+          }
+        ],
+        "antonyms": [],
+        "alternativeForms": []
+      },
+      "issues": []
+    },
+    {
+      "test": {
+        "word": "greatest",
+        "pos": "adjective",
+        "form": "superlative",
+        "preserve": true
+      },
+      "status": 200,
+      "latencyMs": 2311,
+      "output": {
+        "word": "greatest",
+        "partOfSpeech": "adjective",
+        "grammaticalForm": "superlative",
+        "translation": "maior / melhor",
+        "ipa": "ˈɡreɪtɪst",
+        "usageNote": "Usado para descrever a pessoa ou coisa que é maior, mais importante ou melhor do que todas as outras do seu tipo.",
+        "usageNoteEn": "Used to describe the person or thing that is larger, more important, or better than all others of its kind.",
+        "example": "She is considered the greatest athlete of her generation.",
+        "exampleTranslation": "Ela é considerada a maior atleta de sua geração.",
+        "verbType": null,
+        "conjugations": null,
+        "synonyms": [
+          {
+            "word": "biggest",
+            "type": "literal"
+          },
+          {
+            "word": "best",
+            "type": "abstract"
+          },
+          {
+            "word": "supreme",
+            "type": "abstract"
+          }
+        ],
+        "antonyms": [
+          {
+            "word": "smallest",
+            "type": "literal"
+          },
+          {
+            "word": "worst",
+            "type": "abstract"
+          },
+          {
+            "word": "least",
+            "type": "abstract"
+          }
+        ],
+        "alternativeForms": []
+      },
+      "issues": []
+    },
+    {
+      "test": {
+        "word": "better",
+        "pos": "adjective",
+        "form": "comparative",
+        "preserve": true
+      },
+      "status": 200,
+      "latencyMs": 2062,
+      "output": {
+        "word": "better",
+        "partOfSpeech": "adjective",
+        "grammaticalForm": "comparative",
+        "translation": "melhor",
+        "ipa": "ˈbɛtər",
+        "usageNote": "Usado para descrever algo de qualidade superior ou mais satisfatório do que outra coisa.",
+        "usageNoteEn": "Used to describe something of higher quality or more satisfactory than another thing.",
+        "example": "This new version of the software is much better than the previous one.",
+        "exampleTranslation": "Esta nova versão do software é muito melhor do que a anterior.",
+        "verbType": null,
+        "conjugations": null,
+        "synonyms": [
+          {
+            "word": "superior",
+            "type": "literal"
+          },
+          {
+            "word": "improved",
+            "type": "abstract"
+          },
+          {
+            "word": "preferable",
+            "type": "abstract"
+          }
+        ],
+        "antonyms": [
+          {
+            "word": "worse",
+            "type": "literal"
+          },
+          {
+            "word": "inferior",
+            "type": "literal"
+          }
+        ],
+        "alternativeForms": []
+      },
+      "issues": []
+    },
+    {
+      "test": {
+        "word": "children",
+        "pos": "noun",
+        "form": "plural",
+        "preserve": true
+      },
+      "status": 200,
+      "latencyMs": 2178,
+      "output": {
+        "word": "children",
+        "partOfSpeech": "noun",
+        "grammaticalForm": "plural",
+        "translation": "crianças / filhos",
+        "ipa": "ˈtʃɪldrən",
+        "usageNote": "Refere-se a seres humanos jovens ou aos descendentes de alguém.",
+        "usageNoteEn": "Refers to young human beings or to someone's offspring.",
+        "example": "The children were playing in the park all afternoon.",
+        "exampleTranslation": "As crianças estavam brincando no parque a tarde toda.",
+        "verbType": null,
+        "conjugations": null,
+        "synonyms": [
+          {
+            "word": "kids",
+            "type": "slang"
+          },
+          {
+            "word": "youths",
+            "type": "literal"
+          },
+          {
+            "word": "offspring",
+            "type": "abstract"
+          }
+        ],
+        "antonyms": [
+          {
+            "word": "adults",
+            "type": "literal"
+          },
+          {
+            "word": "grown-ups",
+            "type": "literal"
+          }
+        ],
+        "alternativeForms": []
+      },
+      "issues": []
+    },
+    {
+      "test": {
+        "word": "increasingly",
+        "pos": "adverb",
+        "form": "base-form",
+        "alternatives": true
+      },
+      "status": 200,
+      "latencyMs": 4464,
+      "output": {
+        "word": "increasingly",
+        "partOfSpeech": "adverb",
+        "grammaticalForm": "base-form",
+        "translation": "cada vez mais / progressivamente",
+        "ipa": "ɪnˈkriːsɪŋli",
+        "usageNote": "Usado para descrever algo que acontece em um grau ou quantidade maior ao longo do tempo.",
+        "usageNoteEn": "Used to describe something that is happening to a greater degree or amount over time.",
+        "example": "It is becoming increasingly difficult to find affordable housing in the city.",
+        "exampleTranslation": "Está se tornando cada vez mais difícil encontrar moradia acessível na cidade.",
+        "verbType": null,
+        "conjugations": null,
+        "synonyms": [
+          {
+            "word": "progressively",
+            "type": "literal"
+          },
+          {
+            "word": "more and more",
+            "type": "literal"
+          }
+        ],
+        "antonyms": [],
+        "alternativeForms": [
+          {
+            "word": "increase",
+            "partOfSpeech": "verb",
+            "translation": "aumentar / crescer",
+            "example": "The company plans to increase production next year."
+          },
+          {
+            "word": "increase",
+            "partOfSpeech": "noun",
+            "translation": "aumento / crescimento",
+            "example": "There has been a significant increase in sales."
+          },
+          {
+            "word": "increasing",
+            "partOfSpeech": "adjective",
+            "translation": "crescente",
+            "example": "There is increasing concern about the environment."
+          }
+        ]
+      },
+      "issues": []
+    },
+    {
+      "test": {
+        "word": "across",
+        "pos": "preposition",
+        "form": "base-form"
+      },
+      "status": 200,
+      "latencyMs": 1597,
+      "output": {
+        "word": "across",
+        "partOfSpeech": "preposition",
+        "grammaticalForm": "base-form",
+        "translation": "através de / do outro lado de",
+        "ipa": "əˈkrɔs",
+        "usageNote": "Usado para indicar movimento de um lado para o outro ou a posição em um lado oposto de algo.",
+        "usageNoteEn": "Used to indicate movement from one side to the other or a position on the opposite side of something.",
+        "example": "We walked across the bridge to get to the park.",
+        "exampleTranslation": "Nós caminhamos através da ponte para chegar ao parque.",
+        "verbType": null,
+        "conjugations": null,
+        "synonyms": [
+          {
+            "word": "over",
+            "type": "literal"
+          },
+          {
+            "word": "through",
+            "type": "literal"
+          }
+        ],
+        "antonyms": [],
+        "alternativeForms": []
+      },
+      "issues": []
+    },
+    {
+      "test": {
+        "word": "although",
+        "pos": "conjunction",
+        "form": "base-form"
+      },
+      "status": 200,
+      "latencyMs": 1686,
+      "output": {
+        "word": "although",
+        "partOfSpeech": "conjunction",
+        "grammaticalForm": "base-form",
+        "translation": "embora / apesar de que",
+        "ipa": "ɔlˈðoʊ",
+        "usageNote": "Usado para introduzir uma oração que contrasta com a oração principal, indicando que algo é verdadeiro apesar de outra circunstância.",
+        "usageNoteEn": "Used to introduce a clause that contrasts with the main clause, indicating that something is true despite another circumstance.",
+        "example": "Although it was raining, we decided to go for a walk.",
+        "exampleTranslation": "Embora estivesse chovendo, decidimos sair para uma caminhada.",
+        "verbType": null,
+        "conjugations": null,
+        "synonyms": [
+          {
+            "word": "though",
+            "type": "literal"
+          },
+          {
+            "word": "even though",
+            "type": "literal"
+          },
+          {
+            "word": "while",
+            "type": "abstract"
+          }
+        ],
+        "antonyms": [],
+        "alternativeForms": []
+      },
+      "issues": []
+    },
+    {
+      "test": {
+        "word": "wow",
+        "pos": "interjection",
+        "form": "base-form"
+      },
+      "status": 200,
+      "latencyMs": 1502,
+      "output": {
+        "word": "wow",
+        "partOfSpeech": "interjection",
+        "grammaticalForm": "base-form",
+        "translation": "uau / puxa",
+        "ipa": "waʊ",
+        "usageNote": "Usado para expressar grande surpresa, admiração ou prazer.",
+        "usageNoteEn": "Used to express great surprise, admiration, or pleasure.",
+        "example": "Wow, that view from the top of the mountain is absolutely incredible!",
+        "exampleTranslation": "Uau, aquela vista do topo da montanha é absolutamente incrível!",
+        "verbType": null,
+        "conjugations": null,
+        "synonyms": [
+          {
+            "word": "gosh",
+            "type": "literal"
+          },
+          {
+            "word": "gee",
+            "type": "literal"
+          }
+        ],
+        "antonyms": [],
+        "alternativeForms": []
+      },
+      "issues": []
+    },
+    {
+      "test": {
+        "word": "NASA",
+        "pos": "acronym",
+        "form": "base-form"
+      },
+      "status": 200,
+      "latencyMs": 1480,
+      "output": {
+        "word": "NASA",
+        "partOfSpeech": "acronym",
+        "grammaticalForm": "base-form",
+        "translation": "NASA",
+        "ipa": "ˈnæsə",
+        "usageNote": "A agência governamental dos EUA responsável pelo programa espacial civil e pela pesquisa aeronáutica.",
+        "usageNoteEn": "The US government agency responsible for the civilian space program and aeronautics research.",
+        "example": "NASA launched a new satellite to study climate change.",
+        "exampleTranslation": "A NASA lançou um novo satélite para estudar as mudanças climáticas.",
+        "verbType": null,
+        "conjugations": null,
+        "synonyms": [],
+        "antonyms": [],
+        "alternativeForms": []
+      },
+      "issues": []
+    },
+    {
+      "test": {
+        "word": "take for granted",
+        "pos": "idiom",
+        "form": "base-form"
+      },
+      "status": 200,
+      "latencyMs": 1814,
+      "output": {
+        "word": "take for granted",
+        "partOfSpeech": "idiom",
+        "grammaticalForm": "base-form",
+        "translation": "dar como certo",
+        "ipa": "teɪk fɔr ˈɡræntɪd",
+        "usageNote": "Expressa a ideia de não valorizar algo ou alguém porque se acredita que sempre estará disponível.",
+        "usageNoteEn": "To fail to appreciate the value of something or someone because you assume they will always be available.",
+        "example": "Many people take for granted the clean water that comes out of their taps.",
+        "exampleTranslation": "Muitas pessoas dão como certa a água limpa que sai de suas torneiras.",
+        "verbType": null,
+        "conjugations": null,
+        "synonyms": [
+          {
+            "word": "underappreciate",
+            "type": "abstract"
+          },
+          {
+            "word": "overlook",
+            "type": "abstract"
+          }
+        ],
+        "antonyms": [
+          {
+            "word": "cherish",
+            "type": "abstract"
+          },
+          {
+            "word": "appreciate",
+            "type": "abstract"
+          }
+        ],
+        "alternativeForms": []
+      },
+      "issues": []
+    },
+    {
+      "test": {
+        "word": "run into",
+        "pos": "phrasal-verb",
+        "form": "base-form"
+      },
+      "status": 200,
+      "latencyMs": 1973,
+      "output": {
+        "word": "run into",
+        "partOfSpeech": "phrasal-verb",
+        "grammaticalForm": "base-form",
+        "translation": "encontrar por acaso / esbarrar com",
+        "ipa": "rʌn ˈɪntu",
+        "usageNote": "Encontrar alguém inesperadamente ou colidir com um objeto.",
+        "usageNoteEn": "To meet someone by chance or to hit something by accident.",
+        "example": "I happened to run into an old friend at the supermarket yesterday.",
+        "exampleTranslation": "Eu acabei encontrando um velho amigo no supermercado ontem.",
+        "verbType": "irregular",
+        "conjugations": {
+          "simplePresent": "run into / runs into",
+          "simplePast": "ran into",
+          "presentContinuous": "am/is/are running into",
+          "pastContinuous": "was/were running into",
+          "presentPerfect": "have/has run into",
+          "pastPerfect": "had run into"
+        },
+        "synonyms": [
+          {
+            "word": "bump into",
+            "type": "literal"
+          },
+          {
+            "word": "encounter",
+            "type": "abstract"
+          },
+          {
+            "word": "chance upon",
+            "type": "abstract"
+          }
+        ],
+        "antonyms": [],
+        "alternativeForms": []
+      },
+      "issues": []
+    },
+    {
+      "test": {
+        "word": "works",
+        "pos": "verb",
+        "form": "third-person-singular",
+        "preserve": true
+      },
+      "status": 200,
+      "latencyMs": 2424,
+      "output": {
+        "word": "works",
+        "partOfSpeech": "verb",
+        "grammaticalForm": "third-person-singular",
+        "translation": "funciona / trabalha",
+        "ipa": "wɜrks",
+        "usageNote": "Refere-se a algo que opera corretamente ou a alguém que exerce uma atividade profissional.",
+        "usageNoteEn": "Refers to something that operates correctly or someone who performs a professional activity.",
+        "example": "My new computer works perfectly every time I turn it on.",
+        "exampleTranslation": "Meu computador novo funciona perfeitamente toda vez que eu o ligo.",
+        "verbType": "regular",
+        "conjugations": {
+          "simplePresent": "work / works",
+          "simplePast": "worked",
+          "presentContinuous": "am/is/are working",
+          "pastContinuous": "was/were working",
+          "presentPerfect": "have/has worked",
+          "pastPerfect": "had worked"
+        },
+        "synonyms": [
+          {
+            "word": "functions",
+            "type": "literal"
+          },
+          {
+            "word": "operates",
+            "type": "literal"
+          },
+          {
+            "word": "labors",
+            "type": "literal"
+          }
+        ],
+        "antonyms": [
+          {
+            "word": "fails",
+            "type": "literal"
+          },
+          {
+            "word": "breaks",
+            "type": "literal"
+          }
+        ],
+        "alternativeForms": []
+      },
+      "issues": []
+    },
+    {
+      "test": {
+        "word": "working",
+        "pos": "verb",
+        "form": "present-participle",
+        "preserve": true
+      },
+      "status": 200,
+      "latencyMs": 2462,
+      "output": {
+        "word": "working",
+        "partOfSpeech": "verb",
+        "grammaticalForm": "present-participle",
+        "translation": "trabalhando / funcionando",
+        "ipa": "ˈwɜrkɪŋ",
+        "usageNote": "Refere-se ao ato de realizar uma tarefa ou ao estado de algo que está em operação.",
+        "usageNoteEn": "Refers to the act of performing a task or the state of something being in operation.",
+        "example": "The machine is currently working perfectly after the repairs.",
+        "exampleTranslation": "A máquina está funcionando perfeitamente agora após os reparos.",
+        "verbType": "regular",
+        "conjugations": {
+          "simplePresent": "work / works",
+          "simplePast": "worked",
+          "presentContinuous": "am/is/are working",
+          "pastContinuous": "was/were working",
+          "presentPerfect": "have/has worked",
+          "pastPerfect": "had worked"
+        },
+        "synonyms": [
+          {
+            "word": "operating",
+            "type": "literal"
+          },
+          {
+            "word": "functioning",
+            "type": "literal"
+          },
+          {
+            "word": "laboring",
+            "type": "abstract"
+          }
+        ],
+        "antonyms": [
+          {
+            "word": "idling",
+            "type": "literal"
+          },
+          {
+            "word": "breaking",
+            "type": "literal"
+          }
+        ],
+        "alternativeForms": []
+      },
+      "issues": []
+    },
+    {
+      "test": {
+        "word": "mice",
+        "pos": "noun",
+        "form": "plural",
+        "preserve": true
+      },
+      "status": 200,
+      "latencyMs": 1990,
+      "output": {
+        "word": "mice",
+        "partOfSpeech": "noun",
+        "grammaticalForm": "plural",
+        "translation": "camundongos / ratos",
+        "ipa": "maɪs",
+        "usageNote": "O termo refere-se ao plural de 'mouse', sendo usado para pequenos roedores ou, metaforicamente, para dispositivos de computador.",
+        "usageNoteEn": "This is the plural form of 'mouse', referring to small rodents or, metaphorically, to computer input devices.",
+        "example": "The cat was chasing the mice through the kitchen.",
+        "exampleTranslation": "O gato estava perseguindo os camundongos pela cozinha.",
+        "verbType": null,
+        "conjugations": null,
+        "synonyms": [
+          {
+            "word": "rodents",
+            "type": "literal"
+          }
+        ],
+        "antonyms": [],
+        "alternativeForms": []
+      },
+      "issues": []
+    },
+    {
+      "test": {
+        "word": "resilient",
+        "pos": "adjective",
+        "form": "base-form",
+        "alternatives": true
+      },
+      "status": 200,
+      "latencyMs": 4485,
+      "output": {
+        "word": "resilient",
+        "partOfSpeech": "adjective",
+        "grammaticalForm": "base-form",
+        "translation": "resiliente / resistente",
+        "ipa": "rɪˈzɪliənt",
+        "usageNote": "Descreve uma pessoa ou coisa capaz de se recuperar rapidamente de dificuldades ou mudanças.",
+        "usageNoteEn": "Describes a person or thing that is able to recover quickly from difficulties or change.",
+        "example": "Children are often more resilient than adults when facing major life changes.",
+        "exampleTranslation": "As crianças são frequentemente mais resilientes que os adultos ao enfrentar grandes mudanças na vida.",
+        "verbType": null,
+        "conjugations": null,
+        "synonyms": [
+          {
+            "word": "tough",
+            "type": "literal"
+          },
+          {
+            "word": "adaptable",
+            "type": "abstract"
+          },
+          {
+            "word": "buoyant",
+            "type": "figurative"
+          }
+        ],
+        "antonyms": [
+          {
+            "word": "fragile",
+            "type": "literal"
+          },
+          {
+            "word": "vulnerable",
+            "type": "abstract"
+          },
+          {
+            "word": "weak",
+            "type": "literal"
+          }
+        ],
+        "alternativeForms": [
+          {
+            "word": "resilience",
+            "partOfSpeech": "noun",
+            "translation": "resiliência",
+            "example": "The resilience of the local community was tested by the flood."
+          },
+          {
+            "word": "resiliency",
+            "partOfSpeech": "noun",
+            "translation": "resiliência",
+            "example": "The resiliency of the material allows it to return to its original shape."
+          }
+        ]
+      },
+      "issues": []
+    },
+    {
+      "test": {
+        "word": "scarcely",
+        "pos": "adverb",
+        "form": "base-form"
+      },
+      "status": 200,
+      "latencyMs": 1870,
+      "output": {
+        "word": "scarcely",
+        "partOfSpeech": "adverb",
+        "grammaticalForm": "base-form",
+        "translation": "mal / quase não",
+        "ipa": "ˈskɛrsli",
+        "usageNote": "Usado para indicar que algo quase não aconteceu ou que é quase impossível.",
+        "usageNoteEn": "Used to indicate that something happened only just or is almost not the case.",
+        "example": "I could scarcely hear what she was saying over the noise.",
+        "exampleTranslation": "Eu mal conseguia ouvir o que ela estava dizendo por causa do barulho.",
+        "verbType": null,
+        "conjugations": null,
+        "synonyms": [
+          {
+            "word": "barely",
+            "type": "literal"
+          },
+          {
+            "word": "hardly",
+            "type": "literal"
+          }
+        ],
+        "antonyms": [],
+        "alternativeForms": []
+      },
+      "issues": []
+    },
+    {
+      "test": {
+        "word": "threaten",
+        "pos": "verb",
+        "form": "base-form",
+        "alternatives": true
+      },
+      "status": 200,
+      "latencyMs": 4941,
+      "output": {
+        "word": "threaten",
+        "partOfSpeech": "verb",
+        "grammaticalForm": "base-form",
+        "translation": "ameaçar / intimidar",
+        "ipa": "ˈθrɛtən",
+        "usageNote": "Indica a intenção de causar dano, dor ou problemas a alguém ou a algo.",
+        "usageNoteEn": "To express an intention to cause harm, pain, or trouble to someone or something.",
+        "example": "The heavy rain threatens to flood the entire valley.",
+        "exampleTranslation": "A chuva forte ameaça inundar todo o vale.",
+        "verbType": "regular",
+        "conjugations": {
+          "simplePresent": "threaten / threatens",
+          "simplePast": "threatened",
+          "presentContinuous": "am/is/are threatening",
+          "pastContinuous": "was/were threatening",
+          "presentPerfect": "have/has threatened",
+          "pastPerfect": "had threatened"
+        },
+        "synonyms": [
+          {
+            "word": "intimidate",
+            "type": "literal"
+          },
+          {
+            "word": "menace",
+            "type": "literal"
+          },
+          {
+            "word": "bully",
+            "type": "literal"
+          }
+        ],
+        "antonyms": [],
+        "alternativeForms": [
+          {
+            "word": "threat",
+            "partOfSpeech": "noun",
+            "translation": "ameaça",
+            "example": "There is a constant threat of fire in the dry forest."
+          },
+          {
+            "word": "threatening",
+            "partOfSpeech": "adjective",
+            "translation": "ameaçador",
+            "example": "He gave me a threatening look."
+          }
+        ]
+      },
+      "issues": []
+    }
+  ],
+  "regency": [
+    {
+      "term": "struggle",
+      "status": 200,
+      "latencyMs": 3856,
+      "cards": [
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "to + infinitive",
+          "complement": "infinitive",
+          "example": "I struggle to finish my reports on time.",
+          "exampleTranslation": "Eu luto para terminar meus relatórios a tempo.",
+          "meaningPt": "Indica que se faz um esforço considerável para realizar uma tarefa difícil.",
+          "contrastPt": "Diferente de with + noun, que foca na dificuldade ou no problema enfrentado."
+        },
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "with + noun",
+          "complement": "noun",
+          "example": "Many students struggle with complex math problems.",
+          "exampleTranslation": "Muitos estudantes lutam com problemas matemáticos complexos.",
+          "meaningPt": "Indica que alguém enfrenta uma dificuldade específica ou um desafio persistente.",
+          "contrastPt": "Diferente de to + infinitive, que descreve o esforço para realizar uma ação."
+        }
+      ],
+      "rejectedCount": 0,
+      "usedFallback": false,
+      "issues": []
+    },
+    {
+      "term": "accuse",
+      "status": 200,
+      "latencyMs": 4929,
+      "cards": [
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "someone + of + noun",
+          "complement": "noun",
+          "example": "They accuse the manager of theft.",
+          "exampleTranslation": "Eles acusam o gerente de roubo.",
+          "meaningPt": "Indica a atribuição de culpa a alguém por um crime ou ato específico.",
+          "contrastPt": "Diferente de of + -ing, que foca na ação cometida em vez do substantivo."
+        },
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "someone + of + -ing",
+          "complement": "other",
+          "example": "She accused him of lying about the report.",
+          "exampleTranslation": "Ela o acusou de mentir sobre o relatório.",
+          "meaningPt": "Indica a atribuição de culpa a alguém por ter realizado uma ação específica.",
+          "contrastPt": "Diferente de of + noun, que foca no substantivo do crime ou erro em vez da ação verbal."
+        }
+      ],
+      "rejectedCount": 0,
+      "usedFallback": false,
+      "issues": []
+    },
+    {
+      "term": "abide",
+      "status": 200,
+      "latencyMs": 4137,
+      "cards": [
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "by + noun",
+          "complement": "noun",
+          "example": "All employees must abide by the new safety regulations.",
+          "exampleTranslation": "Todos os funcionários devem cumprir as novas normas de segurança.",
+          "meaningPt": "Cumprir, respeitar ou obedecer a regras, leis ou acordos.",
+          "contrastPt": ""
+        },
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "noun/-ing",
+          "complement": "noun",
+          "example": "I cannot abide his constant complaining during meetings.",
+          "exampleTranslation": "Eu não suporto as reclamações constantes dele durante as reuniões.",
+          "meaningPt": "Tolerar ou suportar alguém ou algo, geralmente usado em frases negativas.",
+          "contrastPt": "Diferente de by + noun, que significa obedecer a regras em vez de tolerar algo."
+        }
+      ],
+      "rejectedCount": 0,
+      "usedFallback": false,
+      "issues": []
+    },
+    {
+      "term": "accustomed",
+      "status": 200,
+      "latencyMs": 3671,
+      "cards": [
+        {
+          "category": "adjective",
+          "grammaticalForm": "base-form",
+          "pattern": "to + noun",
+          "complement": "noun",
+          "example": "I am accustomed to the noise of the city.",
+          "exampleTranslation": "Eu estou acostumado ao barulho da cidade.",
+          "meaningPt": "Indica que alguém se tornou familiarizado com algo.",
+          "contrastPt": "Diferente de to + -ing, que é seguido por um verbo."
+        },
+        {
+          "category": "adjective",
+          "grammaticalForm": "base-form",
+          "pattern": "to + -ing",
+          "complement": "gerund",
+          "example": "They are accustomed to working long hours.",
+          "exampleTranslation": "Eles estão acostumados a trabalhar longas horas.",
+          "meaningPt": "Indica que alguém se tornou familiarizado com uma atividade.",
+          "contrastPt": "Diferente de to + noun, que é seguido por um substantivo."
+        }
+      ],
+      "rejectedCount": 0,
+      "usedFallback": false,
+      "issues": []
+    },
+    {
+      "term": "complain",
+      "status": 200,
+      "latencyMs": 4051,
+      "cards": [
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "about + noun/-ing",
+          "complement": "noun",
+          "example": "Employees often complain about the lack of communication.",
+          "exampleTranslation": "Os funcionários frequentemente reclamam da falta de comunicação.",
+          "meaningPt": "Usado para expressar insatisfação em relação a um fato ou situação específica.",
+          "contrastPt": "Diferente de to + noun, que foca na pessoa que recebe a reclamação."
+        },
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "to + noun",
+          "complement": "noun",
+          "example": "You should complain to the manager if the service is poor.",
+          "exampleTranslation": "Você deve reclamar com o gerente se o serviço for ruim.",
+          "meaningPt": "Indica a pessoa ou autoridade a quem a reclamação é direcionada.",
+          "contrastPt": "Diferente de about + noun/-ing, que foca no motivo da reclamação."
+        },
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "that + clause",
+          "complement": "clause",
+          "example": "The neighbors complain that the music is too loud at night.",
+          "exampleTranslation": "Os vizinhos reclamam que a música está muito alta à noite.",
+          "meaningPt": "Usado para introduzir uma declaração completa sobre o motivo da insatisfação.",
+          "contrastPt": "Diferente de about + noun/-ing, que utiliza um substantivo ou gerúndio em vez de uma oração completa."
+        }
+      ],
+      "rejectedCount": 0,
+      "usedFallback": false,
+      "issues": []
+    },
+    {
+      "term": "depend",
+      "status": 200,
+      "latencyMs": 4287,
+      "cards": [
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "on + noun",
+          "complement": "noun",
+          "example": "The project's success depends on your feedback.",
+          "exampleTranslation": "O sucesso do projeto depende do seu feedback.",
+          "meaningPt": "Indica que algo é determinado ou condicionado por outra coisa.",
+          "contrastPt": "Diferente de on + -ing, que foca na realização de uma ação."
+        },
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "on + -ing",
+          "complement": "prepositional-phrase",
+          "example": "Our travel plans depend on getting the tickets today.",
+          "exampleTranslation": "Nossos planos de viagem dependem de conseguir as passagens hoje.",
+          "meaningPt": "Indica que algo é condicionado à realização de uma ação.",
+          "contrastPt": "Diferente de on + noun, que foca em um fator estático."
+        }
+      ],
+      "rejectedCount": 0,
+      "usedFallback": false,
+      "issues": []
+    },
+    {
+      "term": "insist",
+      "status": 200,
+      "latencyMs": 4111,
+      "cards": [
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "on + -ing",
+          "complement": "prepositional-phrase",
+          "example": "They insist on paying for the dinner.",
+          "exampleTranslation": "Eles insistem em pagar pelo jantar.",
+          "meaningPt": "Usado para expressar determinação em realizar uma ação.",
+          "contrastPt": "Diferente de on + noun, que foca em um substantivo ou exigência."
+        },
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "on + noun",
+          "complement": "prepositional-phrase",
+          "example": "The manager insists on punctuality.",
+          "exampleTranslation": "O gerente insiste na pontualidade.",
+          "meaningPt": "Usado para exigir firmemente a observância de algo.",
+          "contrastPt": "Diferente de on + -ing, que foca na execução de uma ação."
+        },
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "that + clause",
+          "complement": "clause",
+          "example": "She insists that we arrive early.",
+          "exampleTranslation": "Ela insiste que cheguemos cedo.",
+          "meaningPt": "Usado para afirmar com veemência que algo deve ser feito ou é verdade.",
+          "contrastPt": "Diferente de on + -ing, que foca na realização de uma ação."
+        }
+      ],
+      "rejectedCount": 0,
+      "usedFallback": false,
+      "issues": []
+    },
+    {
+      "term": "approve",
+      "status": 200,
+      "latencyMs": 6167,
+      "cards": [
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "of + noun/-ing",
+          "complement": "noun",
+          "example": "My manager does not approve of working overtime on weekends.",
+          "exampleTranslation": "Meu gerente não aprova trabalhar horas extras nos fins de semana.",
+          "meaningPt": "Expressa uma opinião favorável ou desfavorável sobre algo ou alguém.",
+          "contrastPt": ""
+        }
+      ],
+      "rejectedCount": 1,
+      "usedFallback": false,
+      "issues": []
+    },
+    {
+      "term": "apologize",
+      "status": 200,
+      "latencyMs": 2896,
+      "cards": [
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "to + noun",
+          "complement": "prepositional-phrase",
+          "example": "I need to apologize to my manager for the delay.",
+          "exampleTranslation": "Eu preciso pedir desculpas ao meu gerente pelo atraso.",
+          "meaningPt": "Indica a pessoa que recebe o pedido de desculpas.",
+          "contrastPt": "Diferente de for + noun/-ing, que indica o motivo do pedido."
+        },
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "for + noun/-ing",
+          "complement": "prepositional-phrase",
+          "example": "She had to apologize for missing the meeting.",
+          "exampleTranslation": "Ela teve que pedir desculpas por perder a reunião.",
+          "meaningPt": "Indica o erro ou a ação pela qual se pede desculpas.",
+          "contrastPt": "Diferente de to + noun, que indica o destinatário da desculpa."
+        }
+      ],
+      "rejectedCount": 0,
+      "usedFallback": false,
+      "issues": []
+    },
+    {
+      "term": "argue",
+      "status": 200,
+      "latencyMs": 4539,
+      "cards": [
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "with + someone",
+          "complement": "prepositional-phrase",
+          "example": "I often argue with my colleague about the project deadline.",
+          "exampleTranslation": "Eu frequentemente discuto com meu colega sobre o prazo do projeto.",
+          "meaningPt": "Indica o envolvimento em uma discussão ou desacordo com outra pessoa.",
+          "contrastPt": "Diferente de about + noun, que foca no tópico da discussão."
+        },
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "about + noun",
+          "complement": "noun",
+          "example": "They argue about the best way to organize the office files.",
+          "exampleTranslation": "Eles discutem sobre a melhor maneira de organizar os arquivos do escritório.",
+          "meaningPt": "Indica o assunto ou tópico específico que é objeto de uma discussão.",
+          "contrastPt": "Diferente de with + someone, que foca na pessoa com quem se discute."
+        },
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "that + clause",
+          "complement": "clause",
+          "example": "The experts argue that remote work increases overall productivity.",
+          "exampleTranslation": "Os especialistas argumentam que o trabalho remoto aumenta a produtividade geral.",
+          "meaningPt": "Indica a apresentação de uma opinião ou tese baseada em razões ou evidências.",
+          "contrastPt": "Diferente de about + noun, que foca em um tópico de conflito em vez de uma afirmação lógica."
+        }
+      ],
+      "rejectedCount": 0,
+      "usedFallback": false,
+      "issues": []
+    },
+    {
+      "term": "pay",
+      "status": 200,
+      "latencyMs": 4889,
+      "cards": [
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "something + to + recipient",
+          "complement": "other",
+          "example": "I will pay the invoice to the supplier tomorrow.",
+          "exampleTranslation": "Eu pagarei a fatura ao fornecedor amanhã.",
+          "meaningPt": "Indica a transferência de dinheiro para quitar uma dívida ou serviço com um destinatário específico.",
+          "contrastPt": "Diferente de something, que foca no valor sem especificar o recebedor."
+        },
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "someone + something",
+          "complement": "other",
+          "example": "The company will pay the employees their bonuses today.",
+          "exampleTranslation": "A empresa pagará aos funcionários seus bônus hoje.",
+          "meaningPt": "Indica o ato de entregar um valor ou pagamento diretamente a alguém.",
+          "contrastPt": "Diferente de something + to + recipient, que utiliza a preposição para indicar o destino."
+        },
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "for + something",
+          "complement": "prepositional-phrase",
+          "example": "We need to pay for the repairs on the car.",
+          "exampleTranslation": "Nós precisamos pagar pelos reparos no carro.",
+          "meaningPt": "Indica o item, serviço ou despesa que está sendo quitado.",
+          "contrastPt": "Diferente de something, que indica o valor monetário em si."
+        }
+      ],
+      "rejectedCount": 0,
+      "usedFallback": false,
+      "issues": []
+    },
+    {
+      "term": "suffer",
+      "status": 200,
+      "latencyMs": 4155,
+      "cards": [
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "from + noun",
+          "complement": "noun",
+          "example": "Many employees suffer from chronic stress due to tight deadlines.",
+          "exampleTranslation": "Muitos funcionários sofrem de estresse crônico devido a prazos apertados.",
+          "meaningPt": "Indica que alguém é afetado por uma condição negativa, doença ou problema.",
+          "contrastPt": ""
+        },
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "noun",
+          "complement": "noun",
+          "example": "Small businesses often suffer significant losses during an economic downturn.",
+          "exampleTranslation": "Pequenas empresas frequentemente sofrem perdas significativas durante uma recessão econômica.",
+          "meaningPt": "Indica que alguém ou algo experimenta, suporta ou vivencia uma situação negativa, dano ou prejuízo.",
+          "contrastPt": "Diferente de from + noun, que indica a condição ou aflição médica que afeta o sujeito."
+        }
+      ],
+      "rejectedCount": 0,
+      "usedFallback": false,
+      "issues": []
+    },
+    {
+      "term": "succeed",
+      "status": 200,
+      "latencyMs": 3009,
+      "cards": [
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "in + -ing",
+          "complement": "gerund",
+          "example": "They succeed in meeting the deadline.",
+          "exampleTranslation": "Eles conseguem cumprir o prazo.",
+          "meaningPt": "Indica a realização bem-sucedida de uma tarefa ou objetivo.",
+          "contrastPt": ""
+        }
+      ],
+      "rejectedCount": 0,
+      "usedFallback": false,
+      "issues": []
+    },
+    {
+      "term": "prevent",
+      "status": 200,
+      "latencyMs": 4818,
+      "cards": [
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "someone/something + from + -ing",
+          "complement": "other",
+          "example": "The heavy rain prevented us from finishing the project on time.",
+          "exampleTranslation": "A chuva forte nos impediu de terminar o projeto a tempo.",
+          "meaningPt": "Indica que algo ou alguém evitou ou impediu que alguém realizasse uma ação.",
+          "contrastPt": ""
+        }
+      ],
+      "rejectedCount": 1,
+      "usedFallback": false,
+      "issues": []
+    },
+    {
+      "term": "remind",
+      "status": 200,
+      "latencyMs": 4118,
+      "cards": [
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "someone + of + noun/-ing",
+          "complement": "noun",
+          "example": "Please remind me of the meeting time.",
+          "exampleTranslation": "Por favor, me lembre do horário da reunião.",
+          "meaningPt": "Usado para fazer alguém se recordar de um fato ou evento específico.",
+          "contrastPt": "Diferente de someone + to + infinitive, que foca em uma ação a ser feita."
+        },
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "someone + to + infinitive",
+          "complement": "infinitive",
+          "example": "She reminded him to lock the office door.",
+          "exampleTranslation": "Ela o lembrou de trancar a porta do escritório.",
+          "meaningPt": "Usado para solicitar que alguém realize uma tarefa ou ação.",
+          "contrastPt": "Diferente de someone + of + noun/-ing, que foca em uma informação ou memória."
+        },
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "someone + that + clause",
+          "complement": "clause",
+          "example": "He reminded me that the deadline is tomorrow.",
+          "exampleTranslation": "Ele me lembrou que o prazo é amanhã.",
+          "meaningPt": "Usado para trazer uma informação completa à memória de alguém.",
+          "contrastPt": "Diferente de someone + of + noun/-ing, que usa um substantivo em vez de uma oração."
+        }
+      ],
+      "rejectedCount": 0,
+      "usedFallback": false,
+      "issues": []
+    },
+    {
+      "term": "provide",
+      "status": 200,
+      "latencyMs": 3188,
+      "cards": [
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "something + for + someone",
+          "complement": "other",
+          "example": "The company will provide extra training for the new employees.",
+          "exampleTranslation": "A empresa fornecerá treinamento extra para os novos funcionários.",
+          "meaningPt": "Indica que algo é disponibilizado ou entregue para o benefício de alguém.",
+          "contrastPt": "Diferente de someone + with + something, que enfatiza a pessoa que recebe o item."
+        },
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "someone + with + something",
+          "complement": "other",
+          "example": "The school provides students with free laptops.",
+          "exampleTranslation": "A escola fornece aos alunos laptops gratuitos.",
+          "meaningPt": "Indica que alguém é equipado ou abastecido com algo necessário.",
+          "contrastPt": "Diferente de something + for + someone, que enfatiza o item fornecido."
+        }
+      ],
+      "rejectedCount": 0,
+      "usedFallback": false,
+      "issues": []
+    },
+    {
+      "term": "belong",
+      "status": 200,
+      "latencyMs": 4554,
+      "cards": [
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "to + noun",
+          "complement": "noun",
+          "example": "This laptop belongs to the company.",
+          "exampleTranslation": "Este laptop pertence à empresa.",
+          "meaningPt": "Indica posse ou propriedade de algo ou alguém.",
+          "contrastPt": "Diferente de in + noun, que indica integração a um grupo ou lugar."
+        },
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "in + noun",
+          "complement": "noun",
+          "example": "She feels like she belongs in this team.",
+          "exampleTranslation": "Ela sente que pertence a esta equipe.",
+          "meaningPt": "Indica que alguém se sente parte de um grupo ou lugar.",
+          "contrastPt": "Diferente de to + noun, que foca em posse em vez de integração social."
+        }
+      ],
+      "rejectedCount": 0,
+      "usedFallback": false,
+      "issues": []
+    },
+    {
+      "term": "consist",
+      "status": 200,
+      "latencyMs": 4588,
+      "cards": [
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "of + noun",
+          "complement": "noun",
+          "example": "The team consists of five experienced developers.",
+          "exampleTranslation": "A equipe consiste em cinco desenvolvedores experientes.",
+          "meaningPt": "Indica os elementos ou partes que compõem um todo.",
+          "contrastPt": "Diferente de in + -ing, que descreve a natureza ou essência de algo."
+        },
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "in + -ing",
+          "complement": "gerund",
+          "example": "True success consists in helping others achieve their goals.",
+          "exampleTranslation": "O verdadeiro sucesso consiste em ajudar os outros a alcançar seus objetivos.",
+          "meaningPt": "Define a essência ou a natureza de um conceito abstrato.",
+          "contrastPt": "Diferente de of + noun, que lista componentes físicos ou membros de um grupo."
+        }
+      ],
+      "rejectedCount": 0,
+      "usedFallback": false,
+      "issues": []
+    },
+    {
+      "term": "agree",
+      "status": 200,
+      "latencyMs": 4310,
+      "cards": [
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "with + someone",
+          "complement": "prepositional-phrase",
+          "example": "I agree with my colleague on the project deadline.",
+          "exampleTranslation": "Eu concordo com meu colega sobre o prazo do projeto.",
+          "meaningPt": "Usado para expressar que você compartilha da mesma opinião que outra pessoa.",
+          "contrastPt": "Diferente de on + noun, que indica o tópico da concordância."
+        },
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "on + noun",
+          "complement": "noun",
+          "example": "We need to agree on a budget for the office renovation.",
+          "exampleTranslation": "Nós precisamos concordar sobre um orçamento para a reforma do escritório.",
+          "meaningPt": "Usado para indicar que um consenso foi alcançado sobre um assunto específico.",
+          "contrastPt": "Diferente de with + someone, que foca na pessoa com quem se concorda."
+        },
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "to + infinitive",
+          "complement": "infinitive",
+          "example": "They agreed to sign the contract by Friday.",
+          "exampleTranslation": "Eles concordaram em assinar o contrato até sexta-feira.",
+          "meaningPt": "Usado para indicar que alguém aceitou realizar uma ação específica.",
+          "contrastPt": "Diferente de on + noun, que foca em um tópico em vez de uma ação futura."
+        },
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "that + clause",
+          "complement": "clause",
+          "example": "Most experts agree that remote work increases productivity.",
+          "exampleTranslation": "A maioria dos especialistas concorda que o trabalho remoto aumenta a produtividade.",
+          "meaningPt": "Usado para declarar que um fato ou opinião é aceito como verdadeiro.",
+          "contrastPt": "Diferente de to + infinitive, que foca em uma ação a ser executada."
+        }
+      ],
+      "rejectedCount": 0,
+      "usedFallback": false,
+      "issues": []
+    },
+    {
+      "term": "aim",
+      "status": 200,
+      "latencyMs": 4259,
+      "cards": [
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "to + infinitive",
+          "complement": "infinitive",
+          "example": "We aim to finish the project by Friday.",
+          "exampleTranslation": "Nós pretendemos terminar o projeto até sexta-feira.",
+          "meaningPt": "Indica a intenção ou o objetivo de realizar uma ação.",
+          "contrastPt": "Diferente de at + noun/-ing, que direciona o foco para um alvo ou resultado específico."
+        },
+        {
+          "category": "verb",
+          "grammaticalForm": "base-form",
+          "pattern": "at + noun/-ing",
+          "complement": "prepositional-phrase",
+          "example": "They aim at improving the company's efficiency.",
+          "exampleTranslation": "Eles visam melhorar a eficiência da empresa.",
+          "meaningPt": "Indica o alvo ou o resultado pretendido de uma ação.",
+          "contrastPt": "Diferente de to + infinitive, que foca na ação direta a ser realizada."
+        }
+      ],
+      "rejectedCount": 1,
+      "usedFallback": false,
+      "issues": []
+    }
+  ],
+  "readLab": {
+    "process": {
+      "status": 200,
+      "latencyMs": 4167,
+      "text": "After Maya set up the coastal research station, she ran into a difficult problem. The greatest challenge was not the equipment itself but whether the team could work across several remote islands. Engineers wrote detailed notes, while local guides shared practical advice. As storms intensified, supplies became scarce and the crew had to carry on. One morning, a bank of fog covered the harbor, forcing the boat to slow down. Later, Maya visited the river bank to inspect damaged sensors. Although the schedule was tight, everyone remained resilient. The project eventually worked out, and its findings shed light on how small communities adapt to rapid environmental change.",
+      "translationMap": {
+        "adapt": "adaptar",
+        "adapts": "adaptam",
+        "advice": "conselho",
+        "after": "depois de",
+        "although": "embora",
+        "bank": "margem",
+        "became": "tornaram-se",
+        "become": "tornar-se",
+        "boat": "barco",
+        "carry on": "continuar",
+        "challenge": "desafio",
+        "change": "mudança",
+        "coastal": "costeiro",
+        "communities": "comunidades",
+        "community": "comunidade",
+        "covered": "cobriu",
+        "cover": "cobrir",
+        "crew": "equipe",
+        "damaged": "danificado",
+        "decision": "decisão",
+        "detailed": "detalhado",
+        "difficult": "difícil",
+        "environmental": "ambiental",
+        "equipment": "equipamento",
+        "eventually": "finalmente",
+        "findings": "descobertas",
+        "fog": "neblina",
+        "forcing": "forçando",
+        "force": "forçar",
+        "greatest": "maior",
+        "guides": "guias",
+        "guide": "guia",
+        "harbor": "porto",
+        "how": "como",
+        "inspect": "inspecionar",
+        "intensified": "intensificaram",
+        "intensify": "intensificar",
+        "islands": "ilhas",
+        "island": "ilha",
+        "local": "local",
+        "morning": "manhã",
+        "notes": "anotações",
+        "note": "anotação",
+        "practical": "prático",
+        "problem": "problema",
+        "project": "projeto",
+        "ran into": "encontrou",
+        "rapid": "rápido",
+        "remote": "remoto",
+        "remained": "permaneceu",
+        "remain": "permanecer",
+        "research": "pesquisa",
+        "resilient": "resiliente",
+        "river": "rio",
+        "run into": "encontrar",
+        "schedule": "cronograma",
+        "scarcely": "escasso",
+        "scarce": "escaso",
+        "sensors": "sensores",
+        "sensor": "sensor",
+        "set up": "montou",
+        "several": "vários",
+        "shed light": "esclarecer",
+        "slow down": "desacelerar",
+        "small": "pequeno",
+        "storms": "tempestades",
+        "storm": "tempestade",
+        "supplies": "suprimentos",
+        "supply": "suprimento",
+        "team": "equipe",
+        "tight": "apertado",
+        "visited": "visitou",
+        "visit": "visitar",
+        "worked out": "deu certo",
+        "work out": "dar certo",
+        "work": "trabalhar",
+        "wrote": "escreveram",
+        "write": "escrever",
+        "maya": "maya",
+        "set": "montou",
+        "up": "a",
+        "station": "estação",
+        "ran": "deparou-se",
+        "into": "com",
+        "whether": "se",
+        "across": "por",
+        "engineers": "engenheiros",
+        "while": "enquanto",
+        "shared": "compartilhavam",
+        "carry": "continuar",
+        "one": "uma",
+        "slow": "diminuir",
+        "down": "a velocidade",
+        "later": "mais tarde",
+        "everyone": "todos",
+        "worked": "deu",
+        "out": "certo",
+        "shed": "lançaram",
+        "light": "luz"
+      },
+      "uniqueWords": 69,
+      "coveredWords": 69,
+      "coveragePercent": 100,
+      "issues": []
+    },
+    "lookups": [
+      {
+        "query": "set up",
+        "context": "After Maya set up the coastal research station.",
+        "status": 200,
+        "latencyMs": 974,
+        "translation": "montar",
+        "patch": {
+          "set up": "montar"
+        },
+        "issues": []
+      },
+      {
+        "query": "ran into",
+        "context": "She ran into a difficult problem.",
+        "status": 200,
+        "latencyMs": 1013,
+        "translation": "deparou-se com",
+        "patch": {
+          "ran into": "deparou-se com",
+          "run into": "deparar-se com"
+        },
+        "issues": []
+      },
+      {
+        "query": "greatest",
+        "context": "The greatest challenge was not the equipment itself.",
+        "status": 200,
+        "latencyMs": 911,
+        "translation": "maior",
+        "patch": {
+          "greatest": "maior",
+          "great": "grande"
+        },
+        "issues": []
+      },
+      {
+        "query": "whether",
+        "context": "The question was whether the team could work across several remote islands.",
+        "status": 200,
+        "latencyMs": 880,
+        "translation": "se",
+        "patch": {
+          "whether": "se"
+        },
+        "issues": []
+      },
+      {
+        "query": "across",
+        "context": "The team could work across several remote islands.",
+        "status": 200,
+        "latencyMs": 1821,
+        "translation": "por toda a extensão de",
+        "patch": {
+          "across": "por toda a extensão de"
+        },
+        "issues": []
+      },
+      {
+        "query": "wrote",
+        "context": "Engineers wrote detailed notes.",
+        "status": 200,
+        "latencyMs": 920,
+        "translation": "escreveram",
+        "patch": {
+          "wrote": "escreveram",
+          "write": "escrever"
+        },
+        "issues": []
+      },
+      {
+        "query": "practical",
+        "context": "Local guides shared practical advice.",
+        "status": 200,
+        "latencyMs": 909,
+        "translation": "práticos",
+        "patch": {
+          "practical": "práticos",
+          "prático": "prático"
+        },
+        "issues": []
+      },
+      {
+        "query": "intensified",
+        "context": "As storms intensified, supplies became scarce.",
+        "status": 200,
+        "latencyMs": 952,
+        "translation": "intensificaram",
+        "patch": {
+          "intensified": "intensificaram",
+          "intensify": "intensificar"
+        },
+        "issues": []
+      },
+      {
+        "query": "supplies",
+        "context": "As storms intensified, supplies became scarce.",
+        "status": 200,
+        "latencyMs": 1031,
+        "translation": "os suprimentos",
+        "patch": {
+          "supplies": "os suprimentos",
+          "supply": "suprimento"
+        },
+        "issues": []
+      },
+      {
+        "query": "scarce",
+        "context": "Supplies became scarce.",
+        "status": 200,
+        "latencyMs": 970,
+        "translation": "escassos",
+        "patch": {
+          "scarce": "escassos",
+          "scarcity": "escassez"
+        },
+        "issues": []
+      },
+      {
+        "query": "carry on",
+        "context": "The crew had to carry on.",
+        "status": 200,
+        "latencyMs": 961,
+        "translation": "continuar",
+        "patch": {
+          "carry on": "continuar",
+          "carry": "carregar"
+        },
+        "issues": []
+      },
+      {
+        "query": "bank of fog",
+        "context": "A bank of fog covered the harbor.",
+        "status": 200,
+        "latencyMs": 1018,
+        "translation": "banco de neblina",
+        "patch": {
+          "bank of fog": "banco de neblina",
+          "bank": "banco"
+        },
+        "issues": []
+      },
+      {
+        "query": "slow down",
+        "context": "The boat had to slow down.",
+        "status": 200,
+        "latencyMs": 1077,
+        "translation": "diminuir a velocidade",
+        "patch": {
+          "slow down": "diminuir a velocidade",
+          "slow": "lento"
+        },
+        "issues": []
+      },
+      {
+        "query": "bank",
+        "context": "Maya visited the river bank to inspect damaged sensors.",
+        "status": 200,
+        "latencyMs": 912,
+        "translation": "margem",
+        "patch": {
+          "bank": "margem"
+        },
+        "issues": []
+      },
+      {
+        "query": "although",
+        "context": "Although the schedule was tight, everyone remained resilient.",
+        "status": 200,
+        "latencyMs": 1297,
+        "translation": "Embora",
+        "patch": {
+          "although": "Embora"
+        },
+        "issues": []
+      },
+      {
+        "query": "tight",
+        "context": "Although the schedule was tight, everyone remained resilient.",
+        "status": 200,
+        "latencyMs": 1020,
+        "translation": "apertado",
+        "patch": {
+          "tight": "apertado"
+        },
+        "issues": []
+      },
+      {
+        "query": "resilient",
+        "context": "Everyone remained resilient.",
+        "status": 200,
+        "latencyMs": 996,
+        "translation": "resiliente",
+        "patch": {
+          "resilient": "resiliente"
+        },
+        "issues": []
+      },
+      {
+        "query": "worked out",
+        "context": "The project eventually worked out.",
+        "status": 200,
+        "latencyMs": 980,
+        "translation": "deu certo",
+        "patch": {
+          "worked out": "deu certo",
+          "work out": "dar certo"
+        },
+        "issues": []
+      },
+      {
+        "query": "shed light",
+        "context": "Its findings shed light on how communities adapt.",
+        "status": 200,
+        "latencyMs": 1047,
+        "translation": "lançar luz",
+        "patch": {
+          "shed light": "lançar luz"
+        },
+        "issues": []
+      },
+      {
+        "query": "adapt",
+        "context": "Small communities adapt to rapid environmental change.",
+        "status": 200,
+        "latencyMs": 980,
+        "translation": "adaptar-se",
+        "patch": {
+          "adapt": "adaptar-se"
+        },
+        "issues": []
+      }
+    ]
+  },
+  "summary": {
+    "vocabulary": {
+      "total": 20,
+      "passed": 20,
+      "failed": 0
+    },
+    "regency": {
+      "total": 20,
+      "passed": 20,
+      "failed": 0
+    },
+    "readLab": {
+      "processPassed": true,
+      "lookupTotal": 20,
+      "lookupPassed": 20,
+      "lookupFailed": 0,
+      "coveragePercent": 100
+    }
+  }
+}

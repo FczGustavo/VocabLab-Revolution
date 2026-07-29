@@ -1,8 +1,8 @@
 export type ColorPaletteId =
   | "blue"
-  | "violet"
-  | "beige"
-  | "gray"
+  | "sage"
+  | "terracotta"
+  | "ocean"
 
 export interface ColorPalette {
   id: ColorPaletteId
@@ -21,22 +21,22 @@ export const COLOR_PALETTES: ColorPalette[] = [
     swatches: ["#0E1722", "#1A3045", "#267EDC", "#8DC7FF", "#DFECF8"],
   },
   {
-    id: "violet",
-    name: "Violeta",
-    description: "Glass violeta com profundidade suave",
-    swatches: ["#201627", "#3E2A4D", "#7B4DB5", "#C7A2F3", "#F2EAFB"],
+    id: "sage",
+    name: "Sálvia",
+    description: "Verde natural, calmo e equilibrado",
+    swatches: ["#183226", "#4F745D", "#78A386", "#C7DACB", "#F1F7F2"],
   },
   {
-    id: "beige",
-    name: "Bege",
-    description: "Visual clean com toque quente e elegante",
-    swatches: ["#2B2321", "#5E4D46", "#B58E72", "#E5D1C2", "#F8F1EB"],
+    id: "terracotta",
+    name: "Terracota",
+    description: "Quente, expressivo e acolhedor",
+    swatches: ["#38201B", "#7D4435", "#C4694F", "#E9B7A7", "#FBF1ED"],
   },
   {
-    id: "gray",
-    name: "Cinza",
-    description: "Neutro e clean, sem saturação de cor",
-    swatches: ["#1A1B1F", "#2E3038", "#6B7280", "#CBD5E1", "#F8FAFC"],
+    id: "ocean",
+    name: "Oceano",
+    description: "Azul-petróleo fresco e profundo",
+    swatches: ["#123138", "#286875", "#3194A5", "#A8D6DB", "#EDF8F9"],
   },
 ]
 

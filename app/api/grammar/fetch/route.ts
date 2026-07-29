@@ -2,20 +2,37 @@ import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import type { GrammarQuestion } from "@/lib/types"
 
+import { guardApiRequest, readJsonWithLimit } from "@/lib/api-security"
+
 export async function POST(req: Request) {
+  const blocked = guardApiRequest(req, "grammar:fetch", { limit: 30 })
+  if (blocked) return blocked
   try {
-    const body = await req.json()
-    const topics: string[] = Array.isArray(body?.topics) ? body.topics : []
-    const excludeIds: string[] = Array.isArray(body?.excludeIds) ? body.excludeIds : []
+    const body = await readJsonWithLimit<Record<string, unknown>>(req, 100_000)
+    const topics = Array.isArray(body?.topics)
+      ? body.topics.filter((value): value is string => typeof value === "string" && value.length <= 120).slice(0, 50)
+      : []
+    const excludeIds = Array.isArray(body?.excludeIds)
+      ? body.excludeIds.filter((value): value is string => typeof value === "string" && value.length <= 120).slice(0, 1_000)
+      : []
     // subtopics: Record<topicId, string[]> — if a topic has entries, only those subtopics are wanted
-    const subtopics: Record<string, string[]> = (body?.subtopics && typeof body.subtopics === "object") ? body.subtopics : {}
-    const limit: number = typeof body?.limit === "number" ? Math.min(body.limit, 400) : 80
+    const subtopics: Record<string, string[]> = {}
+    if (body.subtopics && typeof body.subtopics === "object" && !Array.isArray(body.subtopics)) {
+      for (const [topic, values] of Object.entries(body.subtopics)) {
+        if (Array.isArray(values)) {
+          subtopics[topic] = values.filter((value): value is string => typeof value === "string")
+        }
+      }
+    }
+    const limit = typeof body?.limit === "number"
+      ? Math.max(1, Math.min(Math.trunc(body.limit), 400))
+      : 80
 
     if (!topics.length) {
       return NextResponse.json({ questions: [] })
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
     if (!supabaseUrl || !serviceKey) {

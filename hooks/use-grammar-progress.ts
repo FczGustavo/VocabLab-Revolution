@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { PROGRESS_UPDATED_EVENT } from "@/lib/constants"
 
 export interface GrammarSession {
   id: string
@@ -23,7 +24,6 @@ export interface StudySession {
 const GRAMMAR_PROGRESS_KEY = "vocablab-grammar-progress"
 const STUDY_PROGRESS_KEY = "vocablab-study-progress"
 const DISMISSED_REVIEW_WORDS_KEY = "vocablab-dismissed-review-words"
-const PROGRESS_UPDATED_EVENT = "vocablab-progress-updated"
 
 function notifyProgressUpdated() {
   if (typeof window === "undefined") return

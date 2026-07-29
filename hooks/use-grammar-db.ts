@@ -2,6 +2,7 @@
 
 import { useCallback } from "react"
 import type { GrammarQuestion, GrammarAnsweredRecord, GrammarFolder, GrammarList } from "@/lib/types"
+import { QUESTIONLAB_DATA_UPDATED_EVENT } from "@/lib/constants"
 
 // Completely separate IndexedDB from the flashcards DB
 const DB_NAME = "vocab-lab-grammar-db"
@@ -10,6 +11,10 @@ const QUESTIONS_STORE = "questions"
 const ANSWERED_STORE = "answered"
 const FOLDERS_STORE = "grammarFolders"
 const LISTS_STORE = "grammarLists"
+
+function notifyQuestionLabUpdated() {
+  window.dispatchEvent(new Event(QUESTIONLAB_DATA_UPDATED_EVENT))
+}
 
 function openGrammarDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -78,7 +83,7 @@ export function useGrammarDB() {
     return new Promise((resolve, reject) => {
       const tx = db.transaction(QUESTIONS_STORE, "readwrite")
       tx.objectStore(QUESTIONS_STORE).put(question)
-      tx.oncomplete = () => resolve()
+      tx.oncomplete = () => { notifyQuestionLabUpdated(); resolve() }
       tx.onerror = () => reject(tx.error)
     })
   }, [])
@@ -100,7 +105,7 @@ export function useGrammarDB() {
     return new Promise((resolve, reject) => {
       const tx = db.transaction(ANSWERED_STORE, "readwrite")
       tx.objectStore(ANSWERED_STORE).put(record)
-      tx.oncomplete = () => resolve()
+      tx.oncomplete = () => { notifyQuestionLabUpdated(); resolve() }
       tx.onerror = () => reject(tx.error)
     })
   }, [])
@@ -111,7 +116,7 @@ export function useGrammarDB() {
     return new Promise((resolve, reject) => {
       const tx = db.transaction(ANSWERED_STORE, "readwrite")
       tx.objectStore(ANSWERED_STORE).clear()
-      tx.oncomplete = () => resolve()
+      tx.oncomplete = () => { notifyQuestionLabUpdated(); resolve() }
       tx.onerror = () => reject(tx.error)
     })
   }, [])
@@ -134,7 +139,7 @@ export function useGrammarDB() {
     return new Promise((resolve, reject) => {
       const tx = db.transaction(FOLDERS_STORE, "readwrite")
       tx.objectStore(FOLDERS_STORE).put(folder)
-      tx.oncomplete = () => resolve(folder)
+      tx.oncomplete = () => { notifyQuestionLabUpdated(); resolve(folder) }
       tx.onerror = () => reject(tx.error)
     })
   }, [])
@@ -144,8 +149,29 @@ export function useGrammarDB() {
     return new Promise((resolve, reject) => {
       const tx = db.transaction(FOLDERS_STORE, "readwrite")
       tx.objectStore(FOLDERS_STORE).delete(id)
-      tx.oncomplete = () => resolve()
+      tx.oncomplete = () => { notifyQuestionLabUpdated(); resolve() }
       tx.onerror = () => reject(tx.error)
+    })
+  }, [])
+
+  const renameFolder = useCallback(async (id: string, name: string): Promise<GrammarFolder> => {
+    const db = await openGrammarDB()
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(FOLDERS_STORE, "readwrite")
+      const store = tx.objectStore(FOLDERS_STORE)
+      const request = store.get(id)
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => {
+        const existing = request.result as GrammarFolder | undefined
+        if (!existing) {
+          reject(new Error("Grammar folder not found"))
+          return
+        }
+        const renamed = { ...existing, name }
+        store.put(renamed)
+        tx.oncomplete = () => { notifyQuestionLabUpdated(); resolve(renamed) }
+        tx.onerror = () => reject(tx.error)
+      }
     })
   }, [])
 
@@ -166,7 +192,7 @@ export function useGrammarDB() {
     return new Promise((resolve, reject) => {
       const tx = db.transaction(LISTS_STORE, "readwrite")
       tx.objectStore(LISTS_STORE).put(list)
-      tx.oncomplete = () => resolve()
+      tx.oncomplete = () => { notifyQuestionLabUpdated(); resolve() }
       tx.onerror = () => reject(tx.error)
     })
   }, [])
@@ -176,7 +202,7 @@ export function useGrammarDB() {
     return new Promise((resolve, reject) => {
       const tx = db.transaction(LISTS_STORE, "readwrite")
       tx.objectStore(LISTS_STORE).delete(id)
-      tx.oncomplete = () => resolve()
+      tx.oncomplete = () => { notifyQuestionLabUpdated(); resolve() }
       tx.onerror = () => reject(tx.error)
     })
   }, [])
@@ -208,6 +234,7 @@ export function useGrammarDB() {
     getFolders,
     createFolder,
     deleteFolder,
+    renameFolder,
     getLists,
     saveList,
     deleteList,

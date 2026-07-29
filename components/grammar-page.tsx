@@ -13,193 +13,40 @@ import {
   ChevronUp,
   BookmarkPlus,
   BookOpen,
-  Folder,
-  FolderOpen,
   FolderPlus,
   Trash2,
-  MoreVertical,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { useGptModel } from "@/hooks/use-gpt-model"
 import { useFlashcardsDB } from "@/hooks/use-flashcards-db"
 import { useGrammarDB } from "@/hooks/use-grammar-db"
 import { cn } from "@/lib/utils"
+import { TOPICS } from "@/lib/grammar-topics"
 import type { GrammarQuestion, GrammarFolder, GrammarList, GrammarQuestionOption } from "@/lib/types"
+import { FolderCard, NewFolderCard } from "@/components/folder-card"
+import { LongPressButton } from "@/components/long-press-button"
 
 // ── Topic taxonomy ─────────────────────────────────────────────────────────────
 
-const TOPICS = [
-  {
-    id: "verb-forms",
-    label: "Verbos e Formas",
-    subtopics: [
-      "Simple Present",
-      "Simple Past",
-      "Present Perfect",
-      "Past Perfect",
-      "Future (will / going to)",
-      "Present Continuous",
-      "Past Continuous",
-      "Past Perfect Continuous",
-      "Future Perfect",
-      "Gerund vs Infinitive",
-      "Regular Verbs",
-      "Irregular Verbs",
-    ],
-  },
-  {
-    id: "voice-modals-imperative",
-    label: "Voz, Modais e Imperativos",
-    subtopics: [
-      "Active vs Passive Voice",
-      "Present passive",
-      "Past passive",
-      "Perfect passive",
-      "Passive with modals",
-      "Causative have/get",
-      "can / could",
-      "may / might",
-      "must / have to",
-      "should / ought to",
-      "will / would",
-      "need / dare",
-      "Imperative sentences",
-    ],
-  },
-  {
-    id: "conditionals-speech",
-    label: "Condicionais e Discurso",
-    subtopics: [
-      "Zero conditional",
-      "First conditional",
-      "Second conditional",
-      "Third conditional",
-      "Mixed conditionals",
-      "Reported statements",
-      "Reported questions",
-      "Reported commands",
-      "Backshift of tenses",
-      "Reporting verbs",
-    ],
-  },
-  {
-    id: "phrasal-prepositions",
-    label: "Phrasal Verbs & Preposições",
-    subtopics: [
-      "Common Phrasal Verbs",
-      "Separable phrasal verbs",
-      "Inseparable phrasal verbs",
-      "Time prepositions (at/in/on)",
-      "Place prepositions (at/in/on)",
-      "Movement prepositions",
-      "Prepositions after adjectives",
-      "Prepositions after verbs",
-    ],
-  },
-  {
-    id: "nominal-determiners",
-    label: "Nominal / Determiners / Quantifiers",
-    subtopics: [
-      "Countable vs Uncountable nouns",
-      "Plural forms",
-      "Genitive (possessive 's)",
-      "some / any / no",
-      "much / many / a lot of",
-      "few / little / a few / a little",
-      "all / both / neither / either",
-      "each / every",
-      "Numerals (cardinal / ordinal)",
-      "Noun compounds",
-    ],
-  },
-  {
-    id: "pronouns-articles-agreement",
-    label: "Pronomes, Artigos e Concordância",
-    subtopics: [
-      "Personal pronouns",
-      "Reflexive pronouns",
-      "Relative pronouns",
-      "Indefinite pronouns",
-      "Definite article (the)",
-      "Indefinite articles (a/an)",
-      "Zero article",
-      "Generic reference",
-      "Subject-verb agreement",
-      "Pronoun-antecedent agreement",
-    ],
-  },
-  {
-    id: "adjectives-adverbs-word-order",
-    label: "Adjetivos, Advérbios e Ordem das Palavras",
-    subtopics: [
-      "Adjective order",
-      "Comparatives",
-      "Superlatives",
-      "Adverb placement",
-      "Adverbs of frequency",
-      "Adverbs of manner",
-      "Word order in statements",
-      "Word order in questions",
-      "Inversion",
-    ],
-  },
-  {
-    id: "connectors-structures",
-    label: "Conectivos e Estruturas",
-    subtopics: [
-      "Coordinating conjunctions",
-      "Subordinating conjunctions",
-      "Defining relative clauses",
-      "Non-defining relative clauses",
-      "Adverbial clauses",
-      "Noun clauses",
-      "Concession (although/despite/in spite of)",
-      "Cause & Result",
-      "Tag questions",
-      "Indirect questions",
-      "Exclamatory sentences",
-    ],
-  },
-  {
-    id: "punctuation-spelling",
-    label: "Pontuação, Ortografia e Numerais",
-    subtopics: [
-      "Comma usage",
-      "Apostrophe usage",
-      "Capitalization rules",
-      "Spelling rules (doubling, -ie/-ei)",
-      "Homophones",
-      "Numbers written out",
-      "Dates and times",
-    ],
-  },
-  {
-    id: "vocabulary",
-    label: "Vocabulário e Uso",
-    subtopics: [
-      "Idioms",
-      "False Friends / False Cognates",
-      "Synonyms & Antonyms",
-      "Collocations",
-      "Phrasal Verbs in context",
-      "Register (formal vs informal)",
-      "Word formation (prefixes/suffixes)",
-    ],
-  },
-]
+
 
 // ── Local types ───────────────────────────────────────────────────────────────
 
 type Phase = "idle" | "loading" | "quiz" | "complete"
+
+const QUESTION_LAB_TEMPORARILY_DISABLED = true
 
 interface QuestionState {
   pendingLetter: string | null
@@ -218,6 +65,7 @@ export function GrammarPage() {
     getFolders,
     createFolder,
     deleteFolder,
+    renameFolder,
     getLists,
     saveList,
     deleteList,
@@ -233,6 +81,8 @@ export function GrammarPage() {
   const [lists, setLists] = useState<GrammarList[]>([])
   const [activeListId, setActiveListId] = useState<string | null>(null)
   const [expandedFolderId, setExpandedFolderId] = useState<string | null>(null)
+  const [generalFolderName, setGeneralFolderName] = useState("General")
+  const [folderColors, setFolderColors] = useState<Record<string, string>>({})
 
   const [isSaveOpen, setIsSaveOpen] = useState(false)
   const [saveListName, setSaveListName] = useState("")
@@ -240,6 +90,11 @@ export function GrammarPage() {
 
   const [isFolderDialogOpen, setIsFolderDialogOpen] = useState(false)
   const [newFolderName, setNewFolderName] = useState("")
+  const [isFolderManagerOpen, setIsFolderManagerOpen] = useState(false)
+  const [editingFolderId, setEditingFolderId] = useState<string | null>(null)
+  const [editingFolderName, setEditingFolderName] = useState("")
+  const [deleteTargetFolderId, setDeleteTargetFolderId] = useState<string | null>(null)
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
 
   const [phase, setPhase] = useState<Phase>("idle")
   const [questions, setQuestions] = useState<GrammarQuestion[]>([])
@@ -253,6 +108,19 @@ export function GrammarPage() {
     getFolders().then(setFolders).catch(console.error)
     getLists().then(setLists).catch(console.error)
   }, [getFolders, getLists])
+
+  useEffect(() => {
+    const savedName = localStorage.getItem("grammarlab_general_folder_name")
+    const savedColors = localStorage.getItem("grammarlab_folder_colors")
+    if (savedName) setGeneralFolderName(savedName)
+    if (savedColors) {
+      try {
+        setFolderColors(JSON.parse(savedColors))
+      } catch {
+        localStorage.removeItem("grammarlab_folder_colors")
+      }
+    }
+  }, [])
 
   const toggleTopic = useCallback((id: string) => {
     setSelectedTopics((prev) =>
@@ -276,7 +144,7 @@ export function GrammarPage() {
     async (list: GrammarList) => {
       setActiveListId(list.id)
       setPhase("loading")
-      setLoadingStatus("Puxando do banco de dados...")
+      setLoadingStatus("Loading saved questions...")
       setLoadingProgress({ done: 0, total: 0 })
       setError(null)
       setQuestionStates([])
@@ -284,7 +152,7 @@ export function GrammarPage() {
       try {
         const loaded = await getQuestionsById(list.questionIds)
         if (!loaded.length) {
-          setError("Lista vazia ou questoes removidas do cache.")
+          setError("This list is empty or its questions are no longer available.")
           setPhase("idle")
           return
         }
@@ -292,7 +160,7 @@ export function GrammarPage() {
         setQuestionStates(loaded.map(() => ({ pendingLetter: null, answeredLetter: null, eliminated: [] })))
         setPhase("quiz")
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Erro ao carregar lista")
+        setError(err instanceof Error ? err.message : "Could not load this list.")
         setPhase("idle")
       }
     },
@@ -332,6 +200,71 @@ export function GrammarPage() {
     setIsFolderDialogOpen(false)
   }, [newFolderName, createFolder])
 
+  const getFolderGradient = (folderId: string, index: number): "default" | "violet" | "emerald" | "amber" | "rose" => {
+    const color = folderColors[folderId]
+    if (color) return color as "default" | "violet" | "emerald" | "amber" | "rose"
+    const defaults: Array<"default" | "violet" | "emerald" | "amber"> = ["default", "violet", "emerald", "amber"]
+    return defaults[index % defaults.length]
+  }
+
+  const updateFolderColor = (folderId: string, color: string) => {
+    const next = { ...folderColors, [folderId]: color }
+    setFolderColors(next)
+    localStorage.setItem("grammarlab_folder_colors", JSON.stringify(next))
+  }
+
+  const openFolderManager = (folder: GrammarFolder | null) => {
+    setEditingFolderId(folder?.id ?? null)
+    setEditingFolderName(folder?.name ?? generalFolderName)
+    setDeleteTargetFolderId(null)
+    setIsFolderManagerOpen(true)
+  }
+
+  const handleRenameFolder = async () => {
+    const name = editingFolderName.trim()
+    if (!name) return
+    if (editingFolderId === null) {
+      localStorage.setItem("grammarlab_general_folder_name", name)
+      setGeneralFolderName(name)
+      return
+    }
+    const renamed = await renameFolder(editingFolderId, name)
+    setFolders((prev) => prev.map((folder) => folder.id === renamed.id ? renamed : folder))
+  }
+
+  const transferLists = async (sourceFolderId: string | null, targetFolderId: string | null, deleteSource = false) => {
+    const sourceLists = lists.filter((list) => list.folderId === sourceFolderId)
+    const moved = sourceLists.map((list) => ({ ...list, folderId: targetFolderId }))
+    await Promise.all(moved.map((list) => saveList(list)))
+    setLists((prev) => prev.map((list) => moved.find((item) => item.id === list.id) ?? list))
+
+    if (deleteSource && sourceFolderId !== null) {
+      await deleteFolder(sourceFolderId)
+      setFolders((prev) => prev.filter((folder) => folder.id !== sourceFolderId))
+      if (expandedFolderId === sourceFolderId) setExpandedFolderId(targetFolderId)
+    }
+  }
+
+  const handleTransferLists = async (targetFolderId: string | null) => {
+    await transferLists(editingFolderId, targetFolderId, editingFolderId !== null)
+    setIsFolderManagerOpen(false)
+  }
+
+  const handleDeleteFolderWithMigration = async () => {
+    if (editingFolderId === null) {
+      const generalLists = lists.filter((list) => !list.folderId)
+      await Promise.all(generalLists.map((list) => deleteList(list.id)))
+      setLists((prev) => prev.filter((list) => list.folderId))
+      setActiveListId((current) => generalLists.some((list) => list.id === current) ? null : current)
+      setIsDeleteConfirmOpen(false)
+      setIsFolderManagerOpen(false)
+      return
+    }
+    await transferLists(editingFolderId, deleteTargetFolderId, true)
+    setIsDeleteConfirmOpen(false)
+    setIsFolderManagerOpen(false)
+  }
+
   const handleDeleteList = useCallback(
     async (listId: string) => {
       await deleteList(listId)
@@ -341,22 +274,10 @@ export function GrammarPage() {
     [deleteList, activeListId]
   )
 
-  const handleDeleteFolder = useCallback(
-    async (folderId: string) => {
-      await deleteFolder(folderId)
-      setFolders((prev) => prev.filter((f) => f.id !== folderId))
-      const removed = lists.filter((l) => l.folderId === folderId).map((l) => l.id)
-      await Promise.all(removed.map((id) => deleteList(id)))
-      setLists((prev) => prev.filter((l) => l.folderId !== folderId))
-      if (expandedFolderId === folderId) setExpandedFolderId(null)
-    },
-    [deleteFolder, deleteList, lists, expandedFolderId]
-  )
-
   const handleGenerate = useCallback(async () => {
     if (!selectedTopics.length) return
     setPhase("loading")
-    setLoadingStatus("Procurando no banco...")
+    setLoadingStatus("Preparing your practice session...")
     setLoadingProgress({ done: 0, total: questionCount })
     setError(null)
     setActiveListId(null)
@@ -444,7 +365,7 @@ export function GrammarPage() {
 
       for (let i = 0; i < needMore; i++) {
         const qNum = fromDB.length + i + 1
-        setLoadingStatus(`Criando questao ${qNum} de ${questionCount}...`)
+        setLoadingStatus(`Creating question ${qNum} of ${questionCount}...`)
 
         const dynamicBlendSize = subPool.length >= 3 ? randomInt(2, 3) : blendSize
         // Pick random distinct subtopics from the pool (less repetitive than cycling).
@@ -490,7 +411,7 @@ export function GrammarPage() {
         })
         if (!aiRes.ok) {
           const json = await aiRes.json().catch(() => ({}))
-          throw new Error(json?.error || "Erro ao gerar questão")
+          throw new Error(json?.error || "Could not generate the question.")
         }
         const aiResult: { questionText: string; contextPassage?: string | null; options: GrammarQuestionOption[] } = await aiRes.json()
 
@@ -513,7 +434,7 @@ export function GrammarPage() {
 
       // 3. Push new questions to shared Supabase cache
       if (newlyGenerated.length > 0) {
-        setLoadingStatus("Salvando no banco...")
+        setLoadingStatus("Saving your questions...")
         try {
           await fetch("/api/grammar/save", {
             method: "POST",
@@ -526,7 +447,7 @@ export function GrammarPage() {
       }
 
       if (generated.length === 0) {
-        setError("Nenhuma questao gerada. Verifique sua API key.")
+        setError("No questions were generated. Check your AI configuration and try again.")
         setPhase("idle")
         return
       }
@@ -535,7 +456,7 @@ export function GrammarPage() {
       setQuestionStates(generated.map(() => ({ pendingLetter: null, answeredLetter: null, eliminated: [] })))
       setPhase("quiz")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao gerar questoes")
+      setError(err instanceof Error ? err.message : "Could not generate the questions.")
       setPhase("idle")
     }
   }, [selectedTopics, selectedSubtopics, questionCount, model, allFlashcards, getAnsweredIds, getQuestionsForTopics, saveQuestion])
@@ -607,6 +528,24 @@ export function GrammarPage() {
     setLoadingStatus("")
   }, [])
 
+  if (QUESTION_LAB_TEMPORARILY_DISABLED) {
+    return (
+      <div className="w-full">
+        <div className="mb-20 flex flex-col items-center gap-6 pt-4 sm:mb-16 sm:pt-6">
+          <h1 className="lab-title select-none font-serif text-[clamp(3rem,14vw,5rem)] font-normal leading-none tracking-[-0.02em] text-foreground/15">
+            QuestionLab
+          </h1>
+        </div>
+        <div className="flex justify-center px-4 text-center">
+          <div className="mt-8 flex items-center gap-2 rounded-full border border-border/40 bg-card/70 px-4 py-2.5 text-sm text-muted-foreground shadow-sm">
+            <AlertCircle className="size-4 shrink-0" />
+            <span>QuestionLab is temporarily unavailable.</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   const allAnswered = questionStates.length > 0 && questionStates.every((qs) => qs.answeredLetter !== null)
   const correctCount = questionStates.filter((qs, i) => {
     if (!qs.answeredLetter) return false
@@ -624,7 +563,7 @@ export function GrammarPage() {
         {total > 0 && (
           <div className="w-full max-w-xs">
             <div className="mb-2 flex justify-between text-[11px] text-muted-foreground">
-              <span>{done} de {total}</span>
+              <span>{done} of {total}</span>
               <span>{pct}%</span>
             </div>
             <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
@@ -645,11 +584,11 @@ export function GrammarPage() {
         <Trophy className="size-16 text-amber-400" />
         <div className="text-center">
           <p className="text-[42px] font-light leading-none tracking-tight">{correctCount}/{total}</p>
-          <p className="mt-1 text-[14px] text-muted-foreground">{pct}% corretas</p>
+          <p className="mt-1 text-[14px] text-muted-foreground">{pct}% correct</p>
         </div>
         <Button variant="outline" onClick={handleNewSession} className="gap-2">
           <RotateCcw className="size-4" />
-          Nova sessao
+          New session
         </Button>
       </div>
     )
@@ -662,16 +601,16 @@ export function GrammarPage() {
         <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
           <Button variant="ghost" size="sm" onClick={handleNewSession} className="gap-2 text-muted-foreground">
             <RotateCcw className="size-3.5" />
-            Nova sessao
+            New session
           </Button>
           <Button variant="outline" size="sm" onClick={() => { setSaveListName(""); setSaveFolderId(null); setIsSaveOpen(true) }} className="gap-2">
             <BookmarkPlus className="size-4" />
-            Salvar lista
+            Save list
           </Button>
         </div>
 
         <p className="mb-5 text-center text-[11px] text-muted-foreground/60">
-          1 clique para selecionar &middot; 2 cliques para riscar
+          Click once to select &middot; double-click to eliminate
         </p>
 
         <div className="flex flex-col gap-6">
@@ -682,11 +621,11 @@ export function GrammarPage() {
             return (
               <div key={question.id} className="rounded-2xl border border-border/40 bg-card p-4 shadow-sm sm:p-6">
                 <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
-                  Questao {String(qIdx + 1).padStart(2, "0")}
+                  Question {String(qIdx + 1).padStart(2, "0")}
                 </p>
                 {question.contextPassage && (
-                  <div className="mb-4 rounded-xl border border-border/30 bg-muted/30 px-4 py-3">
-                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">Texto de apoio</p>
+                  <div className="context-bubble mb-4 rounded-xl border border-border/30 bg-muted/30 px-4 py-3">
+                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">Supporting context</p>
                     <p className="text-[13px] leading-relaxed text-foreground/80 italic">{question.contextPassage}</p>
                   </div>
                 )}
@@ -761,7 +700,7 @@ export function GrammarPage() {
                 {!answered && qs.pendingLetter && (
                   <div className="mt-4 flex justify-end">
                     <Button onClick={() => handleConfirm(qIdx)} className="gap-2">
-                      Responder
+                      Check answer
                     </Button>
                   </div>
                 )}
@@ -774,7 +713,7 @@ export function GrammarPage() {
           <div className="mt-8 flex justify-center">
             <Button onClick={() => setPhase("complete")} className="gap-2" size="lg">
               <Trophy className="size-4" />
-              Ver Resultados
+              View results
             </Button>
           </div>
         )}
@@ -782,15 +721,15 @@ export function GrammarPage() {
         <Dialog open={isSaveOpen} onOpenChange={setIsSaveOpen}>
           <DialogContent className="max-w-[92vw] sm:max-w-sm">
             <DialogHeader>
-              <DialogTitle>Salvar lista</DialogTitle>
+              <DialogTitle>Save list</DialogTitle>
             </DialogHeader>
             <div className="flex flex-col gap-4 pt-2">
-              <Input placeholder="Nome da lista..." value={saveListName} onChange={(e) => setSaveListName(e.target.value)} autoFocus />
+              <Input placeholder="List name..." value={saveListName} onChange={(e) => setSaveListName(e.target.value)} autoFocus />
               <div>
-                <p className="mb-2 text-[12px] text-muted-foreground">Pasta (opcional)</p>
+                <p className="mb-2 text-[12px] text-muted-foreground">Folder (optional)</p>
                 <div className="flex flex-wrap gap-1.5">
                   <button type="button" onClick={() => setSaveFolderId(null)} className={cn("rounded-full border px-3 py-1 text-[12px] transition-colors", saveFolderId === null ? "border-primary/40 bg-primary/10 text-primary" : "border-border/30 text-muted-foreground hover:border-border/60 hover:text-foreground")}>
-                    Sem pasta
+                    No folder
                   </button>
                   {folders.map((f) => (
                     <button key={f.id} type="button" onClick={() => setSaveFolderId(f.id)} className={cn("rounded-full border px-3 py-1 text-[12px] transition-colors", saveFolderId === f.id ? "border-primary/40 bg-primary/10 text-primary" : "border-border/30 text-muted-foreground hover:border-border/60 hover:text-foreground")}>
@@ -800,12 +739,12 @@ export function GrammarPage() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Input placeholder="Nova pasta..." value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleCreateFolderInSave()} className="text-[13px]" />
+                <Input placeholder="New folder..." value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleCreateFolderInSave()} className="text-[13px]" />
                 <Button variant="outline" size="sm" onClick={handleCreateFolderInSave} disabled={!newFolderName.trim()}>
                   <FolderPlus className="size-3.5" />
                 </Button>
               </div>
-              <Button onClick={handleSaveList} disabled={!saveListName.trim()}>Salvar</Button>
+              <Button onClick={handleSaveList} disabled={!saveListName.trim()}>Save list</Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -815,13 +754,12 @@ export function GrammarPage() {
 
   // idle
   return (
-    <div className="w-full">
-      <div className="mb-8 flex flex-col items-center gap-2 pt-2 sm:mb-10 sm:pt-4">
-        <h1 className="select-none text-[clamp(2.2rem,11vw,3.25rem)] font-light leading-none tracking-[-0.04em] text-foreground/20">
-          Grammar Lab
+    <div className="mx-auto w-full max-w-5xl px-4 pb-10 pt-4 sm:px-6 sm:pt-6">
+      <header className="mb-12 flex justify-center sm:mb-14">
+        <h1 className="lab-title select-none text-center font-serif text-[clamp(3rem,14vw,5rem)] font-normal leading-none tracking-[-0.02em] text-foreground/15">
+          QuestionLab
         </h1>
-        <p className="text-[13px] text-muted-foreground/60">Questoes no estilo EFOMM EN AFA</p>
-      </div>
+      </header>
 
       {error && (
         <div className="mb-6 flex items-center gap-3 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-[13px] text-destructive">
@@ -830,21 +768,17 @@ export function GrammarPage() {
         </div>
       )}
 
-      <div className="rounded-2xl border border-border/40 bg-card p-4 shadow-sm sm:p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-[14px] font-medium text-foreground">Selecione os topicos</h2>
-          <button type="button" onClick={() => setShowAdvanced((p) => !p)} className="flex items-center gap-1 text-[12px] text-muted-foreground transition-colors hover:text-foreground">
-            {showAdvanced ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
-            {showAdvanced ? "Menos opcoes" : "Mais opcoes"}
-          </button>
-        </div>
-
-        <div className="mb-5 flex flex-wrap gap-2">
+      <section className="mx-auto max-w-3xl rounded-2xl border border-border/40 bg-card/80 p-4 shadow-sm backdrop-blur-sm sm:p-5">
+        <div className="mb-5 flex flex-wrap items-center gap-2">
           {TOPICS.map((topic) => (
-            <button key={topic.id} type="button" onClick={() => toggleTopic(topic.id)} className={cn("rounded-full border px-3.5 py-1.5 text-[12px] font-medium transition-all duration-150", selectedTopics.includes(topic.id) ? "border-primary/30 bg-primary/10 text-primary" : "border-border/30 bg-transparent text-muted-foreground hover:border-border/60 hover:text-foreground")}>
+            <button key={topic.id} type="button" onClick={() => toggleTopic(topic.id)} className={cn("rounded-full border px-3 py-1 text-[11px] font-medium transition-all duration-150", selectedTopics.includes(topic.id) ? "border-primary/30 bg-primary/10 text-primary" : "border-border/30 bg-transparent text-muted-foreground hover:border-border/60 hover:text-foreground")}>
               {topic.label}
             </button>
           ))}
+          <button type="button" onClick={() => setShowAdvanced((p) => !p)} className="ml-auto flex items-center gap-1 px-1.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground">
+            {showAdvanced ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+            {showAdvanced ? "Fewer options" : "More options"}
+          </button>
         </div>
 
         {showAdvanced && selectedTopics.length > 0 && (
@@ -869,7 +803,7 @@ export function GrammarPage() {
         )}
 
         <div className="flex flex-wrap items-center gap-3 border-t border-border/30 pt-4">
-          <span className="shrink-0 text-[12px] text-muted-foreground">Questoes:</span>
+          <span className="shrink-0 text-[12px] text-muted-foreground">Questions:</span>
           <div className="flex items-center gap-0.5 rounded-full bg-muted/60 p-0.5">
             {([5, 10, 15] as const).map((n) => (
               <button key={n} type="button" onClick={() => setQuestionCount(n)} className={cn("rounded-full px-3 py-1 text-[12px] font-medium transition-all", questionCount === n ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
@@ -880,120 +814,179 @@ export function GrammarPage() {
           <div className="w-full sm:ml-auto sm:w-auto">
             <Button onClick={handleGenerate} disabled={!selectedTopics.length} className="w-full gap-2 sm:w-auto">
               <Sparkles className="size-4" />
-              Gerar {questionCount} Questoes
+              Generate {questionCount} questions
             </Button>
           </div>
         </div>
-      </div>
+      </section>
 
-      {(folders.length > 0 || lists.some((l) => !l.folderId)) && (
-        <div className="mt-5">
-          <div className="segmented-control no-scrollbar overflow-x-auto pb-1">
-            {folders.map((folder) => {
-              const isExpanded = expandedFolderId === folder.id
-              const count = lists.filter((l) => l.folderId === folder.id).length
-              return (
-                <div key={folder.id} className="flex items-center gap-0.5">
-                  <Button variant="ghost" size="sm" data-active={isExpanded} onClick={() => setExpandedFolderId(isExpanded ? null : folder.id)} className="ghost-filter h-8 gap-1.5 px-3 text-[13px]">
-                    {isExpanded ? <FolderOpen className="size-3.5" /> : <Folder className="size-3.5" />}
-                    {folder.name}
-                    {count > 0 && (
-                      <Badge variant="secondary" className="ml-0.5 border-0 bg-muted px-1.5 py-0 text-[10px] font-medium text-muted-foreground shadow-none">
-                        {count}
-                      </Badge>
-                    )}
-                  </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon-sm" className="ghost-filter size-7 opacity-30 hover:opacity-100">
-                        <MoreVertical className="size-3" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleDeleteFolder(folder.id)} className="gap-2 text-destructive focus:text-destructive">
-                        <Trash2 className="size-4" />
-                        Excluir pasta
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              )
-            })}
+      <section className="mt-8">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          <FolderCard
+            name={generalFolderName}
+            wordCount={lists.filter((list) => !list.folderId).length}
+            subtitle={`${lists.filter((list) => !list.folderId).length} saved lists`}
+            gradient={getFolderGradient("__general__", 0)}
+            isSelected={expandedFolderId === "__general__"}
+            onClick={() => setExpandedFolderId(expandedFolderId === "__general__" ? null : "__general__")}
+            onSettings={() => openFolderManager(null)}
+          />
+          {folders.map((folder, index) => {
+            const count = lists.filter((list) => list.folderId === folder.id).length
+            return (
+              <FolderCard
+                key={folder.id}
+                name={folder.name}
+                wordCount={count}
+                subtitle={`${count} saved ${count === 1 ? "list" : "lists"}`}
+                gradient={getFolderGradient(folder.id, index + 1)}
+                isSelected={expandedFolderId === folder.id}
+                onClick={() => setExpandedFolderId(expandedFolderId === folder.id ? null : folder.id)}
+                onSettings={() => openFolderManager(folder)}
+              />
+            )
+          })}
+          <NewFolderCard onClick={() => { setNewFolderName(""); setIsFolderDialogOpen(true) }} />
+        </div>
 
-            {lists.filter((l) => !l.folderId).map((list) => (
-              <div key={list.id} className="flex items-center gap-0.5">
-                <Button variant="ghost" size="sm" data-active={activeListId === list.id} onClick={() => handleLoadList(list)} className="ghost-filter h-8 gap-1.5 px-3 text-[13px]">
-                  <BookOpen className="size-3.5" />
-                  {list.name}
-                </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon-sm" className="ghost-filter size-7 opacity-30 hover:opacity-100">
-                      <MoreVertical className="size-3" />
+        {expandedFolderId && (
+          <div className="mt-4 rounded-2xl border border-border/40 bg-card/70 p-4 shadow-sm">
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Saved lists</p>
+            <div className="flex flex-wrap gap-2">
+              {lists.filter((list) => expandedFolderId === "__general__" ? !list.folderId : list.folderId === expandedFolderId).length === 0 ? (
+                <p className="text-[12px] text-muted-foreground/60">This folder is empty — save a list here.</p>
+              ) : (
+                lists.filter((list) => expandedFolderId === "__general__" ? !list.folderId : list.folderId === expandedFolderId).map((list) => (
+                  <div key={list.id} className="flex items-center gap-1 rounded-full border border-border/30 bg-background px-1 py-1">
+                    <button type="button" onClick={() => handleLoadList(list)} className={cn("rounded-full px-2 py-0.5 text-[12px] transition-colors", activeListId === list.id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")}>
+                      {list.name}
+                    </button>
+                    <Button variant="ghost" size="icon-sm" onClick={() => handleDeleteList(list.id)} title="Delete list" className="size-6 text-muted-foreground/50 hover:text-destructive">
+                      <Trash2 className="size-3.5 text-muted-foreground" />
                     </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleDeleteList(list.id)} className="gap-2 text-destructive focus:text-destructive">
-                      <Trash2 className="size-4" />
-                      Excluir lista
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            ))}
-
-            <Button variant="ghost" size="icon-sm" onClick={() => { setNewFolderName(""); setIsFolderDialogOpen(true) }} title="Nova pasta" className="ghost-filter size-7 opacity-40 hover:opacity-100">
-              <FolderPlus className="size-3.5" />
-            </Button>
-          </div>
-
-          {expandedFolderId && (
-            <div className="mt-2 overflow-x-auto rounded-xl border border-border/30 bg-muted/20 px-3 py-2">
-              <div className="flex items-center gap-1.5">
-                {lists.filter((l) => l.folderId === expandedFolderId).length === 0 ? (
-                  <p className="text-[12px] text-muted-foreground/50">Pasta vazia - salve uma lista aqui.</p>
-                ) : (
-                  lists.filter((l) => l.folderId === expandedFolderId).map((list) => (
-                    <div key={list.id} className="flex shrink-0 items-center gap-0.5">
-                      <button type="button" onClick={() => handleLoadList(list)} className={cn("rounded-full border px-3 py-1 text-[12px] transition-colors", activeListId === list.id ? "border-primary/40 bg-primary/10 text-primary" : "border-border/30 text-muted-foreground hover:border-border/60 hover:text-foreground")}>
-                        {list.name}
-                      </button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon-sm" className="size-5 opacity-30 hover:opacity-100">
-                            <MoreVertical className="size-3" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleDeleteList(list.id)} className="gap-2 text-destructive focus:text-destructive">
-                            <Trash2 className="size-4" />
-                            Excluir lista
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  ))
-                )}
-              </div>
+                  </div>
+                ))
+              )}
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+      </section>
 
       <Dialog open={isFolderDialogOpen} onOpenChange={setIsFolderDialogOpen}>
-        <DialogContent className="max-w-[92vw] sm:max-w-xs">
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Nova pasta</DialogTitle>
+            <DialogTitle>Create New Folder</DialogTitle>
+            <DialogDescription>Organize your saved question lists by topic or level.</DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col gap-3 pt-2">
-            <Input placeholder="Nome da pasta..." value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleCreateFolderFromBar()} autoFocus />
-            <Button onClick={handleCreateFolderFromBar} disabled={!newFolderName.trim()}>Criar pasta</Button>
+          <div className="mt-4 flex gap-2">
+            <Input placeholder="Folder name" value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleCreateFolderFromBar()} autoFocus />
+            <Button onClick={handleCreateFolderFromBar} disabled={!newFolderName.trim()}>Create</Button>
           </div>
         </DialogContent>
       </Dialog>
 
+      <Dialog open={isFolderManagerOpen} onOpenChange={setIsFolderManagerOpen}>
+        <DialogContent className="min-h-[360px] max-w-[92vw] sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Manage Folder</DialogTitle>
+            <DialogDescription>
+              {editingFolderId === null
+                ? `Manage the "${generalFolderName}" folder.`
+                : `Manage folder "${editingFolderName}".`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-2 space-y-4">
+            <div className="space-y-2">
+              <label className="text-[12px] font-medium text-muted-foreground">Folder name</label>
+              <div className="flex gap-2">
+                <Input placeholder="Folder name" value={editingFolderName} onChange={(event) => setEditingFolderName(event.target.value)} onKeyDown={(event) => event.key === "Enter" && handleRenameFolder()} />
+                <Button variant="outline" onClick={handleRenameFolder} disabled={!editingFolderName.trim()}>Rename</Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[12px] font-medium text-muted-foreground">Folder color</label>
+              <div className="flex gap-2">
+                {[
+                  { id: "default", label: "Blue", className: "bg-blue-400/50" },
+                  { id: "violet", label: "Violet", className: "bg-violet-400/30" },
+                  { id: "emerald", label: "Green", className: "bg-emerald-400/30" },
+                  { id: "amber", label: "Yellow", className: "bg-amber-400/30" },
+                  { id: "rose", label: "Rose", className: "bg-rose-400/30" },
+                ].map((color) => {
+                  const folderKey = editingFolderId ?? "__general__"
+                  const isActive = (folderColors[folderKey] ?? "default") === color.id
+                  return (
+                    <button key={color.id} type="button" onClick={() => updateFolderColor(folderKey, color.id)} title={color.label} aria-label={`${color.label} folder color`} className={cn("size-8 rounded-full transition-all", color.className, isActive ? "ring-2 ring-offset-2 ring-foreground/30" : "hover:scale-110")} />
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-3 border-t border-border/30 pt-2">
+              <LongPressButton onLongPress={() => setIsDeleteConfirmOpen(true)} className="h-10 w-full rounded-md border border-destructive/20 bg-destructive/5 text-destructive transition-colors hover:bg-destructive/10">
+                <Trash2 className="size-4 text-muted-foreground" />
+                <span>Hold to delete</span>
+              </LongPressButton>
+            </div>
+
+            {editingFolderId !== null && (
+              <div className="space-y-2 border-t border-border/30 pt-2">
+                <label className="text-[12px] font-medium text-muted-foreground">Transfer all saved lists to</label>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => handleTransferLists(null)} className="rounded-full border border-border/30 px-3 py-1 text-[12px] text-muted-foreground transition-colors hover:border-border/60 hover:text-foreground">{generalFolderName}</button>
+                  {folders.filter((folder) => folder.id !== editingFolderId).map((folder) => (
+                    <button key={folder.id} type="button" onClick={() => handleTransferLists(folder.id)} className="rounded-full border border-border/30 px-3 py-1 text-[12px] text-muted-foreground transition-colors hover:border-border/60 hover:text-foreground">{folder.name}</button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {editingFolderId === null && (
+              <div className="space-y-2 border-t border-border/30 pt-2">
+                <label className="text-[12px] font-medium text-muted-foreground">Transfer all saved lists to</label>
+                <div className="flex flex-wrap gap-2">
+                  {folders.map((folder) => (
+                    <button key={folder.id} type="button" onClick={() => handleTransferLists(folder.id)} className="rounded-full border border-border/30 px-3 py-1 text-[12px] text-muted-foreground transition-colors hover:border-border/60 hover:text-foreground">{folder.name}</button>
+                  ))}
+                  {folders.length === 0 && <p className="text-[11px] text-muted-foreground/60">No folders to transfer to. Create a folder first.</p>}
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
+        <AlertDialogContent className="min-h-[360px] max-w-[92vw] sm:max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete folder?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {editingFolderId === null
+                ? `Clear all saved lists in "${generalFolderName}"?`
+                : `Delete "${editingFolderName}"? Saved lists will be moved to another folder.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {editingFolderId !== null && (
+          <div className="space-y-2">
+            <label className="text-[12px] font-medium text-muted-foreground">Move lists to</label>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => setDeleteTargetFolderId(null)} className={cn("rounded-full border px-3 py-1 text-[12px] transition-colors", deleteTargetFolderId === null ? "border-primary/40 bg-primary/10 text-primary" : "border-border/30 text-muted-foreground hover:border-border/60")}>{generalFolderName}</button>
+              {folders.filter((folder) => folder.id !== editingFolderId).map((folder) => (
+                <button key={folder.id} type="button" onClick={() => setDeleteTargetFolderId(folder.id)} className={cn("rounded-full border px-3 py-1 text-[12px] transition-colors", deleteTargetFolderId === folder.id ? "border-primary/40 bg-primary/10 text-primary" : "border-border/30 text-muted-foreground hover:border-border/60")}>{folder.name}</button>
+              ))}
+            </div>
+          </div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setIsDeleteConfirmOpen(false); setDeleteTargetFolderId(null) }}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteFolderWithMigration} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <p className="mt-4 text-center text-[11px] text-muted-foreground/50">
-        Questoes respondidas sao armazenadas localmente - voce nunca vera a mesma questao duas vezes.
+        Answered questions are stored locally, so you will not see the same question twice.
       </p>
     </div>
   )

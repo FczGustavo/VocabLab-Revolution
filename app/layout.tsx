@@ -22,7 +22,7 @@ const playfairDisplay = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: 'VocabLab - Revolution | By Gustavo_Fcs',
+  title: 'VocabLab Revolution | By Gustavo_Fcs',
   description: 'AI-powered dynamic flashcards for efficient language learning. Enhance your vocabulary with personalized flashcards and spaced repetition.',
   icons: {
     icon: [

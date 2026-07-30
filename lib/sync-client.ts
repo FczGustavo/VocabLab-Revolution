@@ -264,6 +264,21 @@ function requestResult<T>(request: IDBRequest<T>) {
   })
 }
 
+function stable(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stable).join(",")}]`
+  if (value && typeof value === "object") {
+    return `{${Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, item]) => `${JSON.stringify(key)}:${stable(item)}`)
+      .join(",")}}`
+  }
+  return JSON.stringify(value)
+}
+
+function labPayloadFingerprint(payload: SyncLabPayload) {
+  return stable({ stores: payload.stores, preferences: payload.preferences })
+}
+
 function stripLocalOnlyData(databaseName: string, storeName: string, value: unknown) {
   if (
     databaseName === "vocab-lab-db"
@@ -404,10 +419,18 @@ export async function exportLabData(lab: SyncLabId): Promise<SyncLabPayload> {
   }
 }
 
-export async function importLabData(input: unknown) {
+export async function importLabData(
+  input: unknown,
+  expectedLocalFingerprint?: string,
+) {
   const payload = SyncLabPayloadSchema.parse(input)
   const definition = DATABASE_BY_LAB[payload.lab]
   const backup = await exportLabData(payload.lab)
+  // A sync request may have started just before the user created a folder or
+  // moved a card. Never replace the database with that stale snapshot.
+  if (expectedLocalFingerprint && labPayloadFingerprint(backup) !== expectedLocalFingerprint) {
+    return false
+  }
   try {
     if (definition) await replaceDatabase(definition, payload.stores)
     importLabPreferences(payload.lab, payload.preferences)
@@ -417,6 +440,7 @@ export async function importLabData(input: unknown) {
     throw error
   }
   dispatchLabUpdate(payload.lab)
+  return true
 }
 
 export async function exportAllAppData(): Promise<SyncSnapshot> {

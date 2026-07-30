@@ -339,9 +339,16 @@ export async function synchronizeLab(syncCode: string, lab: SyncLabId) {
       return revision
     }
 
-    const merged = mergeLabPayloads(baseline?.payload, local, remoteState.payload)
-    if (payloadFingerprint(merged) !== payloadFingerprint(local)) {
-      await importLabData(merged)
+    // Pulling the remote data is asynchronous. Re-read immediately before an
+    // import so a folder/card created during the request cannot be overwritten
+    // by the old local snapshot captured above.
+    const currentLocal = await exportLabData(lab)
+    if (payloadFingerprint(currentLocal) !== payloadFingerprint(local)) continue
+
+    const merged = mergeLabPayloads(baseline?.payload, currentLocal, remoteState.payload)
+    if (payloadFingerprint(merged) !== payloadFingerprint(currentLocal)) {
+      const imported = await importLabData(merged, payloadFingerprint(currentLocal))
+      if (!imported) continue
     }
 
     if (payloadFingerprint(merged) !== payloadFingerprint(remoteState.payload)) {

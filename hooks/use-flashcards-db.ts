@@ -410,6 +410,7 @@ export function useFlashcardsDB() {
         id: crypto.randomUUID(),
         name: name.trim(),
         createdAt: Date.now(),
+        updatedAt: Date.now(),
       }
 
       return new Promise((resolve) => {
@@ -436,19 +437,24 @@ export function useFlashcardsDB() {
     try {
       const db = await openDatabase()
       const transaction = db.transaction([FLASHCARDS_STORE, FOLDERS_STORE], "readwrite")
-      const done = transactionComplete(transaction)
       const flashcardsStore = transaction.objectStore(FLASHCARDS_STORE)
       const foldersStore = transaction.objectStore(FOLDERS_STORE)
-      const cardsInFolder = flashcards.filter(f => f.folderId === id)
-      for (const card of cardsInFolder) {
-        flashcardsStore.put({ ...card, folderId: null })
+      // Read IndexedDB rather than React state: a transfer can have completed
+      // in the database while the component still holds the previous list.
+      const cardsInFolder = await new Promise<Flashcard[]>((resolve, reject) => {
+        const request = flashcardsStore.index("folderId").getAll(id)
+        request.onsuccess = () => resolve(request.result as Flashcard[])
+        request.onerror = () => reject(request.error)
+      })
+      // Folder deletion must never silently move cards to the virtual General
+      // folder. Callers explicitly transfer or delete cards first.
+      if (cardsInFolder.length > 0) {
+        transaction.abort()
+        return false
       }
       foldersStore.delete(id)
-      await done
+      await transactionComplete(transaction)
       setFolders((prev) => prev.filter((f) => f.id !== id))
-      setFlashcards((prev) => prev.map(card =>
-        card.folderId === id ? { ...card, folderId: null } : card
-      ))
       if (selectedFolderId === id) setSelectedFolderId(null)
       notifyFlashcardsUpdated()
       return true
@@ -456,7 +462,7 @@ export function useFlashcardsDB() {
       console.error("Error deleting folder:", error)
       return false
     }
-  }, [flashcards, selectedFolderId])
+  }, [selectedFolderId])
 
   const renameFolder = useCallback(async (id: string, newName: string): Promise<boolean> => {
     try {
@@ -474,7 +480,7 @@ export function useFlashcardsDB() {
             return
           }
 
-          const updatedFolder = { ...folder, name: newName.trim() }
+          const updatedFolder = { ...folder, name: newName.trim(), updatedAt: Date.now() }
           const putRequest = store.put(updatedFolder)
 
           putRequest.onsuccess = () => {
@@ -520,6 +526,7 @@ export function useFlashcardsDB() {
           ...flashcard,
           word: normalizedWord,
           folderId: resolvedFolderId,
+          updatedAt: Date.now(),
         }
 
         return new Promise((resolve) => {
@@ -597,10 +604,10 @@ export function useFlashcardsDB() {
           const merged: Flashcard = {
             ...flashcard,
             word: normalizedWord,
-            folderId:
-              flashcard.folderId === null && existingById?.folderId !== null && existingById?.folderId !== undefined
-                ? existingById.folderId
-                : flashcard.folderId,
+            // `null` is a deliberate request for the virtual General folder;
+            // do not reinterpret it as an old folder assignment.
+            folderId: flashcard.folderId,
+            updatedAt: Date.now(),
           }
 
           const index = store.index("word_pos")
@@ -644,7 +651,7 @@ export function useFlashcardsDB() {
       const flashcard = flashcards.find(f => f.id === flashcardId)
       if (!flashcard) return false
 
-      const updatedFlashcard = { ...flashcard, folderId }
+      const updatedFlashcard = { ...flashcard, folderId, updatedAt: Date.now() }
 
       return new Promise((resolve) => {
         const request = store.put(updatedFlashcard)
@@ -689,6 +696,7 @@ export function useFlashcardsDB() {
           id: f.id,
           name: f.name,
           createdAt: typeof f.createdAt === "number" ? f.createdAt : Date.now(),
+          updatedAt: typeof f.updatedAt === "number" ? f.updatedAt : undefined,
         }))
 
       const folderIds = new Set(safeFolders.map((f) => f.id))

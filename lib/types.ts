@@ -22,6 +22,8 @@ export interface Folder {
   id: string
   name: string
   createdAt: number
+  /** Last content change. Used by the cross-device conflict resolver. */
+  updatedAt?: number
 }
 
 export interface Flashcard {
@@ -66,6 +68,8 @@ export interface Flashcard {
   /** Hash of catalog-owned content, used to preserve user edits on upgrades. */
   catalogContentHash?: string
   createdAt: number
+  /** Last content change. Older cards may not have this field. */
+  updatedAt?: number
 }
 
 export interface FlashcardAIResponse {

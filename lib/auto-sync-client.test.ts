@@ -107,4 +107,29 @@ describe("mergeLabPayloads", () => {
       expect.objectContaining({ id: "remote-card", folderId: "remote-folder" }),
     ]))
   })
+
+  it("preserves a newly created folder and its moved card against an older remote snapshot", () => {
+    const base = payload({
+      folders: [{ id: "source", name: "Source", createdAt: 1 }],
+      flashcards: [{ id: "card", word: "work", partOfSpeech: "verb", folderId: "source", updatedAt: 1 }],
+    })
+    const merged = mergeLabPayloads(
+      base,
+      payload({
+        folders: [
+          { id: "source", name: "Source", createdAt: 1 },
+          { id: "destination", name: "Destination", createdAt: 2 },
+        ],
+        flashcards: [{ id: "card", word: "work", partOfSpeech: "verb", folderId: "destination", updatedAt: 2 }],
+      }),
+      base,
+    )
+
+    expect(merged.stores.folders).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "destination", name: "Destination" }),
+    ]))
+    expect(merged.stores.flashcards).toEqual([
+      expect.objectContaining({ id: "card", folderId: "destination" }),
+    ])
+  })
 })

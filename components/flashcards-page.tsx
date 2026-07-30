@@ -1792,9 +1792,11 @@ export function FlashcardsPage() {
                       type="button"
                       onClick={async () => {
                         const cardsToMove = flashcards.filter(f => f.folderId === editingFolderId)
-                        await Promise.all(cardsToMove.map(card => updateFlashcard({ ...card, folderId: folder.id })))
-                        // Auto-delete empty folder
-                        await deleteFolder(editingFolderId)
+                        const moved = await Promise.all(cardsToMove.map(card => updateFlashcard({ ...card, folderId: folder.id })))
+                        if (moved.some((success) => !success) || !await deleteFolder(editingFolderId)) {
+                          toast({ title: "Folder preserved", description: "Some cards could not be transferred. Try again.", variant: "destructive" })
+                          return
+                        }
                         toast({
                           title: "Cards transferred",
                           description: `${cardsToMove.length} cards moved to "${folder.name}". Folder deleted.`,
@@ -1821,7 +1823,11 @@ export function FlashcardsPage() {
                       type="button"
                       onClick={async () => {
                         const cardsToMove = flashcards.filter(f => !f.folderId)
-                        await Promise.all(cardsToMove.map(card => updateFlashcard({ ...card, folderId: folder.id })))
+                        const moved = await Promise.all(cardsToMove.map(card => updateFlashcard({ ...card, folderId: folder.id })))
+                        if (moved.some((success) => !success)) {
+                          toast({ title: "Transfer incomplete", description: "Some cards could not be transferred. Try again.", variant: "destructive" })
+                          return
+                        }
                         toast({
                           title: "Cards transferred",
                           description: `${cardsToMove.length} cards moved to "${folder.name}".`,
@@ -1858,7 +1864,11 @@ export function FlashcardsPage() {
                           onClick={async () => {
                             // Only move review cards, not the parent folder
                             const cardsToMove = flashcards.filter(f => f.isReviewFolder && f.folderId === selectedReviewFolderId)
-                            await Promise.all(cardsToMove.map(card => updateFlashcard({ ...card, folderId: parentFolderId === "__general__" ? null : parentFolderId })))
+                            const moved = await Promise.all(cardsToMove.map(card => updateFlashcard({ ...card, folderId: parentFolderId === "__general__" ? null : parentFolderId })))
+                            if (moved.some((success) => !success)) {
+                              toast({ title: "Transfer incomplete", description: "Some review cards could not be transferred. Try again.", variant: "destructive" })
+                              return
+                            }
                             toast({
                               title: "Review cards transferred",
                               description: `${cardsToMove.length} review cards moved to "${parentFolderName}".`,

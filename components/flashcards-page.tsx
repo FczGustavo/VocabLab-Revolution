@@ -1793,13 +1793,13 @@ export function FlashcardsPage() {
                       onClick={async () => {
                         const cardsToMove = flashcards.filter(f => f.folderId === editingFolderId)
                         const moved = await Promise.all(cardsToMove.map(card => updateFlashcard({ ...card, folderId: folder.id })))
-                        if (moved.some((success) => !success) || !await deleteFolder(editingFolderId)) {
-                          toast({ title: "Folder preserved", description: "Some cards could not be transferred. Try again.", variant: "destructive" })
+                        if (moved.some((success) => !success)) {
+                          toast({ title: "Transfer incomplete", description: "Some cards could not be transferred. Try again.", variant: "destructive" })
                           return
                         }
                         toast({
                           title: "Cards transferred",
-                          description: `${cardsToMove.length} cards moved to "${folder.name}". Folder deleted.`,
+                          description: `${cardsToMove.length} cards moved to "${folder.name}".`,
                         })
                         setIsRenameDialogOpen(false)
                       }}

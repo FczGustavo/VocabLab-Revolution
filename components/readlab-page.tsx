@@ -920,10 +920,9 @@ export function ReadlabPage() {
                     onClick={async () => {
                       const textsToMove = allTexts.filter((t) => t.folderId === editingFolderId)
                       await Promise.all(textsToMove.map((t) => updateText({ ...t, folderId: null })))
-                      await deleteFolder(editingFolderId)
                       toast({
                         title: "Texts moved",
-                        description: `${textsToMove.length} texts moved to "${generalFolderName}". Folder deleted.`,
+                        description: `${textsToMove.length} texts moved to "${generalFolderName}".`,
                       })
                       setIsRenameDialogOpen(false)
                     }}
@@ -938,10 +937,9 @@ export function ReadlabPage() {
                       onClick={async () => {
                       const textsToMove = allTexts.filter((t) => t.folderId === editingFolderId)
                         await Promise.all(textsToMove.map((t) => updateText({ ...t, folderId: folder.id })))
-                        await deleteFolder(editingFolderId)
                         toast({
                           title: "Texts moved",
-                          description: `${textsToMove.length} texts moved to "${folder.name}". Folder deleted.`,
+                          description: `${textsToMove.length} texts moved to "${folder.name}".`,
                         })
                         setIsRenameDialogOpen(false)
                       }}

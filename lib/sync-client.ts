@@ -292,23 +292,27 @@ function stripLocalOnlyData(databaseName: string, storeName: string, value: unkn
   return value
 }
 
+async function readDatabaseStores(definition: DatabaseDefinition, db: IDBDatabase) {
+  const storeNames = definition.stores
+    .map((store) => store.name)
+    .filter((name) => db.objectStoreNames.contains(name))
+  const transaction = db.transaction(storeNames, "readonly")
+  const done = transactionDone(transaction)
+  const entries = await Promise.all(storeNames.map(async (storeName) => {
+    const values = await requestResult(transaction.objectStore(storeName).getAll())
+    return [
+      storeName,
+      values.map((value) => stripLocalOnlyData(definition.name, storeName, value)),
+    ] as const
+  }))
+  await done
+  return Object.fromEntries(entries)
+}
+
 async function exportDatabase(definition: DatabaseDefinition) {
   const db = await openDatabase(definition)
   try {
-    const storeNames = definition.stores
-      .map((store) => store.name)
-      .filter((name) => db.objectStoreNames.contains(name))
-    const transaction = db.transaction(storeNames, "readonly")
-    const done = transactionDone(transaction)
-    const entries = await Promise.all(storeNames.map(async (storeName) => {
-      const values = await requestResult(transaction.objectStore(storeName).getAll())
-      return [
-        storeName,
-        values.map((value) => stripLocalOnlyData(definition.name, storeName, value)),
-      ] as const
-    }))
-    await done
-    return Object.fromEntries(entries)
+    return await readDatabaseStores(definition, db)
   } finally {
     db.close()
   }
@@ -317,9 +321,16 @@ async function exportDatabase(definition: DatabaseDefinition) {
 async function replaceDatabase(
   definition: DatabaseDefinition,
   stores: Record<string, unknown[]>,
+  expectedStores?: Record<string, unknown[]>,
 ) {
   const db = await openDatabase(definition)
   try {
+    // This second check happens after IndexedDB is open and directly before
+    // the replacement transaction. It closes the race where a user action
+    // lands while the sync request is waiting for the database connection.
+    if (expectedStores && stable(await readDatabaseStores(definition, db)) !== stable(expectedStores)) {
+      return false
+    }
     const storeNames = definition.stores.map((store) => store.name)
     const transaction = db.transaction(storeNames, "readwrite")
     const done = transactionDone(transaction)
@@ -331,6 +342,7 @@ async function replaceDatabase(
     }
 
     await done
+    return true
   } finally {
     db.close()
   }
@@ -421,18 +433,20 @@ export async function exportLabData(lab: SyncLabId): Promise<SyncLabPayload> {
 
 export async function importLabData(
   input: unknown,
-  expectedLocalFingerprint?: string,
+  expectedLocal?: SyncLabPayload,
 ) {
   const payload = SyncLabPayloadSchema.parse(input)
   const definition = DATABASE_BY_LAB[payload.lab]
   const backup = await exportLabData(payload.lab)
   // A sync request may have started just before the user created a folder or
   // moved a card. Never replace the database with that stale snapshot.
-  if (expectedLocalFingerprint && labPayloadFingerprint(backup) !== expectedLocalFingerprint) {
+  if (expectedLocal && labPayloadFingerprint(backup) !== labPayloadFingerprint(expectedLocal)) {
     return false
   }
   try {
-    if (definition) await replaceDatabase(definition, payload.stores)
+    if (definition && !await replaceDatabase(definition, payload.stores, expectedLocal?.stores)) {
+      return false
+    }
     importLabPreferences(payload.lab, payload.preferences)
   } catch (error) {
     if (definition) await replaceDatabase(definition, backup.stores)

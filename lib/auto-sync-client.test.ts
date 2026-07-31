@@ -132,4 +132,16 @@ describe("mergeLabPayloads", () => {
       expect.objectContaining({ id: "card", folderId: "destination" }),
     ])
   })
+
+  it("resolves cards with the same unique VocabLab word and category before import", () => {
+    const merged = mergeLabPayloads(
+      payload({ flashcards: [] }),
+      payload({ flashcards: [{ id: "local", word: "work", partOfSpeech: "verb", updatedAt: 1 }] }),
+      payload({ flashcards: [{ id: "remote", word: "work", partOfSpeech: "verb", updatedAt: 2 }] }),
+    )
+
+    expect(merged.stores.flashcards).toEqual([
+      expect.objectContaining({ id: "remote", word: "work" }),
+    ])
+  })
 })

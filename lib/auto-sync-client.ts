@@ -213,6 +213,30 @@ function remapFolderReferences(values: unknown[], aliases: Map<string, string>) 
   })
 }
 
+function enforceStoreConstraints(storeName: string, values: unknown[]) {
+  // VocabLab enforces a unique IndexedDB index for word + part of speech.
+  // Two devices can still create that same card before their first sync; keep
+  // the newest version here instead of letting the import transaction abort.
+  if (storeName !== "flashcards") return values
+  const byWordAndPartOfSpeech = new Map<string, unknown>()
+  for (const value of values) {
+    if (!value || typeof value !== "object") continue
+    const record = value as Record<string, unknown>
+    const word = typeof record.word === "string" ? record.word.trim().toLocaleLowerCase("en-US") : ""
+    const partOfSpeech = typeof record.partOfSpeech === "string" ? record.partOfSpeech : ""
+    if (!word || !partOfSpeech) {
+      byWordAndPartOfSpeech.set(`record:${stable(value)}`, value)
+      continue
+    }
+    const key = `${word}\u0000${partOfSpeech}`
+    const existing = byWordAndPartOfSpeech.get(key)
+    if (!existing || timestamp(value) >= timestamp(existing)) {
+      byWordAndPartOfSpeech.set(key, value)
+    }
+  }
+  return [...byWordAndPartOfSpeech.values()]
+}
+
 export function mergeLabPayloads(
   base: SyncLabPayload | undefined,
   local: SyncLabPayload,
@@ -242,12 +266,12 @@ export function mergeLabPayloads(
   )
   for (const storeName of storeNames) {
     if (storeName === "folders") continue
-    stores[storeName] = remapFolderReferences(mergeStore(
+    stores[storeName] = enforceStoreConstraints(storeName, remapFolderReferences(mergeStore(
       storeName,
       base?.stores[storeName] ?? [],
       local.stores[storeName] ?? [],
       remote.stores[storeName] ?? [],
-    ), aliases)
+    ), aliases))
   }
 
   const preferences: Record<string, string> = {}
@@ -347,7 +371,7 @@ export async function synchronizeLab(syncCode: string, lab: SyncLabId) {
 
     const merged = mergeLabPayloads(baseline?.payload, currentLocal, remoteState.payload)
     if (payloadFingerprint(merged) !== payloadFingerprint(currentLocal)) {
-      const imported = await importLabData(merged, payloadFingerprint(currentLocal))
+      const imported = await importLabData(merged, currentLocal)
       if (!imported) continue
     }
 

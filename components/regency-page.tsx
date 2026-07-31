@@ -158,12 +158,10 @@ export function RegencyPage() {
     }
     setManagerOpen(false)
   }
-  const transferAndDeleteFolder = async (target: string) => {
+  const transferFolderCards = async (target: string) => {
     if (!editingFolder) return
     const moved = await moveCards(editingFolder.id, target === "__general__" ? null : target)
-    if (!moved) { setFormError("Could not transfer the cards. The folder was preserved."); return }
-    const deleted = await deleteFolder(editingFolder.id)
-    if (!deleted) { setFormError("Cards were transferred, but the folder could not be deleted."); return }
+    if (!moved) { setFormError("Could not transfer the cards."); return }
     setManagerOpen(false)
   }
   const confirmDeleteFolder = async () => {
@@ -365,8 +363,8 @@ export function RegencyPage() {
             {editingFolder && <div className="space-y-2 border-t border-border/30 pt-2">
               <label className="text-[12px] font-medium text-muted-foreground">Transfer all cards to</label>
               <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => void transferAndDeleteFolder("__general__")} className="rounded-full border border-border/30 px-3 py-1 text-[12px] text-muted-foreground transition-colors hover:border-border/60 hover:text-foreground">{generalFolderName}</button>
-                {folders.filter((folder) => folder.id !== editingFolder.id).map((folder) => <button key={folder.id} type="button" onClick={() => void transferAndDeleteFolder(folder.id)} className="rounded-full border border-border/30 px-3 py-1 text-[12px] text-muted-foreground transition-colors hover:border-border/60 hover:text-foreground">{folder.name}</button>)}
+                <button type="button" onClick={() => void transferFolderCards("__general__")} className="rounded-full border border-border/30 px-3 py-1 text-[12px] text-muted-foreground transition-colors hover:border-border/60 hover:text-foreground">{generalFolderName}</button>
+                {folders.filter((folder) => folder.id !== editingFolder.id).map((folder) => <button key={folder.id} type="button" onClick={() => void transferFolderCards(folder.id)} className="rounded-full border border-border/30 px-3 py-1 text-[12px] text-muted-foreground transition-colors hover:border-border/60 hover:text-foreground">{folder.name}</button>)}
               </div>
             </div>}
             {!editingFolder && folders.length > 0 && <div className="space-y-2 border-t border-border/30 pt-2">

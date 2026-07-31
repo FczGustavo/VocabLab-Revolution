@@ -449,7 +449,6 @@ export function useFlashcardsDB() {
       // Folder deletion must never silently move cards to the virtual General
       // folder. Callers explicitly transfer or delete cards first.
       if (cardsInFolder.length > 0) {
-        transaction.abort()
         return false
       }
       foldersStore.delete(id)

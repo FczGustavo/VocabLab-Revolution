@@ -247,7 +247,7 @@ export function GrammarPage() {
   }
 
   const handleTransferLists = async (targetFolderId: string | null) => {
-    await transferLists(editingFolderId, targetFolderId, editingFolderId !== null)
+    await transferLists(editingFolderId, targetFolderId)
     setIsFolderManagerOpen(false)
   }
 

@@ -22,6 +22,7 @@ interface WritingModeProps {
   onExit: () => void
   onMarkForReview?: (id: string) => Promise<boolean>
   onMarkAsLearned?: (id: string) => Promise<boolean>
+  onRecordResult?: (id: string, knewIt: boolean) => Promise<boolean>
 }
 
 function shuffle(cards: Flashcard[]) {
@@ -43,11 +44,11 @@ function formatElapsedTime(totalSeconds: number) {
  * Active recall for the review queue. The answer field is deliberately optional:
  * learners can formulate it mentally, reveal the card, then rate their recall.
  */
-export function WritingMode({ flashcards, folderName, onExit, onMarkForReview, onMarkAsLearned }: WritingModeProps) {
+export function WritingMode({ flashcards, folderName, onExit, onMarkForReview, onMarkAsLearned, onRecordResult }: WritingModeProps) {
   const { enabled: animationsEnabled } = useAnimations()
   const { enabled: studyTimerEnabled } = useStudyTimer()
   const { threshold: reviewMistakeThreshold } = useReviewMistakeThreshold()
-  const { showContext, contextInPortuguese, showIPA } = useAiPreferences()
+  const { showContext, contextInPortuguese, showIPA, includeMultipleTranslations } = useAiPreferences()
   const [queue, setQueue] = useState<Flashcard[]>(() => shuffle(flashcards))
   const [answer, setAnswer] = useState("")
   const [revealed, setRevealed] = useState(false)
@@ -104,12 +105,14 @@ export function WritingMode({ flashcards, folderName, onExit, onMarkForReview, o
     if (knew) {
       setCorrect((value) => value + 1)
       setRemovedIds((ids) => new Set([...ids, current.id]))
+      await onRecordResult?.(current.id, true)
       await onMarkAsLearned?.(current.id)
     } else {
       setWrong((value) => value + 1)
+      await onRecordResult?.(current.id, false)
       const nextWrongCount = (wrongCounts[current.id] ?? 0) + 1
       setWrongCounts((counts) => ({ ...counts, [current.id]: nextWrongCount }))
-      if (nextWrongCount >= reviewMistakeThreshold) {
+      if (reviewMistakeThreshold > 0 && nextWrongCount >= reviewMistakeThreshold) {
         await onMarkForReview?.(current.id)
       }
     }
@@ -122,7 +125,7 @@ export function WritingMode({ flashcards, folderName, onExit, onMarkForReview, o
       return next
     })
     setExiting(null)
-  }, [animationsEnabled, current, exiting, onMarkAsLearned, onMarkForReview, revealed, reviewMistakeThreshold, wrongCounts])
+  }, [animationsEnabled, current, exiting, onMarkAsLearned, onMarkForReview, onRecordResult, revealed, reviewMistakeThreshold, wrongCounts])
 
   useStudyKeyboardShortcuts({ enabled: !finished && Boolean(current) && !exiting, onReveal: () => setRevealed(true), onHide: () => setRevealed(false) })
 
@@ -182,7 +185,7 @@ export function WritingMode({ flashcards, folderName, onExit, onMarkForReview, o
               <div className={cn("surface-card surface-card-elevated flex h-full flex-col overflow-hidden rounded-[26px] bg-card p-7", animationsEnabled && "animate-in fade-in duration-200", exiting === "known" && "study-card-exit-known", exiting === "again" && "study-card-exit-again")}>
                 <CardHeader card={current} onSpeak={() => speak(current.word)} onToggleTranslations={() => setShowTranslations((value) => !value)} translationsShown={showTranslations} />
                 <div className="flex-1 space-y-4 overflow-y-auto pr-1 scrollbar-hide sm:space-y-5">
-                  <p className="text-2xl font-medium text-foreground/80 sm:text-4xl">{current.translation}</p>
+                  <p className="text-2xl font-medium text-foreground/80 sm:text-4xl">{includeMultipleTranslations ? current.translation : current.translation.split("/")[0]?.trim()}</p>
                   {showIPA && current.ipa && <p className="-mt-2 text-sm font-medium tracking-wide text-muted-foreground/80">/{current.ipa}/</p>}
                   <div className="border-t border-border/40" />
                   <section><p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Example</p><p className="mt-2 text-base italic leading-relaxed text-foreground">&ldquo;{current.example}&rdquo;</p>{showTranslations && current.exampleTranslation && <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{current.exampleTranslation}</p>}</section>

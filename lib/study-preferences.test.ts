@@ -22,7 +22,7 @@ describe("normalizeReviewMistakeThreshold", () => {
 
   it("truncates and clamps invalid ranges", () => {
     expect(normalizeReviewMistakeThreshold(4.9)).toBe(4)
-    expect(normalizeReviewMistakeThreshold(-3)).toBe(1)
+    expect(normalizeReviewMistakeThreshold(-3)).toBe(0)
     expect(normalizeReviewMistakeThreshold(99)).toBe(10)
     expect(normalizeReviewMistakeThreshold("not-a-number")).toBe(
       DEFAULT_REVIEW_MISTAKE_THRESHOLD,

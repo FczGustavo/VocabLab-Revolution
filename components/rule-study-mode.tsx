@@ -40,6 +40,7 @@ interface RuleStudyModeProps {
   onExit: () => void
   onMarkForReview?: (id: string) => Promise<boolean>
   onMarkAsLearned?: (id: string) => Promise<boolean>
+  onRecordResult?: (id: string, knewIt: boolean) => Promise<boolean>
 }
 
 export function RuleStudyMode({
@@ -49,6 +50,7 @@ export function RuleStudyMode({
   onExit,
   onMarkForReview,
   onMarkAsLearned,
+  onRecordResult,
 }: RuleStudyModeProps) {
   const [queue, setQueue] = useState(() => shuffle(cards))
   const [knownIds, setKnownIds] = useState<Set<string>>(new Set())
@@ -80,6 +82,7 @@ export function RuleStudyMode({
     }
 
     if (known) {
+      await onRecordResult?.(current.id, true)
       setKnownIds((ids) => new Set(ids).add(current.id))
       await onMarkAsLearned?.(current.id)
       setQueue((items) => {
@@ -88,12 +91,13 @@ export function RuleStudyMode({
         return next
       })
     } else {
+      await onRecordResult?.(current.id, false)
       const nextWrongCount = (wrongCounts[current.id] ?? 0) + 1
       setWrongCounts((items) => ({
         ...items,
         [current.id]: nextWrongCount,
       }))
-      if (nextWrongCount >= reviewMistakeThreshold) {
+      if (reviewMistakeThreshold > 0 && nextWrongCount >= reviewMistakeThreshold) {
         await onMarkForReview?.(current.id)
       }
       setQueue((items) =>

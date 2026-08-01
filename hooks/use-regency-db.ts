@@ -350,11 +350,15 @@ export function useRegencyDB() {
     if (!card || !card.isReviewFolder) return false
     return updateCard({ ...card, isReviewFolder: false })
   }, [allCards, updateCard])
+  const recordStudyResult = useCallback(async (id: string, knewIt: boolean) => {
+    const card = allCards.find((item) => item.id === id)
+    return card ? updateCard({ ...card, studyStreak: knewIt ? (card.studyStreak ?? 0) + 1 : 0 }) : false
+  }, [allCards, updateCard])
 
   const cards = selectedFolderId
     ? allCards.filter((card) => selectedFolderId === "__general__" ? !card.folderId : card.folderId === selectedFolderId)
     : allCards
   const reviewCards = allCards.filter((card) => card.isReviewFolder)
 
-  return { allCards, cards, reviewCards, folders, selectedFolderId, setSelectedFolderId, isLoading, addFolder, renameFolder, deleteFolder, addCard, updateCard, deleteCard, deleteCardsInFolder, moveCards, addToReviewFolder, removeFromReviewFolder, refresh: loadData }
+  return { allCards, cards, reviewCards, folders, selectedFolderId, setSelectedFolderId, isLoading, addFolder, renameFolder, deleteFolder, addCard, updateCard, deleteCard, deleteCardsInFolder, moveCards, addToReviewFolder, removeFromReviewFolder, recordStudyResult, refresh: loadData }
 }

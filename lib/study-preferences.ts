@@ -2,7 +2,7 @@ export const REVIEW_MISTAKE_THRESHOLD_STORAGE_KEY =
   "vocablab_study_review_mistake_threshold"
 
 export const DEFAULT_REVIEW_MISTAKE_THRESHOLD = 2
-export const MIN_REVIEW_MISTAKE_THRESHOLD = 1
+export const MIN_REVIEW_MISTAKE_THRESHOLD = 0
 export const MAX_REVIEW_MISTAKE_THRESHOLD = 10
 
 export function normalizeReviewMistakeThreshold(value: unknown) {

@@ -92,7 +92,6 @@ export function AddFlashcardForm({ onAdd, onUpdate, bare, folderId = null, pipel
   const {
     includeSynonymsAntonyms,
     synonymsDisplayCount,
-    includeConjugations,
     includeAlternativeForms,
     showContext,
     showIPA,
@@ -360,7 +359,9 @@ export function AddFlashcardForm({ onAdd, onUpdate, bare, folderId = null, pipel
     const normalizedExampleTranslation = manualExampleTranslation.trim()
     const normalizedUsageNote = manualUsageNote.trim()
     const needsCoreEnrichment = !normalizedTranslation || !normalizedExample || !normalizedExampleTranslation
-    const needsConjugationEnrichment = includeConjugations && (manualPartOfSpeech === "verb" || manualPartOfSpeech === "phrasal-verb")
+    // Conjugations are stored for every eligible verb. The preference is visual
+    // only, so enabling it later never requires a second AI pass.
+    const needsConjugationEnrichment = manualPartOfSpeech === "verb" || manualPartOfSpeech === "phrasal-verb"
     const needsBackgroundEnrichment = true
 
     if (!normalizedWord) {

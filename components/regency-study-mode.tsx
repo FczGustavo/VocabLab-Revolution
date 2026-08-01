@@ -114,6 +114,7 @@ export function RegencyStudyMode({
   display,
   onMarkForReview,
   onMarkAsLearned,
+  onRecordResult,
   onExit,
 }: {
   cards: RegencyCard[];
@@ -122,6 +123,7 @@ export function RegencyStudyMode({
   display: RegencyDisplayPreferences;
   onMarkForReview?: (id: string) => Promise<boolean>;
   onMarkAsLearned?: (id: string) => Promise<boolean>;
+  onRecordResult?: (id: string, knewIt: boolean) => Promise<boolean>;
   onExit: () => void;
 }) {
   const { enabled: animationsEnabled } = useAnimations();
@@ -178,7 +180,20 @@ export function RegencyStudyMode({
     let source = resultFor(text, pronunciationVoice).src;
     if (!source)
       source = await ensurePronunciation(text, { voice: pronunciationVoice });
-    if (source) await new Audio(source).play().catch(() => undefined);
+    if (source) {
+      try {
+        await new Audio(source).play();
+        return;
+      } catch {
+        // Fall through to the browser voice if a generated source cannot play.
+      }
+    }
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "en-US";
+      utterance.rate = 0.85;
+      window.speechSynthesis.speak(utterance);
+    }
   };
 
   const advance = async (correct: boolean) => {
@@ -190,11 +205,13 @@ export function RegencyStudyMode({
       await new Promise((resolve) => window.setTimeout(resolve, 260));
     }
     if (correct) {
+      await onRecordResult?.(current.id, true);
       await onMarkAsLearned?.(current.id);
     } else {
+      await onRecordResult?.(current.id, false);
       const nextWrongCount = (wrongCounts[current.id] ?? 0) + 1;
       setWrongCounts((counts) => ({ ...counts, [current.id]: nextWrongCount }));
-      if (nextWrongCount >= reviewMistakeThreshold) {
+      if (reviewMistakeThreshold > 0 && nextWrongCount >= reviewMistakeThreshold) {
         await onMarkForReview?.(current.id);
       }
     }

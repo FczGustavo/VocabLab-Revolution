@@ -33,12 +33,13 @@ interface StudyModeProps {
   onExit: () => void
   onMarkForReview?: (id: string) => Promise<boolean>
   onMarkAsLearned?: (id: string) => Promise<boolean>
+  onRecordResult?: (id: string, knewIt: boolean) => Promise<boolean>
 }
 
 /** Shared VocabLab study surface: normal folders and review folders use this exact experience. */
-export function StudyMode({ flashcards, folderName, onExit, onMarkForReview, onMarkAsLearned }: StudyModeProps) {
+export function StudyMode({ flashcards, folderName, onExit, onMarkForReview, onMarkAsLearned, onRecordResult }: StudyModeProps) {
   const { saveStudySession } = useGrammarProgress()
-  const { showContext, contextInPortuguese, showIPA, pronunciationVoice } = useAiPreferences()
+  const { showContext, contextInPortuguese, showIPA, pronunciationVoice, includeMultipleTranslations } = useAiPreferences()
   const { ensurePronunciation, resultFor } = usePronunciation()
   const { enabled: animationsEnabled } = useAnimations()
   const { threshold: reviewMistakeThreshold } = useReviewMistakeThreshold()
@@ -80,7 +81,11 @@ export function StudyMode({ flashcards, folderName, onExit, onMarkForReview, onM
     let source = resultFor(normalized, pronunciationVoice).src
     if (!source) source = await ensurePronunciation(normalized, { voice: pronunciationVoice })
     if (source) {
-      try { new Audio(source).play(); return } catch { /* use browser speech below */ }
+      try {
+        const audio = new Audio(source)
+        await audio.play()
+        return
+      } catch { /* use browser speech below */ }
     }
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       const utterance = new SpeechSynthesisUtterance(normalized)
@@ -100,11 +105,13 @@ export function StudyMode({ flashcards, folderName, onExit, onMarkForReview, onM
     }
     if (knewIt) {
       setKnownIds((ids) => new Set([...ids, current.id]))
+      await onRecordResult?.(current.id, true)
       await onMarkAsLearned?.(current.id)
     } else {
+      await onRecordResult?.(current.id, false)
       const nextWrongCount = (wrongCount[current.id] ?? 0) + 1
       setWrongCount((counts) => ({ ...counts, [current.id]: nextWrongCount }))
-      if (nextWrongCount >= reviewMistakeThreshold) {
+      if (reviewMistakeThreshold > 0 && nextWrongCount >= reviewMistakeThreshold) {
         await onMarkForReview?.(current.id)
       }
     }
@@ -115,7 +122,7 @@ export function StudyMode({ flashcards, folderName, onExit, onMarkForReview, onM
       return next
     })
     setExiting(null)
-  }, [animationsEnabled, current, exiting, onMarkAsLearned, onMarkForReview, reviewMistakeThreshold, wrongCount])
+  }, [animationsEnabled, current, exiting, onMarkAsLearned, onMarkForReview, onRecordResult, reviewMistakeThreshold, wrongCount])
 
   useStudyKeyboardShortcuts({ enabled: !finished && Boolean(current) && !exiting, onKnown: () => void advance(true), onAgain: () => void advance(false), onReveal: () => setFlipped(true), onHide: () => setFlipped(false) })
 
@@ -133,7 +140,7 @@ export function StudyMode({ flashcards, folderName, onExit, onMarkForReview, onM
       <main className="flex flex-1 items-center justify-center bg-background p-4 sm:p-8">
         <div className="w-full max-w-xl">
           <div className={cn("surface-card surface-card-elevated flex h-[430px] w-full cursor-pointer flex-col rounded-[26px] bg-card p-7 text-left", exiting === "known" && "study-card-exit-known", exiting === "again" && "study-card-exit-again")} onClick={() => !exiting && setFlipped((value) => !value)} role="button" tabIndex={0} onKeyDown={(event) => event.key === "Enter" && !exiting && setFlipped((value) => !value)}>
-            {flipped ? <VocabularyBack card={current} showContext={showContext} contextInPortuguese={contextInPortuguese} showIPA={showIPA} translationsShown={showTranslations} onToggleTranslations={() => setShowTranslations((value) => !value)} onSpeak={() => void speak(current.word)} /> : <VocabularyFront card={current} onSpeak={() => void speak(current.word)} />}
+            {flipped ? <VocabularyBack card={current} showContext={showContext} contextInPortuguese={contextInPortuguese} showIPA={showIPA} includeMultipleTranslations={includeMultipleTranslations} translationsShown={showTranslations} onToggleTranslations={() => setShowTranslations((value) => !value)} onSpeak={() => void speak(current.word)} /> : <VocabularyFront card={current} onSpeak={() => void speak(current.word)} />}
           </div>
           <div className="mt-5 flex gap-3">
             <Button disabled={Boolean(exiting)} variant="outline" className="h-11 flex-1 border-destructive/20 text-destructive hover:bg-destructive/10" onClick={() => void advance(false)}><XCircle className="mr-1.5 size-4" />Again</Button>
@@ -149,10 +156,11 @@ function VocabularyFront({ card, onSpeak }: { card: Flashcard; onSpeak: () => vo
   return <><div className="flex items-center justify-between"><CardBadges card={card} /><Button variant="ghost" size="icon" className="size-7 rounded-lg text-muted-foreground hover:text-primary" onClick={(event) => { event.stopPropagation(); onSpeak() }}><Volume2 className="size-4" /></Button></div><div className="flex flex-1 flex-col items-center justify-center text-center"><h2 className="text-5xl font-medium tracking-tight text-foreground/80 sm:text-6xl">{card.word}</h2></div></>
 }
 
-function VocabularyBack({ card, showContext, contextInPortuguese, showIPA, translationsShown, onToggleTranslations, onSpeak }: { card: Flashcard; showContext: boolean; contextInPortuguese: boolean; showIPA: boolean; translationsShown: boolean; onToggleTranslations: () => void; onSpeak: () => void }) {
+function VocabularyBack({ card, showContext, contextInPortuguese, showIPA, includeMultipleTranslations, translationsShown, onToggleTranslations, onSpeak }: { card: Flashcard; showContext: boolean; contextInPortuguese: boolean; showIPA: boolean; includeMultipleTranslations: boolean; translationsShown: boolean; onToggleTranslations: () => void; onSpeak: () => void }) {
   const contextPrimary = contextInPortuguese ? card.usageNote : card.usageNoteEn
   const contextSecondary = contextInPortuguese ? card.usageNoteEn : card.usageNote
-  return <div className="animate-in fade-in duration-200 flex h-full flex-col"><div className="flex items-center justify-between"><CardBadges card={card} /><div className="flex gap-1"><Button variant="ghost" size="icon" className={cn("size-7 rounded-lg", translationsShown ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-primary")} onClick={(event) => { event.stopPropagation(); onToggleTranslations() }}><Languages className="size-4" /></Button><Button variant="ghost" size="icon" className="size-7 rounded-lg text-muted-foreground hover:text-primary" onClick={(event) => { event.stopPropagation(); onSpeak() }}><Volume2 className="size-4" /></Button></div></div><div className="flex-1 space-y-4 overflow-y-auto pt-5 scrollbar-hide"><p className="text-2xl font-medium text-foreground/80 sm:text-4xl">{card.translation}</p>{showIPA && card.ipa && <p className="-mt-2 text-sm text-muted-foreground">/{card.ipa}/</p>}<div className="border-t border-border/40" /><section><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Example</p><p className="mt-3 text-lg italic leading-relaxed text-foreground/80">&ldquo;{card.example}&rdquo;</p>{translationsShown && card.exampleTranslation && <p className="mt-2 text-sm text-muted-foreground">{card.exampleTranslation}</p>}</section>{showContext && (card.usageNote || card.usageNoteEn) && <section className="rounded-xl bg-muted/30 p-4"><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Context</p>{contextPrimary && <p className="mt-2 text-sm text-foreground/80">{contextPrimary}</p>}{translationsShown && contextSecondary && <p className="mt-2 text-sm text-muted-foreground">{contextSecondary}</p>}</section>}</div></div>
+  const translation = includeMultipleTranslations ? card.translation : card.translation.split("/")[0]?.trim()
+  return <div className="animate-in fade-in duration-200 flex h-full flex-col"><div className="flex items-center justify-between"><CardBadges card={card} /><div className="flex gap-1"><Button variant="ghost" size="icon" className={cn("size-7 rounded-lg", translationsShown ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-primary")} onClick={(event) => { event.stopPropagation(); onToggleTranslations() }}><Languages className="size-4" /></Button><Button variant="ghost" size="icon" className="size-7 rounded-lg text-muted-foreground hover:text-primary" onClick={(event) => { event.stopPropagation(); onSpeak() }}><Volume2 className="size-4" /></Button></div></div><div className="flex-1 space-y-4 overflow-y-auto pt-5 scrollbar-hide"><p className="text-2xl font-medium text-foreground/80 sm:text-4xl">{translation}</p>{showIPA && card.ipa && <p className="-mt-2 text-sm text-muted-foreground">/{card.ipa}/</p>}<div className="border-t border-border/40" /><section><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Example</p><p className="mt-3 text-lg italic leading-relaxed text-foreground/80">&ldquo;{card.example}&rdquo;</p>{translationsShown && card.exampleTranslation && <p className="mt-2 text-sm text-muted-foreground">{card.exampleTranslation}</p>}</section>{showContext && (card.usageNote || card.usageNoteEn) && <section className="rounded-xl bg-muted/30 p-4"><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Context</p>{contextPrimary && <p className="mt-2 text-sm text-foreground/80">{contextPrimary}</p>}{translationsShown && contextSecondary && <p className="mt-2 text-sm text-muted-foreground">{contextSecondary}</p>}</section>}</div></div>
 }
 
 function CardBadges({ card }: { card: Flashcard }) {

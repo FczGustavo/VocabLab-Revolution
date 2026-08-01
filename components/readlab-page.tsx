@@ -117,8 +117,7 @@ export function ReadlabPage() {
   const getFolderGradient = (folderId: string, index: number): "default" | "violet" | "emerald" | "amber" | "rose" => {
     const color = folderColors[folderId]
     if (color) return color as "default" | "violet" | "emerald" | "amber" | "rose"
-    const defaults: Array<"default" | "violet" | "emerald" | "amber"> = ["default", "violet", "emerald", "amber"]
-    return defaults[index % defaults.length]
+    return "default"
   }
 
   const handleCreateFolder = async () => {
@@ -835,20 +834,20 @@ export function ReadlabPage() {
       <Dialog open={isRenameDialogOpen} onOpenChange={setIsRenameDialogOpen}>
         <DialogContent className="min-h-[360px] max-w-[92vw] sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Manage Folder</DialogTitle>
+            <DialogTitle>Gerenciar pasta</DialogTitle>
             <DialogDescription>
               {editingFolderId === null
                 ? `Manage the "${generalFolderName}" folder.`
-                : `Manage folder "${editingFolderName}".`}
+                : `Gerencie a pasta "${editingFolderName}".`}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 mt-2">
             {/* Folder name */}
             <div className="space-y-2">
-              <label className="text-[12px] font-medium text-muted-foreground">Folder name</label>
+              <label className="text-[12px] font-medium text-muted-foreground">Nome da pasta</label>
               <div className="flex gap-2">
                 <Input
-                  placeholder="Folder name"
+                  placeholder="Nome da pasta"
                   value={editingFolderName}
                   onChange={(e) => setEditingFolderName(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleRenameFolder() }}
@@ -865,7 +864,7 @@ export function ReadlabPage() {
 
             {/* Color options */}
             <div className="space-y-2">
-              <label className="text-[12px] font-medium text-muted-foreground">Folder color</label>
+              <label className="text-[12px] font-medium text-muted-foreground">Cor da pasta</label>
               <div className="flex gap-2">
                 {[
                   { id: "default", color: "bg-blue-400/50", label: "Blue" },
@@ -906,7 +905,7 @@ export function ReadlabPage() {
                 className="w-full h-10 rounded-md border border-destructive/20 bg-destructive/5 text-destructive hover:bg-destructive/10 transition-colors"
               >
                 <Trash2 className="size-4 text-muted-foreground" />
-                <span>Hold to delete</span>
+                <span>Segure para excluir</span>
               </LongPressButton>
             </div>
 
@@ -959,11 +958,11 @@ export function ReadlabPage() {
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent className="max-w-[92vw] sm:max-w-sm">
           <AlertDialogHeader className="pr-8">
-            <AlertDialogTitle>Delete folder?</AlertDialogTitle>
+            <AlertDialogTitle>Excluir pasta?</AlertDialogTitle>
             <AlertDialogDescription>
               {editingFolderId === null
                 ? `Delete "${generalFolderName}" folder and all its texts?`
-                : `Delete "${editingFolderName}"? Choose whether to transfer or permanently delete its texts.`}
+                : `Excluir "${editingFolderName}"? Escolha entre transferir ou apagar os textos permanentemente.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
 

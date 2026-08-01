@@ -227,8 +227,12 @@ export function useRuleDB() {
     const card = allCards.find((item) => item.id === id)
     return card?.isReviewFolder ? updateCard({ ...card, isReviewFolder: false }) : false
   }, [allCards, updateCard])
+  const recordStudyResult = useCallback(async (id: string, knewIt: boolean) => {
+    const card = allCards.find((item) => item.id === id)
+    return card ? updateCard({ ...card, studyStreak: knewIt ? (card.studyStreak ?? 0) + 1 : 0 }) : false
+  }, [allCards, updateCard])
 
   const cards = selectedFolderId ? allCards.filter((card) => card.folderId === selectedFolderId) : allCards
   const reviewCards = allCards.filter((card) => card.isReviewFolder)
-  return { allCards, cards, reviewCards, folders, selectedFolderId, setSelectedFolderId, isLoading, addFolder, renameFolder, deleteFolder, addCard, updateCard, deleteCard, deleteCardsInFolder, moveCards, addToReviewFolder, removeFromReviewFolder }
+  return { allCards, cards, reviewCards, folders, selectedFolderId, setSelectedFolderId, isLoading, addFolder, renameFolder, deleteFolder, addCard, updateCard, deleteCard, deleteCardsInFolder, moveCards, addToReviewFolder, removeFromReviewFolder, recordStudyResult }
 }

@@ -56,6 +56,8 @@ export interface Flashcard {
   aiEnriching?: boolean
   folderId: string | null
   isReviewFolder?: boolean
+  /** Consecutive correct answers in Study. Any Again resets this counter. */
+  studyStreak?: number
   audioSrc?: string
   /** Canonical headword for a morphological family (e.g. quick). */
   familyKey?: string
@@ -175,6 +177,7 @@ export interface RuleCard {
   folderId: string
   /** Virtual Review membership; the original folder remains unchanged. */
   isReviewFolder?: boolean
+  studyStreak?: number
   createdAt: number
   updatedAt: number
 }
@@ -206,6 +209,7 @@ export interface RegencyCard {
   contrastPt?: string
   /** Virtual Review membership; the card remains in its original folder. */
   isReviewFolder?: boolean
+  studyStreak?: number
   /** Stable identity of a card installed from the curated starter catalog. */
   catalogId?: string
   /** Catalog revision last applied to this card. */

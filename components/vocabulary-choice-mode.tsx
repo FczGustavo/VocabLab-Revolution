@@ -79,6 +79,7 @@ interface VocabularyChoiceModeProps {
   onExit: () => void;
   onMarkForReview?: (id: string) => Promise<boolean>;
   onMarkAsLearned?: (id: string) => Promise<boolean>;
+  onRecordResult?: (id: string, knewIt: boolean) => Promise<boolean>;
 }
 
 export function VocabularyChoiceMode({
@@ -87,6 +88,7 @@ export function VocabularyChoiceMode({
   onExit,
   onMarkForReview,
   onMarkAsLearned,
+  onRecordResult,
 }: VocabularyChoiceModeProps) {
   const { enabled: animationsEnabled } = useAnimations();
   const { threshold: reviewMistakeThreshold } = useReviewMistakeThreshold();
@@ -122,7 +124,20 @@ export function VocabularyChoiceMode({
       source = await ensurePronunciation(current.word, {
         voice: pronunciationVoice,
       });
-    if (source) await new Audio(source).play().catch(() => undefined);
+    if (source) {
+      try {
+        await new Audio(source).play();
+        return;
+      } catch {
+        // The network/model response may be valid but unsupported by a browser.
+      }
+    }
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      const utterance = new SpeechSynthesisUtterance(current.word);
+      utterance.lang = "en-US";
+      utterance.rate = 0.85;
+      window.speechSynthesis.speak(utterance);
+    }
   };
 
   const continueStudy = async (forcedKnew?: boolean) => {
@@ -133,12 +148,14 @@ export function VocabularyChoiceMode({
       await new Promise((resolve) => window.setTimeout(resolve, 260));
     }
     if (knew) {
+      await onRecordResult?.(current.id, true);
       setKnownIds((ids) => new Set([...ids, current.id]));
       await onMarkAsLearned?.(current.id);
     } else {
+      await onRecordResult?.(current.id, false);
       const nextWrongCount = (wrongCounts[current.id] ?? 0) + 1;
       setWrongCounts((counts) => ({ ...counts, [current.id]: nextWrongCount }));
-      if (nextWrongCount >= reviewMistakeThreshold) {
+      if (reviewMistakeThreshold > 0 && nextWrongCount >= reviewMistakeThreshold) {
         await onMarkForReview?.(current.id);
       }
     }

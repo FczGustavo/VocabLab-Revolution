@@ -460,7 +460,9 @@ export function ReadTextView({ text, onUpdateText }: ReadTextViewProps) {
         options: {
           includeSynonymsAntonyms: prefs.includeSynonymsAntonyms,
           synonymsLevel: prefs.synonymsDisplayCount || 3,
-          includeConjugations: prefs.includeConjugations,
+          // Keep verb data complete even when the visual section is hidden.
+          // This mirrors VocabLab and lets the user reveal conjugations later.
+          includeConjugations: true,
           includeAlternativeForms: prefs.includeAlternativeForms,
           includeUsageNote: prefs.includeUsageNote,
           includeIpa: prefs.showIPA,

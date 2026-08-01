@@ -1,7 +1,9 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { GraduationCap, Languages, Loader2, Pencil, Plus, Search, Sparkles, Trash2 } from "lucide-react"
+import { ArrowRightLeft, GraduationCap, Languages, Loader2, Pencil, Plus, Search, Sparkles, Trash2 } from "lucide-react"
+import { FolderTransferDialog } from "@/components/folder-transfer-dialog"
+import { FolderManagerPanel } from "@/components/folder-manager-panel"
 import { useRegencyDB } from "@/hooks/use-regency-db"
 import { useRegencyPreferences, type RegencyDisplayPreferences } from "@/hooks/use-regency-preferences"
 import { useCardShape } from "@/hooks/use-card-shape"
@@ -46,7 +48,7 @@ type Suggestion = Pick<RegencyCard, "grammaticalForm" | "pattern" | "complement"
 function normalize(value: string) { return value.trim().toLocaleLowerCase("en-US") }
 
 export function RegencyPage() {
-  const { allCards, cards, reviewCards, folders, selectedFolderId, setSelectedFolderId, isLoading, addFolder, renameFolder, deleteFolder, addCard, updateCard, deleteCard, deleteCardsInFolder, moveCards, addToReviewFolder, removeFromReviewFolder } = useRegencyDB()
+  const { allCards, cards, reviewCards, folders, selectedFolderId, setSelectedFolderId, isLoading, addFolder, renameFolder, deleteFolder, addCard, updateCard, deleteCard, deleteCardsInFolder, moveCards, addToReviewFolder, removeFromReviewFolder, recordStudyResult } = useRegencyDB()
   const { showCategory, showGrammaticalForm, showMeaning, showContrast, showExample, showTranslation } = useRegencyPreferences()
   const { squareCards } = useCardShape()
   const { setIsInsideFolder, setGoBack, layout } = useFolder()
@@ -55,6 +57,7 @@ export function RegencyPage() {
   const [folderDialogOpen, setFolderDialogOpen] = useState(false)
   const [newFolderName, setNewFolderName] = useState("")
   const [managerOpen, setManagerOpen] = useState(false)
+  const [transferOpen, setTransferOpen] = useState(false)
   const [editingFolder, setEditingFolder] = useState<RegencyFolder | null>(null)
   const [editingFolderName, setEditingFolderName] = useState("")
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -119,7 +122,7 @@ export function RegencyPage() {
     setColors(next)
     localStorage.setItem("regencylab_folder_colors", JSON.stringify(next))
   }
-  const gradientFor = (id: string, index: number) => (colors[id] ?? gradients[index % gradients.length]) as typeof gradients[number] | "blue" | "rose"
+  const gradientFor = (id: string, index: number) => (colors[id] ?? "default") as typeof gradients[number] | "blue" | "rose"
   const cardsInFolder = (id: string | null) => allCards.filter((card) => card.folderId === id)
   const reviewFoldersByParent = useMemo(() => reviewCards.reduce<Record<string, number>>((groups, card) => {
     const key = card.folderId ?? "__general__"
@@ -163,6 +166,10 @@ export function RegencyPage() {
     const moved = await moveCards(editingFolder.id, target === "__general__" ? null : target)
     if (!moved) { setFormError("Could not transfer the cards."); return }
     setManagerOpen(false)
+  }
+  const transferSelectedCards = async (ids: string[], target: string) => {
+    const results = await Promise.all(ids.map((id) => { const card = allCards.find((item) => item.id === id); return card ? updateCard({ ...card, folderId: target }) : Promise.resolve(false) }))
+    return results.every(Boolean)
   }
   const confirmDeleteFolder = async () => {
     if (!editingFolder) {
@@ -254,7 +261,7 @@ export function RegencyPage() {
   }
   const beginEdit = (card: RegencyCard) => { setInputMode("manual"); setEditingCard(card); setEditor({ ...card, exampleTranslation: card.exampleTranslation ?? "", meaningPt: card.meaningPt ?? "", contrastPt: card.contrastPt ?? "" }); setSuggestions([]); setSingleResult(null); setFormError(null); window.scrollTo({ top: 0, behavior: "smooth" }) }
 
-  if (studyKind) return <RegencyStudyMode cards={activeCards} folderName={currentFolderName} mode={studyKind} display={{ showCategory, showGrammaticalForm, showMeaning, showContrast, showExample, showTranslation }} onMarkForReview={isReviewFolderSelected ? undefined : addToReviewFolder} onMarkAsLearned={removeFromReviewFolder} onExit={() => setStudyKind(null)} />
+  if (studyKind) return <RegencyStudyMode cards={activeCards} folderName={currentFolderName} mode={studyKind} display={{ showCategory, showGrammaticalForm, showMeaning, showContrast, showExample, showTranslation }} onMarkForReview={isReviewFolderSelected ? undefined : addToReviewFolder} onMarkAsLearned={removeFromReviewFolder} onRecordResult={recordStudyResult} onExit={() => setStudyKind(null)} />
 
   return (
     <div className="w-full">
@@ -331,21 +338,34 @@ export function RegencyPage() {
       <Dialog open={folderDialogOpen} onOpenChange={setFolderDialogOpen}><DialogContent><DialogHeader><DialogTitle>Create New Folder</DialogTitle><DialogDescription>Organize cards by topic, level or personal goal.</DialogDescription></DialogHeader><Input value={newFolderName} onChange={(event) => setNewFolderName(event.target.value)} onKeyDown={(event) => event.key === "Enter" && void createFolder()} placeholder="Folder name" /><DialogFooter><Button onClick={() => void createFolder()} disabled={!newFolderName.trim()}>Create folder</Button></DialogFooter></DialogContent></Dialog>
 
       <Dialog open={managerOpen} onOpenChange={setManagerOpen}>
-        <DialogContent className="min-h-[360px] max-w-[92vw] sm:max-w-sm">
+        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[94vw] overflow-y-auto sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Manage Folder</DialogTitle>
-            <DialogDescription>{editingFolder ? `Manage folder "${editingFolder.name}".` : `Manage the "${generalFolderName}" folder.`}</DialogDescription>
+            <DialogTitle>Gerenciar pasta</DialogTitle>
+            <DialogDescription>{editingFolder ? `Gerencie a pasta "${editingFolder.name}".` : `Gerencie a pasta "${generalFolderName}".`}</DialogDescription>
           </DialogHeader>
-          <div className="mt-2 space-y-4">
+          <FolderManagerPanel
+            name={editingFolderName}
+            onNameChange={setEditingFolderName}
+            onRename={() => void saveFolderName()}
+            colors={folderColorOptions.map((color) => ({ ...color }))}
+            activeColor={colors[editingFolder?.id ?? "__general__"] ?? "default"}
+            onColorChange={(color) => setColor(editingFolder?.id ?? "__general__", color)}
+            cardCount={allCards.filter((card) => card.folderId === (editingFolder?.id ?? null) && !card.isReviewFolder).length}
+            groupCount={new Set(allCards.filter((card) => card.folderId === (editingFolder?.id ?? null) && !card.isReviewFolder).map((card) => card.category)).size}
+            groupLabel="categorias"
+            onTransfer={() => setTransferOpen(true)}
+            onDelete={() => { setDeleteTarget("__delete__"); setDeleteOpen(true) }}
+          />
+          <div className="hidden">
             <div className="space-y-2">
-              <label className="text-[12px] font-medium text-muted-foreground">Folder name</label>
+              <label className="text-[12px] font-medium text-muted-foreground">Nome da pasta</label>
               <div className="flex gap-2">
                 <Input value={editingFolderName} onChange={(event) => setEditingFolderName(event.target.value)} onKeyDown={(event) => event.key === "Enter" && void saveFolderName()} placeholder="Folder name" />
                 <Button variant="outline" onClick={() => void saveFolderName()} disabled={!editingFolderName.trim()}>Rename</Button>
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-[12px] font-medium text-muted-foreground">Folder color</label>
+              <label className="text-[12px] font-medium text-muted-foreground">Cor da pasta</label>
               <div className="flex gap-2">
                 {folderColorOptions.map((color) => {
                   const folderKey = editingFolder?.id ?? "__general__"
@@ -357,36 +377,26 @@ export function RegencyPage() {
             <div className="space-y-3 border-t border-border/30 pt-2">
               <LongPressButton onLongPress={() => { setDeleteTarget(editingFolder ? "__general__" : "__delete__"); setDeleteOpen(true) }} className="h-10 w-full rounded-md border border-destructive/20 bg-destructive/5 text-destructive transition-colors hover:bg-destructive/10">
                 <Trash2 className="size-4 text-muted-foreground" />
-                <span>Hold to delete</span>
+                <span>Segure para excluir</span>
               </LongPressButton>
             </div>
-            {editingFolder && <div className="space-y-2 border-t border-border/30 pt-2">
-              <label className="text-[12px] font-medium text-muted-foreground">Transfer all cards to</label>
-              <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => void transferFolderCards("__general__")} className="rounded-full border border-border/30 px-3 py-1 text-[12px] text-muted-foreground transition-colors hover:border-border/60 hover:text-foreground">{generalFolderName}</button>
-                {folders.filter((folder) => folder.id !== editingFolder.id).map((folder) => <button key={folder.id} type="button" onClick={() => void transferFolderCards(folder.id)} className="rounded-full border border-border/30 px-3 py-1 text-[12px] text-muted-foreground transition-colors hover:border-border/60 hover:text-foreground">{folder.name}</button>)}
-              </div>
-            </div>}
-            {!editingFolder && folders.length > 0 && <div className="space-y-2 border-t border-border/30 pt-2">
-              <label className="text-[12px] font-medium text-muted-foreground">Transfer all cards to</label>
-              <div className="flex flex-wrap gap-2">
-                {folders.map((folder) => <button key={folder.id} type="button" onClick={async () => { await moveCards(null, folder.id); setManagerOpen(false) }} className="rounded-full border border-border/30 px-3 py-1 text-[12px] text-muted-foreground transition-colors hover:border-border/60 hover:text-foreground">{folder.name}</button>)}
-              </div>
-            </div>}
+            <div className="border-t border-border/30 pt-3"><Button variant="outline" className="h-12 w-full justify-between rounded-xl bg-muted/20" onClick={() => setTransferOpen(true)}><span className="flex items-center gap-2"><ArrowRightLeft className="size-4 text-primary" />Sistema de transferência</span><span className="text-[11px] text-muted-foreground">Filtrar e mover</span></Button></div>
           </div>
         </DialogContent>
       </Dialog>
 
+      <FolderTransferDialog open={transferOpen} onOpenChange={setTransferOpen} sourceName={editingFolder?.name ?? generalFolderName} items={allCards.filter((card) => card.folderId === (editingFolder?.id ?? null) && !card.isReviewFolder).map((card) => ({ id: card.id, label: card.term, detail: card.pattern, tag: card.category, tagLabel: card.category, streak: card.studyStreak ?? 0 }))} folders={folders.filter((folder) => folder.id !== editingFolder?.id).map((folder) => ({ id: folder.id, name: folder.name, count: allCards.filter((card) => card.folderId === folder.id).length }))} tagOptions={[{ value: "verb", label: "Verb" }, { value: "noun", label: "Noun" }, { value: "adjective", label: "Adjective" }]} onCreateFolder={async (name) => await addFolder(name)} onTransfer={transferSelectedCards} />
+
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent className="max-w-[92vw] sm:max-w-sm">
           <AlertDialogHeader className="pr-8">
-            <AlertDialogTitle>Delete folder?</AlertDialogTitle>
-            <AlertDialogDescription>{editingFolder ? `Delete "${editingFolder.name}"? Choose whether to move or permanently delete its cards.` : `Delete "${generalFolderName}" folder and all its cards?`}</AlertDialogDescription>
+            <AlertDialogTitle>Excluir pasta?</AlertDialogTitle>
+            <AlertDialogDescription>{editingFolder ? `Excluir "${editingFolder.name}"? Escolha entre transferir ou apagar os cards permanentemente.` : `Excluir a pasta "${generalFolderName}" e todos os seus cards?`}</AlertDialogDescription>
           </AlertDialogHeader>
           <FolderDeleteOptions label="What should happen to its cards?">
             {editingFolder && <FolderDeleteChoice onClick={() => setDeleteTarget("__general__")} selected={deleteTarget === "__general__"}>{generalFolderName}</FolderDeleteChoice>}
             {folders.filter((folder) => folder.id !== editingFolder?.id).map((folder) => <FolderDeleteChoice key={folder.id} onClick={() => setDeleteTarget(folder.id)} selected={deleteTarget === folder.id}>{folder.name}</FolderDeleteChoice>)}
-            <FolderDeleteChoice onClick={() => setDeleteTarget("__delete__")} selected={deleteTarget === "__delete__"} danger>Delete cards</FolderDeleteChoice>
+            <FolderDeleteChoice onClick={() => setDeleteTarget("__delete__")} selected={deleteTarget === "__delete__"} danger>Apagar cards</FolderDeleteChoice>
           </FolderDeleteOptions>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setDeleteTarget("__general__")}>Cancel</AlertDialogCancel>
@@ -415,7 +425,7 @@ function RegencyCardView({ card, layout, squareCards, display, onEdit, onDelete 
 
       <div className={cn("min-w-0 pr-24", layout === "grid" && "border-b border-border/35 pb-3")}>
         <div className="flex min-w-0 items-center gap-2">
-          <h3 className="min-w-0 truncate text-xl font-medium tracking-tight text-foreground/80">{card.term}</h3>
+          <h3 className="min-w-0 shrink truncate text-xl font-medium tracking-tight text-foreground/80">{card.term}</h3>
           {(display.showCategory || display.showGrammaticalForm) && (
             <div className="flex shrink-0 flex-nowrap items-center gap-1.5 whitespace-nowrap">
               {display.showCategory && <span className={cn("ghost-tag inline-flex h-5 w-fit shrink-0 items-center justify-center whitespace-nowrap px-2 py-0.5 text-[10px] font-medium leading-none", card.category === "verb" ? "bg-blue-500/10 text-blue-700 dark:bg-blue-700 dark:text-white/90" : card.category === "noun" ? "bg-emerald-500/10 text-emerald-700 dark:bg-emerald-700 dark:text-white/90" : "bg-amber-500/10 text-amber-700 dark:bg-amber-700 dark:text-white/90")}>{card.category === "verb" ? "Verb" : card.category === "noun" ? "Noun" : "Adjective"}</span>}

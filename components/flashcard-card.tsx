@@ -662,7 +662,7 @@ export function FlashcardCard({ flashcard, onDelete, onCreateFromAlternative, on
       >
         {/* Front */}
         <div className="surface-card surface-card-elevated interactive-lift absolute inset-0 flex flex-col rounded-[20px] p-4 backface-hidden sm:rounded-[22px] sm:p-6">
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-1.5 overflow-x-auto whitespace-nowrap scrollbar-hide">
               <PosTagDropdown flashcard={flashcard} partOfSpeech={partOfSpeech} alternatives={flashcard.alternativeForms || []} onCreateAlternative={(form) => onCreateFromAlternative?.(flashcard, form)} />
               {showGrammaticalForm && <GrammaticalFormBadge form={flashcard.grammaticalForm} />}
@@ -708,7 +708,7 @@ export function FlashcardCard({ flashcard, onDelete, onCreateFromAlternative, on
         </div>
         {/* Back */}
         <div className="surface-card surface-card-elevated interactive-lift absolute inset-0 flex flex-col overflow-hidden rounded-[20px] bg-card p-4 backface-hidden rotate-y-180 sm:rounded-[22px] sm:p-5">
-          <div className="mb-2 flex items-start justify-between gap-3">
+          <div className="mb-2 flex items-center justify-between gap-3">
             <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-1.5 overflow-x-auto whitespace-nowrap scrollbar-hide">
               <PosTagDropdown flashcard={flashcard} partOfSpeech={partOfSpeech} alternatives={flashcard.alternativeForms || []} onCreateAlternative={(form) => onCreateFromAlternative?.(flashcard, form)} />
               {showGrammaticalForm && <GrammaticalFormBadge form={flashcard.grammaticalForm} />}

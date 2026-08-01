@@ -777,6 +777,15 @@ export function useFlashcardsDB() {
     [flashcards, updateFlashcard]
   )
 
+  const recordStudyResult = useCallback(
+    async (id: string, knewIt: boolean): Promise<boolean> => {
+      const card = flashcards.find((item) => item.id === id)
+      if (!card) return false
+      return updateFlashcard({ ...card, studyStreak: knewIt ? (card.studyStreak ?? 0) + 1 : 0 })
+    },
+    [flashcards, updateFlashcard],
+  )
+
   const reviewFlashcards = flashcards.filter((f) => f.isReviewFolder === true)
 
   const filteredFlashcards = selectedFolderId
@@ -800,6 +809,7 @@ export function useFlashcardsDB() {
     renameFolder,
     addToReviewFolder,
     removeFromReviewFolder,
+    recordStudyResult,
     getRandomFlashcards,
     importAllData,
     refresh: loadData,

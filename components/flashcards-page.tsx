@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { BookOpen, Loader2, FolderPlus, Folder, FolderOpen, GraduationCap, TrendingUp, Target, Calendar, LayoutGrid, List, LayoutPanelTop, MoreVertical, Trash2, BookMarked, Pencil, Plus, BarChart2, X, Search, Tag, Settings, FileUp, FileText, CheckCircle2 } from "lucide-react"
+import { BookOpen, Loader2, FolderPlus, Folder, FolderOpen, GraduationCap, TrendingUp, Target, Calendar, LayoutGrid, List, LayoutPanelTop, MoreVertical, Trash2, BookMarked, Pencil, Plus, BarChart2, X, Search, Tag, Settings, FileUp, FileText, CheckCircle2, ArrowRightLeft } from "lucide-react"
 import { useFlashcardsDB, readAllFlashcardsFromDB } from "@/hooks/use-flashcards-db"
 import { useGrammarProgress } from "@/hooks/use-grammar-progress"
 import { useGptModel } from "@/hooks/use-gpt-model"
@@ -15,6 +15,8 @@ import { VocabularyChoiceMode } from "./vocabulary-choice-mode"
 
 import { WritingMode } from "./writing-mode"
 import { FolderCard, NewFolderCard } from "./folder-card"
+import { FolderTransferDialog } from "./folder-transfer-dialog"
+import { FolderManagerPanel } from "./folder-manager-panel"
 import { FolderDeleteChoice, FolderDeleteOptions } from "./folder-delete-dialog"
 import { LongPressButton } from "./long-press-button"
 import { useFolder } from "./folder-context"
@@ -75,6 +77,10 @@ const visibleChoiceTranslation = (value: string, includeMultipleTranslations: bo
 
 const canUseVocabularyMultipleChoice = (cards: Flashcard[], includeMultipleTranslations: boolean) =>
   cards.length >= 10 && new Set(cards.map((card) => visibleChoiceTranslation(card.translation, includeMultipleTranslations).toLocaleLowerCase("pt-BR")).filter(Boolean)).size >= 4
+
+const tagTextColor: Record<PartOfSpeech, string> = {
+  verb: "text-blue-600 dark:text-blue-400", "phrasal-verb": "text-sky-600 dark:text-sky-400", noun: "text-emerald-600 dark:text-emerald-400", adjective: "text-amber-600 dark:text-amber-400", adverb: "text-purple-600 dark:text-purple-400", preposition: "text-rose-600 dark:text-rose-400", conjunction: "text-cyan-600 dark:text-cyan-400", interjection: "text-orange-600 dark:text-orange-400", acronym: "text-indigo-600 dark:text-indigo-400", idiom: "text-pink-600 dark:text-pink-400",
+}
 import {
   getFamilyMembers,
   filterAlternativesByDeck,
@@ -194,6 +200,7 @@ export function FlashcardsPage() {
     renameFolder,
     addToReviewFolder,
     removeFromReviewFolder,
+    recordStudyResult,
   } = useFlashcardsDB()
   
   const { getStudyStats, isLoaded: isProgressLoaded } = useGrammarProgress()
@@ -283,6 +290,14 @@ export function FlashcardsPage() {
   const [deleteTargetFolderId, setDeleteTargetFolderId] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isEditingReviewFolder, setIsEditingReviewFolder] = useState(false)
+  const [transferTrayOpen, setTransferTrayOpen] = useState(false)
+  const [transferTag, setTransferTag] = useState<PartOfSpeech | "all">("all")
+  const [transferMode, setTransferMode] = useState<"all" | "tag" | "selected" | "streak">("all")
+  const [transferSelectedIds, setTransferSelectedIds] = useState<Set<string>>(new Set())
+  const [transferStreak, setTransferStreak] = useState(0)
+  const [transferDestination, setTransferDestination] = useState("")
+  const [transferNewFolderName, setTransferNewFolderName] = useState("")
+  const [transferBusy, setTransferBusy] = useState(false)
 
   // Load custom General folder name from localStorage
   useEffect(() => {
@@ -312,8 +327,7 @@ export function FlashcardsPage() {
   const getFolderGradient = (folderId: string, index: number): "default" | "violet" | "emerald" | "amber" | "rose" => {
     const color = folderColors[folderId]
     if (color) return color as "default" | "violet" | "emerald" | "amber" | "rose"
-    const defaults: Array<"default" | "violet" | "emerald" | "amber"> = ["default", "violet", "emerald", "amber"]
-    return defaults[index % defaults.length]
+    return "default"
   }
 
   useEffect(() => {
@@ -386,6 +400,50 @@ export function FlashcardsPage() {
       title: "General folder cleared",
       description: `${cardsToDelete.length} ${cardsToDelete.length === 1 ? "card removed" : "cards removed"} from General folder.`,
     })
+  }
+
+  const transferWithRules = async () => {
+    if (isEditingReviewFolder || transferBusy) return
+    const sourceCards = flashcards.filter((card) => {
+      if (card.folderId !== editingFolderId || card.isReviewFolder) return false
+      if (transferMode === "selected") return transferSelectedIds.has(card.id)
+      return (transferTag === "all" || card.partOfSpeech === transferTag) && (transferStreak === 0 || (card.studyStreak ?? 0) >= transferStreak)
+    })
+    if (sourceCards.length === 0) {
+      toast({ title: "No matching cards", description: "Adjust the tag filter or choose another source folder." })
+      return
+    }
+    setTransferBusy(true)
+    try {
+      let destinationId = transferDestination
+      let destinationName = folders.find((folder) => folder.id === destinationId)?.name ?? generalFolderName
+      if (destinationId === "__new__") {
+        const created = await addFolder(transferNewFolderName.trim())
+        if (!created) throw new Error("Could not create the destination folder.")
+        destinationId = created.id
+        destinationName = created.name
+      }
+      if (!destinationId || destinationId === String(editingFolderId ?? "__general__")) {
+        throw new Error("Choose a different destination folder.")
+      }
+      const targetFolderId = destinationId === "__general__" ? null : destinationId
+      const results = await Promise.all(sourceCards.map((card) => updateFlashcard({ ...card, folderId: targetFolderId })))
+      if (results.some((result) => !result)) throw new Error("One or more cards could not be moved.")
+      toast({ title: "Cards transferred", description: `${sourceCards.length} card${sourceCards.length === 1 ? "" : "s"} moved to \"${destinationName}\".` })
+      setTransferTrayOpen(false)
+      setTransferTag("all")
+      setTransferStreak(0)
+      setTransferDestination("")
+      setTransferNewFolderName("")
+    } catch (error) {
+      toast({ title: "Transfer failed", description: error instanceof Error ? error.message : "Try again.", variant: "destructive" })
+    } finally {
+      setTransferBusy(false)
+    }
+  }
+  const transferSelectedCards = async (ids: string[], targetFolderId: string) => {
+    const results = await Promise.all(ids.map((id) => { const card = flashcards.find((item) => item.id === id); return card ? updateFlashcard({ ...card, folderId: targetFolderId }) : Promise.resolve(false) }))
+    return results.every(Boolean)
   }
 
   const handleDeleteFolderWithMigration = async (folderId: string | null, targetFolderId: string | null) => {
@@ -541,6 +599,10 @@ export function FlashcardsPage() {
       return normalizedHaystack.includes(normalizedSearch)
     })
   }, [displayedFlashcards, normalizedSearch, selectedTag])
+  const studyFlashcards = filteredFlashcards
+  const studyFilterChip = selectedTag === "all"
+    ? null
+    : <span className={cn("ml-0.5 inline-flex h-5 items-center rounded-full border border-current/20 bg-current/[0.07] px-2 text-[10px] font-semibold", tagTextColor[selectedTag])}>Filtering: {partOfSpeechLabels[selectedTag]}</span>
 
   const createCardFromAlternative = async (base: Flashcard, form: Flashcard["alternativeForms"][number]) => {
     const inputWord = form.word || base.word
@@ -1031,6 +1093,7 @@ export function FlashcardsPage() {
         flashcards={writingModeCards}
         folderName={isReviewStudy ? "Review" : studyFolderName}
         onMarkForReview={isReviewStudy ? undefined : addToReviewFolder}
+        onRecordResult={recordStudyResult}
         onMarkAsLearned={removeFromReviewFolder}
         onExit={() => {
           setIsWritingMode(false)
@@ -1047,6 +1110,7 @@ export function FlashcardsPage() {
         flashcards={effectiveStudyCards}
         folderName={isReviewStudy ? "Review" : studyFolderName}
         onMarkForReview={isReviewStudy ? undefined : addToReviewFolder}
+        onRecordResult={recordStudyResult}
         onMarkAsLearned={removeFromReviewFolder}
         onExit={() => {
           setIsStudying(false)
@@ -1063,6 +1127,7 @@ export function FlashcardsPage() {
         flashcards={effectiveStudyCards}
         folderName={isReviewStudy ? "Review" : studyFolderName}
         onMarkForReview={isReviewStudy ? undefined : addToReviewFolder}
+        onRecordResult={recordStudyResult}
         onMarkAsLearned={removeFromReviewFolder}
         onExit={() => {
           setIsChoiceMode(false)
@@ -1234,6 +1299,43 @@ export function FlashcardsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={false} onOpenChange={() => undefined}>
+        <DialogContent className="flex max-h-[calc(100dvh-2rem)] max-w-[96vw] flex-col overflow-hidden sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><span className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary"><ArrowRightLeft className="size-4" /></span>Sistema de transferência</DialogTitle>
+            <DialogDescription>1. Selecione um grupo · 2. Escolha o destino · 3. Confirme. A pasta de origem nunca é apagada.</DialogDescription>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pt-4 pr-1 scrollbar-hide">
+            <div className="flex items-center justify-between rounded-xl border border-border/50 bg-muted/20 px-4 py-3"><span className="text-sm font-semibold">1. Select cards</span><span className="text-xs text-muted-foreground">Filter or select individually</span></div>
+            <label className="block space-y-1.5 text-xs font-medium text-muted-foreground">Regra de seleção
+              <select value={transferMode} onChange={(event) => setTransferMode(event.target.value as "all" | "tag" | "selected" | "streak")} className="h-10 w-full rounded-lg border border-border/60 bg-background px-3 text-sm text-foreground">
+                <option value="all">Todos os cards</option><option value="tag">Uma tag específica</option><option value="selected">Cards selecionados</option><option value="streak">Acertos consecutivos</option>
+              </select>
+            </label>
+            {transferMode === "tag" && <label className="block space-y-1.5 text-xs font-medium text-muted-foreground">Tag
+              <select value={transferTag} onChange={(event) => setTransferTag(event.target.value as PartOfSpeech | "all")} className="h-10 w-full rounded-lg border border-border/60 bg-background px-3 text-sm text-foreground"><option value="all">Choose a tag</option>{Object.entries(partOfSpeechLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+            </label>}
+            {transferMode === "streak" && <label className="block space-y-1.5 text-xs font-medium text-muted-foreground">Minimum consecutive correct answers
+              <Input type="number" min={1} max={99} value={transferStreak} onChange={(event) => setTransferStreak(Math.max(1, Number(event.target.value) || 1))} />
+            </label>}
+            {transferMode === "selected" && <div className="space-y-2"><p className="text-xs font-medium text-muted-foreground">Select individual cards</p><div className="max-h-64 space-y-1 overflow-y-auto rounded-lg border border-border/50 bg-background p-2 scrollbar-hide">{flashcards.filter((card) => card.folderId === editingFolderId && !card.isReviewFolder).map((card) => <label key={card.id} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted/50"><input type="checkbox" className="size-4 accent-primary" checked={transferSelectedIds.has(card.id)} onChange={() => setTransferSelectedIds((current) => { const next = new Set(current); next.has(card.id) ? next.delete(card.id) : next.add(card.id); return next })} /><span className="min-w-0 flex-1 truncate">{card.word}</span><span className="text-[10px] text-muted-foreground">{partOfSpeechLabels[card.partOfSpeech]}</span><span className="text-[10px] text-muted-foreground">{card.studyStreak ?? 0}×</span></label>)}</div></div>}
+            <div className="flex items-center justify-between rounded-xl border border-border/50 bg-muted/20 px-4 py-3"><span className="text-sm font-semibold">2. Choose a destination</span><span className="text-xs text-muted-foreground">Source stays intact</span></div>
+            <label className="block space-y-1.5 text-xs font-medium text-muted-foreground">Destino
+              <select value={transferDestination} onChange={(event) => setTransferDestination(event.target.value)} className="h-10 w-full rounded-lg border border-border/60 bg-background px-3 text-sm text-foreground">
+                <option value="">Escolha uma pasta</option>
+                {folders.filter((folder) => folder.id !== editingFolderId).map((folder) => <option key={folder.id} value={folder.id}>{folder.name}</option>)}
+                <option value="__new__">Create a new folder…</option>
+              </select>
+            </label>
+            {transferDestination === "__new__" && <Input autoFocus value={transferNewFolderName} onChange={(event) => setTransferNewFolderName(event.target.value)} placeholder="New folder name" />}
+            <p className="rounded-lg bg-muted/40 px-3 py-2 text-xs leading-relaxed text-muted-foreground">The source folder and its color remain unchanged. “Again” resets the consecutive-answer counter. Review cards are never moved by this tool.</p>
+            <Button className="w-full" disabled={transferBusy || !transferDestination || (transferDestination === "__new__" && !transferNewFolderName.trim())} onClick={() => void transferWithRules()}>{transferBusy ? <Loader2 className="mr-2 size-4 animate-spin" /> : <ArrowRightLeft className="mr-2 size-4" />}Move matching cards</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <FolderTransferDialog open={transferTrayOpen} onOpenChange={setTransferTrayOpen} sourceName={editingFolderId === null ? generalFolderName : folders.find((folder) => folder.id === editingFolderId)?.name ?? ""} items={flashcards.filter((card) => card.folderId === editingFolderId && !card.isReviewFolder).map((card) => ({ id: card.id, label: card.word, detail: card.translation, tag: card.partOfSpeech, tagLabel: partOfSpeechLabels[card.partOfSpeech], streak: card.studyStreak ?? 0 }))} folders={folders.filter((folder) => folder.id !== editingFolderId).map((folder) => ({ id: folder.id, name: folder.name, count: flashcards.filter((card) => card.folderId === folder.id).length }))} tagOptions={(Object.keys(partOfSpeechLabels) as PartOfSpeech[]).map((value) => ({ value, label: partOfSpeechLabels[value] }))} onCreateFolder={async (name) => await addFolder(name)} onTransfer={transferSelectedCards} />
 
       {/* ═══════════════════════════════════════════════════════════════
           HOME VIEW - Input + Folders only
@@ -1444,13 +1546,13 @@ export function FlashcardsPage() {
 
               {/* Study button - aligned with search bar */}
               <div className="flex items-center gap-2">
-                {!isLoading && displayedFlashcards.length > 0 && (
+                {!isLoading && studyFlashcards.length > 0 && (
                   isReviewFolderSelected ? (
                     <Dialog open={showReviewStudySelector} onOpenChange={setShowReviewStudySelector}>
                       <DialogTrigger asChild>
                         <Button size="sm" variant="outline" className="h-9 gap-1.5 rounded-full px-3 text-[13px]">
                           <GraduationCap className="size-3.5" />
-                          Study in <span className="font-medium text-blue-600 dark:text-blue-400">{studyFolderName}</span> as {displayedFlashcards.length} words
+                          Study in <span className="font-medium text-blue-600 dark:text-blue-400">{studyFolderName}</span> as {studyFlashcards.length} words{studyFilterChip}
                         </Button>
                       </DialogTrigger>
                       <DialogContent className="max-w-sm">
@@ -1462,20 +1564,16 @@ export function FlashcardsPage() {
                           <Button
                             variant="outline"
                             className="h-auto justify-start p-4 text-left"
-                            disabled={!canUseVocabularyMultipleChoice(displayedFlashcards, includeMultipleTranslations)}
+                            disabled={!canUseVocabularyMultipleChoice(studyFlashcards, includeMultipleTranslations)}
                             onClick={() => {
                               setShowReviewStudySelector(false)
-                              const cardsToStudy = selectedReviewFolderId === "__general__"
-                                ? flashcards.filter(f => f.isReviewFolder && !f.folderId)
-                                : selectedReviewFolderId
-                                  ? flashcards.filter(f => f.isReviewFolder && f.folderId === selectedReviewFolderId)
-                                  : reviewFlashcards
+                              const cardsToStudy = studyFlashcards
                               setIsReviewStudy(true)
                               setStudyCards(cardsToStudy)
                               setIsChoiceMode(true)
                             }}
                           >
-                            <span><span className="block text-sm">Multiple choice</span><span className="mt-1 block text-xs font-normal text-muted-foreground">{canUseVocabularyMultipleChoice(displayedFlashcards, includeMultipleTranslations) ? "Choose the correct meaning among related word-family alternatives." : "Requires at least 10 cards and 4 distinct answers."}</span></span>
+                            <span><span className="block text-sm">Multiple choice</span><span className="mt-1 block text-xs font-normal text-muted-foreground">{canUseVocabularyMultipleChoice(studyFlashcards, includeMultipleTranslations) ? "Choose the correct meaning among related word-family alternatives." : "Requires at least 10 cards and 4 distinct answers."}</span></span>
                           </Button>
                           <Button
                             variant="outline"
@@ -1483,11 +1581,7 @@ export function FlashcardsPage() {
                             onClick={() => {
                               setShowReviewStudySelector(false)
                               // Study only the cards from this specific review folder
-                              const cardsToStudy = selectedReviewFolderId === "__general__"
-                                ? flashcards.filter(f => f.isReviewFolder && !f.folderId)
-                                : selectedReviewFolderId
-                                  ? flashcards.filter(f => f.isReviewFolder && f.folderId === selectedReviewFolderId)
-                                  : reviewFlashcards
+                              const cardsToStudy = studyFlashcards
                               setIsReviewStudy(true)
                               setWritingModeCards([...cardsToStudy])
                               setIsWritingMode(true)
@@ -1502,11 +1596,7 @@ export function FlashcardsPage() {
                               setShowReviewStudySelector(false)
                               setIsReviewStudy(true)
                               // Study only the cards from this specific review folder
-                              const cardsToStudy = selectedReviewFolderId === "__general__"
-                                ? flashcards.filter(f => f.isReviewFolder && !f.folderId)
-                                : selectedReviewFolderId
-                                  ? flashcards.filter(f => f.isReviewFolder && f.folderId === selectedReviewFolderId)
-                                  : reviewFlashcards
+                              const cardsToStudy = studyFlashcards
                               setStudyCards(cardsToStudy)
                               setIsStudying(true)
                             }}
@@ -1521,7 +1611,7 @@ export function FlashcardsPage() {
                       <DialogTrigger asChild>
                         <Button size="sm" variant="outline" className="h-9 gap-1.5 rounded-full px-3 text-[13px]">
                           <GraduationCap className="size-3.5" />
-                          Study in <span className="font-medium text-blue-600 dark:text-blue-400">{isViewingGeneral ? generalFolderName : selectedFolder?.name ?? "all"}</span> as {displayedFlashcards.length} words
+                          Study in <span className="font-medium text-blue-600 dark:text-blue-400">{isViewingGeneral ? generalFolderName : selectedFolder?.name ?? "all"}</span> as {studyFlashcards.length} words{studyFilterChip}
                         </Button>
                       </DialogTrigger>
                       <DialogContent className="max-w-sm">
@@ -1530,13 +1620,13 @@ export function FlashcardsPage() {
                           <DialogDescription>Choose how you want to review this folder.</DialogDescription>
                         </DialogHeader>
                         <div className="grid gap-2">
-                          <Button variant="outline" disabled={!canUseVocabularyMultipleChoice(displayedFlashcards, includeMultipleTranslations)} className="h-auto justify-start p-4 text-left" onClick={() => { setShowStudySelector(false); setIsReviewStudy(false); setStudyCards(displayedFlashcards); setIsChoiceMode(true) }}>
-                            <span><span className="block text-sm">Multiple choice</span><span className="mt-1 block text-xs font-normal text-muted-foreground">{canUseVocabularyMultipleChoice(displayedFlashcards, includeMultipleTranslations) ? "Choose the correct meaning among related word-family alternatives." : "Requires at least 10 cards and 4 distinct answers."}</span></span>
+                          <Button variant="outline" disabled={!canUseVocabularyMultipleChoice(studyFlashcards, includeMultipleTranslations)} className="h-auto justify-start p-4 text-left" onClick={() => { setShowStudySelector(false); setIsReviewStudy(false); setStudyCards(studyFlashcards); setIsChoiceMode(true) }}>
+                            <span><span className="block text-sm">Multiple choice</span><span className="mt-1 block text-xs font-normal text-muted-foreground">{canUseVocabularyMultipleChoice(studyFlashcards, includeMultipleTranslations) ? "Choose the correct meaning among related word-family alternatives." : "Requires at least 10 cards and 4 distinct answers."}</span></span>
                           </Button>
-                          <Button variant="outline" className="h-auto justify-start p-4 text-left" onClick={() => { setShowStudySelector(false); setIsReviewStudy(false); setWritingModeCards([...displayedFlashcards]); setIsWritingMode(true) }}>
+                          <Button variant="outline" className="h-auto justify-start p-4 text-left" onClick={() => { setShowStudySelector(false); setIsReviewStudy(false); setWritingModeCards([...studyFlashcards]); setIsWritingMode(true) }}>
                             <span><span className="block text-sm">Active recall</span><span className="mt-1 block text-xs font-normal text-muted-foreground">Try to remember the meaning before revealing it.</span></span>
                           </Button>
-                          <Button variant="outline" className="h-auto justify-start p-4 text-left" onClick={() => { setShowStudySelector(false); setIsReviewStudy(false); setStudyCards(displayedFlashcards); setIsStudying(true) }}>
+                          <Button variant="outline" className="h-auto justify-start p-4 text-left" onClick={() => { setShowStudySelector(false); setIsReviewStudy(false); setStudyCards(studyFlashcards); setIsStudying(true) }}>
                             <span><span className="block text-sm">Flip cards</span><span className="mt-1 block text-xs font-normal text-muted-foreground">Turn the card and mark whether you knew it.</span></span>
                           </Button>
                         </div>
@@ -1678,22 +1768,49 @@ export function FlashcardsPage() {
 
       {/* ── Rename/Manage Folder Dialog ──────────────────────── */}
       <Dialog open={isRenameDialogOpen} onOpenChange={setIsRenameDialogOpen}>
-        <DialogContent className="min-h-[360px] max-w-[92vw] sm:max-w-sm">
+        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[94vw] overflow-y-auto sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Manage Folder</DialogTitle>
+            <DialogTitle>Gerenciar pasta</DialogTitle>
             <DialogDescription>
               {editingFolderId === null
-                ? `Manage the "${generalFolderName}" folder.`
-                : `Manage folder "${editingFolderName}".`}
+                ? `Gerencie a pasta "${generalFolderName}".`
+                : `Gerencie a pasta "${editingFolderName}".`}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 mt-2">
+          {!isEditingReviewFolder && <FolderManagerPanel
+            name={editingFolderName}
+            onNameChange={setEditingFolderName}
+            onRename={handleRenameFolder}
+            renaming={isRenamingFolder}
+            colors={[
+              { id: "default", className: "bg-blue-400/50", label: "Azul" },
+              { id: "violet", className: "bg-violet-400/30", label: "Violeta" },
+              { id: "emerald", className: "bg-emerald-400/30", label: "Verde" },
+              { id: "amber", className: "bg-amber-400/30", label: "Amarelo" },
+              { id: "rose", className: "bg-rose-400/30", label: "Rosa" },
+            ]}
+            activeColor={folderColors[editingFolderId ?? "__general__"] ?? "default"}
+            onColorChange={(color) => {
+              if (editingFolderId === null) {
+                const next = { ...folderColors, __general__: color }
+                setFolderColors(next)
+                localStorage.setItem("vocablab_folder_colors", JSON.stringify(next))
+              } else updateFolderColor(editingFolderId, color)
+            }}
+            cardCount={flashcards.filter((card) => card.folderId === editingFolderId && !card.isReviewFolder).length}
+            groupCount={new Set(flashcards.filter((card) => card.folderId === editingFolderId && !card.isReviewFolder).map((card) => card.partOfSpeech)).size}
+            groupLabel="tags"
+            onTransfer={() => { setTransferMode("all"); setTransferTag("all"); setTransferSelectedIds(new Set()); setTransferStreak(0); setTransferDestination(""); setTransferTrayOpen(true) }}
+            onDelete={() => setShowDeleteConfirm(true)}
+          />}
+          <div className="hidden">
+            {!isEditingReviewFolder && <div className="grid grid-cols-2 gap-2 rounded-xl border border-border/40 bg-muted/20 p-3"><div><p className="text-xl font-semibold tabular-nums">{flashcards.filter((card) => card.folderId === editingFolderId && !card.isReviewFolder).length}</p><p className="text-[10px] uppercase tracking-wider text-muted-foreground">cards</p></div><div><p className="text-xl font-semibold tabular-nums">{new Set(flashcards.filter((card) => card.folderId === editingFolderId && !card.isReviewFolder).map((card) => card.partOfSpeech)).size}</p><p className="text-[10px] uppercase tracking-wider text-muted-foreground">tags</p></div></div>}
             {/* Folder name - renameable for all folders including General */}
             <div className="space-y-2">
-              <label className="text-[12px] font-medium text-muted-foreground">Folder name</label>
+              <label className="text-[12px] font-medium text-muted-foreground">Nome da pasta</label>
               <div className="flex gap-2">
                 <Input
-                  placeholder="Folder name"
+                  placeholder="Nome da pasta"
                   value={editingFolderName}
                   onChange={(e) => setEditingFolderName(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleRenameFolder() }}
@@ -1703,14 +1820,14 @@ export function FlashcardsPage() {
                   disabled={isRenamingFolder || !editingFolderName.trim()}
                   variant="outline"
                 >
-                  {isRenamingFolder ? <Loader2 className="size-4 animate-spin" /> : "Rename"}
+                  {isRenamingFolder ? <Loader2 className="size-4 animate-spin" /> : "Renomear"}
                 </Button>
               </div>
             </div>
 
             {/* Color options - for all folders */}
             <div className="space-y-2">
-              <label className="text-[12px] font-medium text-muted-foreground">Folder color</label>
+              <label className="text-[12px] font-medium text-muted-foreground">Cor da pasta</label>
               <div className="flex gap-2">
                 {[
                   { id: "default", color: "bg-blue-400/50", label: "Blue" },
@@ -1753,8 +1870,17 @@ export function FlashcardsPage() {
                   className="w-full h-10 rounded-md border border-destructive/20 bg-destructive/5 text-destructive hover:bg-destructive/10 transition-colors"
                 >
                   <Trash2 className="size-4 text-muted-foreground" />
-                  <span>Hold to delete</span>
+                  <span>Segure para excluir</span>
                 </LongPressButton>
+              </div>
+            )}
+
+            {!isEditingReviewFolder && (
+              <div className="border-t border-border/30 pt-4">
+                <Button variant="outline" className="h-12 w-full justify-between rounded-xl bg-muted/20 px-3 hover:bg-muted/45" onClick={() => { setTransferMode("all"); setTransferTag("all"); setTransferSelectedIds(new Set()); setTransferStreak(0); setTransferDestination(""); setTransferTrayOpen(true) }}>
+                  <span className="flex items-center gap-2 font-medium"><span className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary"><ArrowRightLeft className="size-3.5" /></span>Sistema de transferência</span>
+                  <span className="text-[11px] text-muted-foreground">Filtrar e mover</span>
+                </Button>
               </div>
             )}
 
@@ -1777,72 +1903,6 @@ export function FlashcardsPage() {
                   <Trash2 className="size-4 text-muted-foreground" />
                   Clear review folder
                 </Button>
-              </div>
-            )}
-
-            {/* Transfer cards to another folder - for regular folders */}
-            {editingFolderId !== null && !isEditingReviewFolder && (
-              <div className="space-y-2 pt-2 border-t border-border/30">
-                <label className="text-[12px] font-medium text-muted-foreground">Transfer all cards to</label>
-                <div className="flex flex-wrap gap-2">
-                  {/* Other user folders */}
-                  {folders.filter(f => f.id !== editingFolderId).map((folder) => (
-                    <button
-                      key={folder.id}
-                      type="button"
-                      onClick={async () => {
-                        const cardsToMove = flashcards.filter(f => f.folderId === editingFolderId)
-                        const moved = await Promise.all(cardsToMove.map(card => updateFlashcard({ ...card, folderId: folder.id })))
-                        if (moved.some((success) => !success)) {
-                          toast({ title: "Transfer incomplete", description: "Some cards could not be transferred. Try again.", variant: "destructive" })
-                          return
-                        }
-                        toast({
-                          title: "Cards transferred",
-                          description: `${cardsToMove.length} cards moved to "${folder.name}".`,
-                        })
-                        setIsRenameDialogOpen(false)
-                      }}
-                      className="rounded-full border border-border/30 px-3 py-1 text-[12px] text-muted-foreground hover:border-border/60 hover:text-foreground transition-colors"
-                    >
-                      {folder.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Transfer cards from General folder to user folders */}
-            {editingFolderId === null && !isEditingReviewFolder && (
-              <div className="space-y-2 pt-2 border-t border-border/30">
-                <label className="text-[12px] font-medium text-muted-foreground">Transfer all cards to</label>
-                <div className="flex flex-wrap gap-2">
-                  {folders.map((folder) => (
-                    <button
-                      key={folder.id}
-                      type="button"
-                      onClick={async () => {
-                        const cardsToMove = flashcards.filter(f => !f.folderId)
-                        const moved = await Promise.all(cardsToMove.map(card => updateFlashcard({ ...card, folderId: folder.id })))
-                        if (moved.some((success) => !success)) {
-                          toast({ title: "Transfer incomplete", description: "Some cards could not be transferred. Try again.", variant: "destructive" })
-                          return
-                        }
-                        toast({
-                          title: "Cards transferred",
-                          description: `${cardsToMove.length} cards moved to "${folder.name}".`,
-                        })
-                        setIsRenameDialogOpen(false)
-                      }}
-                      className="rounded-full border border-border/30 px-3 py-1 text-[12px] text-muted-foreground hover:border-border/60 hover:text-foreground transition-colors"
-                    >
-                      {folder.name}
-                    </button>
-                  ))}
-                  {folders.length === 0 && (
-                    <p className="text-[11px] text-muted-foreground/60">No folders to transfer to. Create a folder first.</p>
-                  )}
-                </div>
               </div>
             )}
 
@@ -1895,17 +1955,17 @@ export function FlashcardsPage() {
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent className="max-w-[92vw] sm:max-w-sm">
           <AlertDialogHeader className="pr-8">
-            <AlertDialogTitle>Delete folder?</AlertDialogTitle>
+            <AlertDialogTitle>Excluir pasta?</AlertDialogTitle>
             <AlertDialogDescription>
               {editingFolderId === null 
-                ? `Delete "${generalFolderName}" folder and all its cards?`
-                : `Delete "${editingFolderName}" folder? Choose whether to move or permanently delete its cards.`}
+                ? `Excluir a pasta "${generalFolderName}" e todos os seus cards?`
+                : `Excluir a pasta "${editingFolderName}"? Escolha entre transferir ou apagar seus cards permanentemente.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           
           {/* Folder selection for moving cards - regular folders */}
           {editingFolderId !== null && (
-            <FolderDeleteOptions label="What should happen to its cards?">
+            <FolderDeleteOptions label="O que deve acontecer com os cards?">
                 {/* Other user folders */}
                 {folders.filter(f => f.id !== editingFolderId).map((folder) => (
                   <FolderDeleteChoice
@@ -1921,14 +1981,14 @@ export function FlashcardsPage() {
                   selected={deleteTargetFolderId === "__delete__"}
                   danger
                 >
-                  Delete cards
+                  Apagar cards
                 </FolderDeleteChoice>
             </FolderDeleteOptions>
           )}
 
           {/* Folder selection for moving review cards */}
           {editingFolderId !== null && isEditingReviewFolder && selectedReviewFolderId && (
-            <FolderDeleteOptions label="Move review cards to">
+            <FolderDeleteOptions label="Transferir cards de revisão para">
                 {Object.keys(reviewFoldersByParent)
                   .filter(id => id !== selectedReviewFolderId)
                   .map((parentFolderId) => {
@@ -1953,14 +2013,14 @@ export function FlashcardsPage() {
           
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => { setShowDeleteConfirm(false); setDeleteTargetFolderId(null) }}>
-              Cancel
+              Cancelar
             </AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive hover:bg-destructive/90"
               disabled={editingFolderId !== null && !isEditingReviewFolder && !deleteTargetFolderId}
               onClick={() => handleDeleteFolderWithMigration(editingFolderId, deleteTargetFolderId)}
             >
-              Delete
+              Excluir
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

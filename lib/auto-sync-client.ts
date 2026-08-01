@@ -213,6 +213,20 @@ function remapFolderReferences(values: unknown[], aliases: Map<string, string>) 
   })
 }
 
+function remapFolderColorPreference(value: string, aliases: Map<string, string>) {
+  try {
+    const parsed = JSON.parse(value) as Record<string, unknown>
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return value
+    const remapped: Record<string, unknown> = {}
+    for (const [folderId, color] of Object.entries(parsed)) {
+      remapped[aliases.get(folderId) ?? folderId] = color
+    }
+    return JSON.stringify(remapped)
+  } catch {
+    return value
+  }
+}
+
 function enforceStoreConstraints(storeName: string, values: unknown[]) {
   // VocabLab enforces a unique IndexedDB index for word + part of speech.
   // Two devices can still create that same card before their first sync; keep
@@ -286,7 +300,11 @@ export function mergeLabPayloads(
       local.preferences[key],
       remote.preferences[key],
     )
-    if (value !== undefined) preferences[key] = value
+    if (value !== undefined) {
+      preferences[key] = key.endsWith("_folder_colors")
+        ? remapFolderColorPreference(value, aliases)
+        : value
+    }
   }
 
   return {

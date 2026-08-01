@@ -395,9 +395,9 @@ export function SettingsDialog() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {Array.from({ length: 10 }, (_, index) => index + 1).map((value) => (
+                          {[0, ...Array.from({ length: 10 }, (_, index) => index + 1)].map((value) => (
                             <SelectItem key={value} value={String(value)}>
-                              {value}
+                              {value === 0 ? "Never" : value}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -904,7 +904,9 @@ function StudyKeyboardShortcuts() {
 }
 
 function SettingsWiki({ reviewMistakeThreshold }: { reviewMistakeThreshold: number }) {
-  const reviewRule = reviewMistakeThreshold === 1
+  const reviewRule = reviewMistakeThreshold === 0
+    ? "Review desativado"
+    : reviewMistakeThreshold === 1
     ? "um erro"
     : `${reviewMistakeThreshold} erros`
   return <>

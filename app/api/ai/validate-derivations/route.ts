@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 import { MAX_AMBIGUOUS_DERIVATIONS } from "@/lib/derivation-validation"
 import { recordGranitePerformance, resolveGraniteModel } from "@/lib/granite-failover"
-import { openRouterReasoning } from "@/lib/openrouter-config"
 
 import { guardApiRequest, readJsonWithLimit, resolveAllowedAiModel, safeApiError } from "@/lib/api-security"
 
@@ -9,7 +8,7 @@ const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 const VALIDATE_DERIVATIONS_AI_MODEL =
   process.env.VALIDATE_DERIVATIONS_AI_MODEL ??
   process.env.DEFAULT_AI_MODEL ??
-  "ibm-granite/granite-4.1-8b"
+  "google/gemini-3.1-flash-lite"
 
 interface DerivationInput {
   word: string
@@ -74,10 +73,6 @@ Return ONLY {"valid":[{"word":"...","partOfSpeech":"..."}],"invalid":[{"word":".
       messages,
       temperature: 0,
       max_tokens: 160,
-      // The validator emits only a small JSON classification. Disabling
-      // reasoning prevents a long hidden chain-of-thought from blocking card
-      // creation while preserving GLM for the genuinely ambiguous cases.
-      ...(model.startsWith("z-ai/glm-4.7") ? { reasoning: { effort: "none", exclude: true } } : openRouterReasoning(activeModel)),
       provider: { sort: "throughput" },
       response_format: { type: "json_object" },
     }),

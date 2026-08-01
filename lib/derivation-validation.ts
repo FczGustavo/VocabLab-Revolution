@@ -38,7 +38,7 @@ function hasStableDerivationalStem(base: string, candidate: string): boolean {
  * Same-spelling POS shifts and root-changing formations (act → action,
  * strong → strength, use → usable) need a lexicographic decision. A long,
  * stable shared stem (quick → quickly/quicken/quickness) is safe to leave to
- * the deterministic checks and avoids spending a reasoning-model request.
+ * the deterministic checks and avoids an unnecessary extra AI request.
  */
 export function needsDerivationAIValidation(baseWord: string, candidateWord: string): boolean {
   const base = normalizeWord(baseWord)

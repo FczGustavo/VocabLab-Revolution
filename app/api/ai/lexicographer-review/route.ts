@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 import type { FlashcardAIResponse } from "@/lib/openai"
 import { recordGranitePerformance, resolveGraniteModel } from "@/lib/granite-failover"
-import { openRouterReasoning } from "@/lib/openrouter-config"
 
 import { guardApiRequest, readJsonWithLimit, resolveAllowedAiModel, safeApiError } from "@/lib/api-security"
 
@@ -9,7 +8,7 @@ const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 const LEXICOGRAPHER_REVIEW_AI_MODEL =
   process.env.LEXICOGRAPHER_REVIEW_AI_MODEL ??
   process.env.DEFAULT_AI_MODEL ??
-  "ibm-granite/granite-4.1-8b"
+  "google/gemini-3.1-flash-lite"
 
 interface OpenRouterMessage {
   role: "system" | "user"
@@ -64,7 +63,6 @@ async function reviewFamily(
       temperature: 0.1,
       max_tokens: 360,
       provider: { sort: "throughput" },
-      ...openRouterReasoning(activeModel),
       response_format: { type: "json_object" },
     }),
   })

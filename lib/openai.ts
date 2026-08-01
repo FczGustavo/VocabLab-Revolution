@@ -1,9 +1,8 @@
 import type { Flashcard, GrammarQuestionOption, AlternativeForm } from "./types"
 import { partitionDerivationsForValidation } from "./derivation-validation"
 import { normalizeGrammaticalForm, resolveGrammaticalForm } from "./grammatical-forms"
-import { openRouterReasoning } from "./openrouter-config"
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
-export const DEFAULT_AI_MODEL = process.env.DEFAULT_AI_MODEL ?? "openai/gpt-5.4-nano"
+export const DEFAULT_AI_MODEL = process.env.DEFAULT_AI_MODEL ?? "google/gemini-3.1-flash-lite"
 export const GRAMMAR_AI_MODEL = process.env.GRAMMAR_AI_MODEL ?? DEFAULT_AI_MODEL
 export const REVISOR_AI_MODEL = process.env.REVISOR_AI_MODEL ?? DEFAULT_AI_MODEL
 const DERIVATION_AI_MODEL = process.env.DERIVATION_AI_MODEL ?? DEFAULT_AI_MODEL
@@ -1123,7 +1122,9 @@ export async function reviseFlashcardByTranslation(
   const synonymsLevel = includeSynonymsAntonyms
     ? Math.max(1, Math.min(3, input.synonymsLevel ?? 3))
     : 0
-  const includeAlternativeForms = input.includeAlternativeForms ?? true
+  // Keep revision behavior aligned with the VocabLab toggle: only an explicit
+  // true may ask the model for alternative forms.
+  const includeAlternativeForms = input.includeAlternativeForms === true
   const includeMultipleTranslations = input.includeMultipleTranslations ?? true
   const isCompoundOrAcronym = input.word.trim().includes(" ") || isAcronymCandidate(input.word)
   console.log(`[OpenRouter] Revising ${model} for: ${input.word}`)
@@ -1289,7 +1290,6 @@ async function callOpenRouter<T>(
       provider: {
         sort: "throughput",
       },
-      ...openRouterReasoning(activeModel),
       ...(responseFormat ? { response_format: responseFormat } : {}),
     }),
   })
@@ -1493,7 +1493,9 @@ export async function generateFlashcardData(
     ? Math.max(1, Math.min(3, options?.synonymsLevel ?? 3))
     : 0
   const includeConjugations = options?.includeConjugations ?? true
-  const includeAlternativeForms = options?.includeAlternativeForms ?? true
+  // Derivations are opt-in. The UI toggle is sent explicitly by every
+  // creation flow; omitting the flag must never activate extra model passes.
+  const includeAlternativeForms = options?.includeAlternativeForms === true
   // includeUsageNote is always treated as true � both fields are always generated
   const includeIpa = options?.includeIpa ?? true
   const includeMultipleTranslations = options?.includeMultipleTranslations ?? true

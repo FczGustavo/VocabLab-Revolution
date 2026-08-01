@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 import { DEFAULT_AI_MODEL } from "@/lib/openai"
 import { recordGranitePerformance, resolveGraniteModel } from "@/lib/granite-failover"
-import { openRouterReasoning } from "@/lib/openrouter-config"
 import { guardApiRequest, readJsonWithLimit, resolveAllowedAiModel, safeApiError } from "@/lib/api-security"
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
@@ -10,7 +9,7 @@ const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 //   1. READLAB_LOOKUP_AI_MODEL (explicit per-lookup override)
 //   2. READLAB_AI_MODEL        (shared with bulk processing — matches the
 //                              "Also used for on-demand translation" note in .env)
-//   3. ibm-granite/granite-4.1-8b (fast/cheap mini default)
+//   3. google/gemini-3.1-flash-lite (fast/cheap mini default)
 const READLAB_LOOKUP_AI_MODEL =
   process.env.READLAB_LOOKUP_AI_MODEL ??
   process.env.READLAB_AI_MODEL ??
@@ -103,7 +102,6 @@ async function callOpenRouter<T>(
       messages,
       temperature: options?.temperature ?? 0.2,
       provider: { sort: "throughput" },
-      ...openRouterReasoning(activeModel),
       response_format: { type: "json_object" },
     }),
   })

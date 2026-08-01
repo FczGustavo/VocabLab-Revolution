@@ -2,7 +2,6 @@ import { NextResponse } from "next/server"
 import type { RegencyCard, RegencyCategory, RegencyComplement } from "@/lib/types"
 import { resolveGrammaticalForm } from "@/lib/grammatical-forms"
 import { recordGranitePerformance, resolveGraniteModel } from "@/lib/granite-failover"
-import { openRouterReasoning } from "@/lib/openrouter-config"
 
 import {
   fetchWithTimeout,
@@ -136,7 +135,6 @@ async function callModel(apiKey: string, model: string, system: string, user: st
         temperature: 0.1,
         max_tokens: maxTokens,
         messages: [{ role: "system", content: system }, { role: "user", content: user }],
-        ...openRouterReasoning(activeModel),
       }),
     }, 30_000)
     if (response.ok) {
@@ -307,7 +305,7 @@ export async function POST(request: Request) {
 
     const apiKey = process.env.OPENROUTER_API_KEY
     if (!apiKey) return NextResponse.json({ error: "AI suggestions are not configured." }, { status: 503 })
-    const generatorModel = process.env.REGENCY_AI_MODEL ?? process.env.DEFAULT_AI_MODEL ?? "ibm-granite/granite-4.1-8b"
+    const generatorModel = process.env.REGENCY_AI_MODEL ?? process.env.DEFAULT_AI_MODEL ?? "google/gemini-3.1-flash-lite"
     const fallbackGeneratorModel = process.env.REGENCY_GENERATOR_FALLBACK_MODEL
     const reviewerModel = process.env.REGENCY_REVIEW_AI_MODEL ?? generatorModel
 

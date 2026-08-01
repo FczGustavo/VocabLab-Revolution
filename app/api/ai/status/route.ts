@@ -6,12 +6,12 @@ export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1"
-const defaultModel = process.env.DEFAULT_AI_MODEL ?? "openai/gpt-5.4-nano"
+const defaultModel = process.env.DEFAULT_AI_MODEL ?? "google/gemini-3.1-flash-lite"
 
 type Service = { id: string; area: string; name: string; model: string; kind: "text" | "audio" }
 
 function configuredServices(): Service[] {
-  const readText = process.env.READLAB_AI_MODEL ?? "ibm-granite/granite-4.1-8b"
+  const readText = process.env.READLAB_AI_MODEL ?? "google/gemini-3.1-flash-lite"
   const regency = process.env.REGENCY_AI_MODEL ?? defaultModel
   const grammar = process.env.GRAMMAR_AI_MODEL ?? defaultModel
   return [

@@ -600,7 +600,7 @@ export function AddFlashcardForm({ onAdd, onUpdate, bare, folderId = null, pipel
               variant: updated ? "default" : "destructive",
             })
 
-            if (updated && aiAlternativeForms.length > 0) {
+            if (updated && includeAlternativeForms && aiAlternativeForms.length > 0) {
               const deck = await readAllFlashcardsFromDB()
               const family = await validateFamilyMembers(
                 enriched.word,

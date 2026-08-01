@@ -199,7 +199,7 @@ export function fetchWithTimeout(
 const BUILTIN_ALLOWED_MODELS = [
   "openai/gpt-5.4-nano",
   "x-ai/grok-4.1-fast",
-  "deepseek/deepseek-v4-flash",
+  "google/gemini-3.1-flash-lite",
   "minimax/minimax-m3:nitro",
 ]
 

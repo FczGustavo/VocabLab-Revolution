@@ -6,12 +6,12 @@ const MODEL_KEY = "vocablab_ai_model"
 const MODEL_ENV_BASELINE_KEY = "vocablab_ai_model_env_baseline"
 
 const ENV_DEFAULT_MODEL =
-  process.env.NEXT_PUBLIC_DEFAULT_AI_MODEL ?? "openai/gpt-5.4-nano"
+  process.env.NEXT_PUBLIC_DEFAULT_AI_MODEL ?? "google/gemini-3.1-flash-lite"
 
 const BUILTIN_MODELS = [
   { id: "openai/gpt-5.4-nano", label: "GPT-5.4 Nano (OpenAI)" },
   { id: "x-ai/grok-4.1-fast", label: "Grok 4.1 Fast (xAI)" },
-  { id: "deepseek/deepseek-v4-flash", label: "DeepSeek V4 Flash" },
+  { id: "google/gemini-3.1-flash-lite", label: "Gemini 3.1 Flash Lite (Google)" },
   { id: "minimax/minimax-m3:nitro", label: "MiniMax M3 Nitro" },
 ] as const
 
@@ -22,6 +22,8 @@ export const AVAILABLE_MODELS =
         { id: ENV_DEFAULT_MODEL, label: `Modelo padrao (.env): ${ENV_DEFAULT_MODEL}` },
         ...BUILTIN_MODELS,
       ] as const)
+
+const AVAILABLE_MODEL_IDS = new Set(AVAILABLE_MODELS.map((availableModel) => availableModel.id))
 
 export type GptModel = string
 
@@ -39,8 +41,12 @@ export function useGptModel() {
     if (saved && envBaseline && saved === envBaseline && envBaseline !== DEFAULT_MODEL) {
       setModelState(DEFAULT_MODEL)
       localStorage.setItem(MODEL_KEY, DEFAULT_MODEL)
-    } else if (saved) {
+    } else if (saved && AVAILABLE_MODEL_IDS.has(saved)) {
       setModelState(saved)
+    } else if (saved) {
+      // Drop stale selections from a previous environment/model configuration.
+      setModelState(DEFAULT_MODEL)
+      localStorage.setItem(MODEL_KEY, DEFAULT_MODEL)
     }
 
     localStorage.setItem(MODEL_ENV_BASELINE_KEY, DEFAULT_MODEL)

@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server"
 import { recordGranitePerformance, resolveGraniteModel } from "@/lib/granite-failover"
-import { openRouterReasoning } from "@/lib/openrouter-config"
 import { guardApiRequest, readJsonWithLimit, resolveAllowedAiModel, safeApiError } from "@/lib/api-security"
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 // Fast/cheap mini model by default for the bulk translation dictionary.
 // Override via READLAB_AI_MODEL in .env.
 const READLAB_AI_MODEL =
-  process.env.READLAB_AI_MODEL ?? "ibm-granite/granite-4.1-8b"
+  process.env.READLAB_AI_MODEL ?? "google/gemini-3.1-flash-lite"
 
 // Soft cap. The dictionary is generated once per text at save time, so we can
 // afford to send a generous payload. We still cap to keep latency / cost sane.
@@ -97,7 +96,6 @@ async function callOpenRouter<T>(
       provider: {
         sort: "throughput",
       },
-      ...openRouterReasoning(activeModel),
       ...(responseFormat ? { response_format: responseFormat } : {}),
     }),
   })

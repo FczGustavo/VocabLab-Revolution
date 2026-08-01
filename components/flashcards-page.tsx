@@ -605,6 +605,11 @@ export function FlashcardsPage() {
     : <span className={cn("ml-0.5 inline-flex h-5 items-center rounded-full border border-current/20 bg-current/[0.07] px-2 text-[10px] font-semibold", tagTextColor[selectedTag])}>Filtering: {partOfSpeechLabels[selectedTag]}</span>
 
   const createCardFromAlternative = async (base: Flashcard, form: Flashcard["alternativeForms"][number]) => {
+    // The action can remain queued in a stale render after the preference is
+    // switched off. Do not send a generation request or propagate a family in
+    // that case.
+    if (!includeAlternativeForms) return
+
     const inputWord = form.word || base.word
     const targetPartOfSpeech = form.partOfSpeech
 

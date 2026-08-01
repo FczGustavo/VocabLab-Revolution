@@ -2,13 +2,12 @@
 
 import { recordGranitePerformance, resolveGraniteModel } from "@/lib/granite-failover"
 import { guardApiRequest, readJsonWithLimit } from "@/lib/api-security"
-import { openRouterReasoning } from "@/lib/openrouter-config"
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 // Keep autocomplete independently configurable, like the other AI pipelines.
 const PREDICT_MODEL =
   process.env.PREDICT_AI_MODEL ??
-  "ibm-granite/granite-4.1-8b"
+  "google/gemini-3.1-flash-lite"
 
 const predictionCache = new Map<string, { expiresAt: number; suggestions: string[] }>()
 const CACHE_TTL_MS = 5 * 60_000
@@ -74,7 +73,6 @@ export async function POST(req: Request) {
         temperature: 0.1,
         max_tokens: 40,
         provider: { sort: "throughput" },
-        ...openRouterReasoning(activeModel),
         response_format: { type: "json_object" },
       }),
       signal: AbortSignal.timeout(6_000),

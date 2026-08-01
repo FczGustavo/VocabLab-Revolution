@@ -5,9 +5,9 @@ Data: 29/07/2026
 ## Configuração testada
 
 - Geração central do VocabLab: `google/gemini-3.1-flash-lite`
-- Revisão do VocabLab: `google/gemini-3.5-flash-lite`
+- Revisão do VocabLab: `google/gemini-3.1-flash-lite`
 - Geração do RegencyLab: `google/gemini-3.1-flash-lite`
-- Revisão do RegencyLab: `google/gemini-3.5-flash-lite`
+- Revisão do RegencyLab: `google/gemini-3.1-flash-lite`
 - Processamento e lookup do ReadLab: `google/gemini-3.1-flash-lite`
 - Áudio do VocabLab e ReadLab: `openai/gpt-audio-mini`
 

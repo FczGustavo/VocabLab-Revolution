@@ -41,67 +41,74 @@ export function TextCard({ text, onClick, onDelete, layout = "grid" }: TextCardP
       type="button"
       onClick={onClick}
       className={cn(
-        "group relative flex w-full flex-col overflow-hidden rounded-2xl border transition-all duration-300",
-        "border-border/40 bg-card/80 hover:border-primary/20 hover:shadow-md",
+        "group relative flex w-full flex-col overflow-hidden rounded-2xl border text-left transition-all duration-300",
+        "border-border/40 bg-card/75 shadow-sm hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card hover:shadow-lg hover:shadow-primary/5",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
         layout === "list" && "flex-row items-center gap-4 p-4",
         layout === "compact" && "p-3",
-        layout === "grid" && "h-[184px] p-4"
+        layout === "grid" && "h-[224px] p-4"
       )}
     >
-      {/* Header: icon + title + subtitle */}
-      <div className="flex items-start gap-2">
-        <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10">
-          <Icon className="size-3.5 text-primary/70" />
-        </div>
-        <div className="min-w-0 flex-1 text-left">
-          <h3 className={cn(
-            "break-words font-semibold leading-snug text-foreground/90",
-            layout === "compact" ? "text-[13px]" : "text-sm"
-          )}>
-            {text.title}
-          </h3>
-          <p className="mt-0.5 text-[10px] text-muted-foreground/55">
-            {sourceLabels[text.sourceType]} · {wordCount} words
-          </p>
-        </div>
-      </div>
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
-      {/* Tags */}
       <div className={cn(
-        "flex gap-1",
-        layout === "grid" ? "mt-2 h-5 min-w-0 flex-nowrap overflow-hidden" : tags.length > 0 ? "mt-2 flex-wrap" : "hidden",
+        "min-h-0",
+        layout === "list" ? "min-w-0 flex-1" : "flex flex-1 flex-col"
       )}>
-          {tags.map((tag) => (
-            <span
-              key={tag}
-              className={cn(
-                "inline-flex shrink-0 items-center whitespace-nowrap rounded-md px-1.5 py-0.5 text-[10px] font-medium",
-                READLAB_TAG_COLORS[tag]
-              )}
-            >
-              {READLAB_TAG_LABELS[tag]}
-            </span>
-          ))}
-      </div>
+        {/* Header: icon + title + source metadata */}
+        <div className="flex items-start gap-2.5">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-xl border border-primary/10 bg-primary/10 shadow-sm">
+            <Icon className="size-4 text-primary/75" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className={cn(
+              "line-clamp-2 break-words font-semibold leading-snug tracking-[-0.01em] text-foreground/90",
+              layout === "compact" ? "text-[12px]" : "text-[13px]"
+            )}>
+              {text.title}
+            </h3>
+            <p className="mt-1 text-[10px] leading-none text-muted-foreground/55">
+              {sourceLabels[text.sourceType]} · {wordCount} words
+            </p>
+          </div>
+        </div>
 
-      {/* Preview */}
-      {layout !== "compact" && (
-        <p className={cn(
-          "mt-2.5 text-[12px] leading-5 text-muted-foreground/70 line-clamp-2",
-          layout === "list" && "mt-0 line-clamp-2"
-        )}>
-          {preview}
-        </p>
-      )}
+        {/* Preview */}
+        {layout !== "compact" && (
+          <p className={cn(
+            "mt-3 min-h-0 flex-1 text-[12px] leading-5 text-muted-foreground/70 line-clamp-4",
+            layout === "list" && "mt-0 flex-none"
+          )}>
+            {preview}
+          </p>
+        )}
+
+      </div>
 
       {/* Footer: date + translated count + delete */}
       <div className={cn(
-        "mt-auto pt-2.5 flex items-center justify-between",
-        layout === "compact" && "pt-2"
+        "mt-3 flex min-w-0 items-center gap-2 border-t border-border/25 pt-2.5",
+        layout === "list" && "mt-0 flex-col items-end gap-1 border-t-0 pt-0",
+        layout === "compact" && "mt-2 pt-2"
       )}>
-        <span className="text-[10px] text-muted-foreground/40">
+        <span className="min-w-0 flex-1 truncate text-[10px] text-muted-foreground/40">
           {date}
         </span>
+        {tags.length > 0 && (
+          <div className="flex min-w-0 max-w-[42%] shrink-0 items-center justify-center gap-1 overflow-hidden">
+            {tags.map((tag) => (
+              <span
+                key={tag}
+                className={cn(
+                  "inline-flex shrink-0 items-center whitespace-nowrap rounded-full border border-current/15 px-2 py-0.5 text-[10px] font-medium shadow-sm",
+                  READLAB_TAG_COLORS[tag]
+                )}
+              >
+                {READLAB_TAG_LABELS[tag]}
+              </span>
+            ))}
+          </div>
+        )}
         <div className="flex items-center gap-2">
           {Object.keys(text.translationMap).length > 0 && (
             <span className="text-[10px] text-primary/50">

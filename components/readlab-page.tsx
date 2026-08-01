@@ -595,7 +595,7 @@ export function ReadlabPage() {
                     setShowAddDialog(true)
                   }}
                   className={cn(
-                    "group order-last flex h-[184px] w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-border/50 bg-transparent p-8",
+                    "group order-last flex h-[224px] w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-border/50 bg-transparent p-8",
                     "transition-all duration-300",
                     "hover:border-primary/30 hover:bg-primary/5"
                   )}
@@ -849,7 +849,7 @@ export function ReadlabPage() {
 
       {/* ═══ RENAME/MANAGE FOLDER DIALOG ═══ */}
       <Dialog open={isRenameDialogOpen} onOpenChange={setIsRenameDialogOpen}>
-        <DialogContent className="min-h-[360px] max-w-[92vw] sm:max-w-sm">
+        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[94vw] overflow-y-auto sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Gerenciar pasta</DialogTitle>
             <DialogDescription>

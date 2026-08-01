@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import type { RuleCard, RuleFolder } from "@/lib/types"
 import { RULELAB_CARDS_UPDATED_EVENT } from "@/lib/constants"
+import { recordSyncTombstone } from "@/lib/sync-tombstones"
 
 const DB_NAME = "rulelab-db"
 const DB_VERSION = 2
@@ -115,7 +116,8 @@ export function useRuleDB() {
   }, [loadData])
 
   const addFolder = useCallback(async (name: string) => {
-    const folder: RuleFolder = { id: crypto.randomUUID(), name: name.trim(), createdAt: Date.now() }
+    const now = Date.now()
+    const folder: RuleFolder = { id: crypto.randomUUID(), name: name.trim(), createdAt: now, updatedAt: now }
     if (!folder.name) return null
     try {
       await write(FOLDERS_STORE, (store) => store.add(folder))
@@ -129,7 +131,7 @@ export function useRuleDB() {
     const current = folders.find((folder) => folder.id === id)
     const nextName = name.trim()
     if (!current || !nextName) return false
-    const updated = { ...current, name: nextName }
+    const updated = { ...current, name: nextName, updatedAt: Date.now() }
     try {
       await write(FOLDERS_STORE, (store) => store.put(updated))
       setFolders((items) => items.map((item) => item.id === id ? updated : item))
@@ -142,6 +144,7 @@ export function useRuleDB() {
     try {
       await write(FOLDERS_STORE, (store) => store.delete(id))
       setFolders((items) => items.filter((item) => item.id !== id))
+      recordSyncTombstone("rule", FOLDERS_STORE, id)
       if (selectedFolderId === id) setSelectedFolderId(null)
       notifyUpdated()
       return true
@@ -179,6 +182,7 @@ export function useRuleDB() {
     try {
       await write(CARDS_STORE, (store) => store.delete(id))
       setAllCards((items) => items.filter((item) => item.id !== id))
+      recordSyncTombstone("rule", CARDS_STORE, id)
       notifyUpdated()
       return true
     } catch { return false }
@@ -196,6 +200,7 @@ export function useRuleDB() {
         transaction.onerror = () => reject(transaction.error)
       })
       setAllCards((items) => items.filter((card) => !ids.includes(card.id)))
+      ids.forEach((id) => recordSyncTombstone("rule", CARDS_STORE, id))
       notifyUpdated()
       return true
     } catch { return false }

@@ -19,6 +19,10 @@ export interface StudySession {
   totalCards: number
   correctFirstTry: number
   wordsToReview: string[]
+  /** Number of distinct cards that received at least one Again. */
+  mistakeCards?: number
+  /** Total Again presses during the session. */
+  totalMistakes?: number
 }
 
 const GRAMMAR_PROGRESS_KEY = "vocablab-grammar-progress"

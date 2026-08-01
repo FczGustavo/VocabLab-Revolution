@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import type { FlashcardAIResponse } from "@/lib/openai"
 import { recordGranitePerformance, resolveGraniteModel } from "@/lib/granite-failover"
+import { openRouterReasoning } from "@/lib/openrouter-config"
 
 import { guardApiRequest, readJsonWithLimit, resolveAllowedAiModel, safeApiError } from "@/lib/api-security"
 
@@ -63,6 +64,7 @@ async function reviewFamily(
       temperature: 0.1,
       max_tokens: 360,
       provider: { sort: "throughput" },
+      ...openRouterReasoning(activeModel),
       response_format: { type: "json_object" },
     }),
   })

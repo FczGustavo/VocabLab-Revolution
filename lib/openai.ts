@@ -1,6 +1,7 @@
 import type { Flashcard, GrammarQuestionOption, AlternativeForm } from "./types"
 import { partitionDerivationsForValidation } from "./derivation-validation"
 import { normalizeGrammaticalForm, resolveGrammaticalForm } from "./grammatical-forms"
+import { openRouterReasoning } from "./openrouter-config"
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 export const DEFAULT_AI_MODEL = process.env.DEFAULT_AI_MODEL ?? "openai/gpt-5.4-nano"
 export const GRAMMAR_AI_MODEL = process.env.GRAMMAR_AI_MODEL ?? DEFAULT_AI_MODEL
@@ -1288,6 +1289,7 @@ async function callOpenRouter<T>(
       provider: {
         sort: "throughput",
       },
+      ...openRouterReasoning(activeModel),
       ...(responseFormat ? { response_format: responseFormat } : {}),
     }),
   })
@@ -1519,12 +1521,12 @@ export async function generateFlashcardData(
   const translationInstruction = preferContextualAlternativeTranslation
     ? `Return a second pt-BR equivalent separated by " / " ONLY when it can naturally replace the primary translation in this exact SOURCE CONTEXT without changing meaning, grammar, degree, register, or nuance. If no truly interchangeable alternative exists, return ONE translation. Never pad the answer with a merely related word.`
     : includeMultipleTranslations
-    ? `Return "translation" with up to 2 natural Brazilian Portuguese equivalents separated by " / ". Choose the most common, learner-friendly options.`
+    ? `Return "translation" with up to 2 natural Brazilian Portuguese equivalents separated by " / ". They may represent two common senses of this SAME English word and SAME part of speech (for example, noun "bank": "banco / margem"). Never create a separate card for a second sense. When the equivalents are different senses, make the example illustrate one and make usageNote/usageNoteEn explicitly explain the distinction in a concise way. Only include common learner-useful senses; do not add merely related words.`
     : `Return "translation" with exactly one natural Brazilian Portuguese equivalent.`
   const usageNoteInstruction = `Always produce BOTH fields, as a short DICTIONARY ENTRY (not a paragraph, not a usage guide):
-- "usageNoteEn" (English): ONE concise sentence that captures the essential meaning of the word for the chosen part of speech, like a learner's dictionary entry. Formal, neutral tone. Max 140 characters.
-- "usageNote" (Brazilian Portuguese): a faithful Portuguese translation of usageNoteEn, same length and content. Do NOT add extra information, register notes, warnings, or exclamations. Do NOT use "Cuidado!", "Atencao!", or similar.
-Both fields are ALWAYS returned, even for very common words.`
+- "usageNoteEn" (English): ${includeMultipleTranslations && !preferContextualAlternativeTranslation ? "when translation contains two different senses, identify both senses in two concise clauses; otherwise use one concise sentence" : "ONE concise sentence that captures the essential meaning of the word for the chosen part of speech"}. Formal, neutral tone. Max 140 characters.
+- "usageNote" (Brazilian Portuguese): a faithful Portuguese translation of usageNoteEn, same content. Do NOT add unrelated information, register notes, warnings, or exclamations. Do NOT use "Cuidado!", "Atencao!", or similar.
+Both fields are ALWAYS returned, even for very common words. The note is the context shown to disambiguate meanings during Study, so it must make the intended sense clear.`
   const ipaInstruction = includeIpa
     ? `Return "ipa" with the standard International Phonetic Alphabet transcription of the normalizedWord in American English. For multi-word idiom and phrasal-verb entries, transcribe every word in order. Return ONLY the IPA string (no surrounding slashes, brackets, or the word itself). If unreliable, return an empty string.`
     : `Return "ipa" as an empty string.`
@@ -1712,7 +1714,7 @@ Rules:
 - translation must express the entry's actual contribution in SOURCE CONTEXT, not an unrelated or overly broad dictionary gloss.
 - translation is the reusable, standalone learner-dictionary gloss shown at the top of a card. For prepositions, conjunctions, and function words, NEVER store an agreement-bound fragment such as "em todas as" by itself. Use a reusable gloss such as "em toda a extensão de" when that is the contextual sense.
 - exampleTranslation must use the natural inflected realization required by its sentence. It may differ morphologically from the reusable gloss while preserving exactly the same sense.
-- Add a second equivalent with " / " only if it is genuinely interchangeable in the same context. Otherwise keep one.
+- Keep one card for the supplied word and part of speech. If the supplied translation contains two common senses, preserve both separated by " / " and use usageNote/usageNoteEn to say which sense the example illustrates; do not split meanings into separate cards. If there is no useful second sense, keep one.
 - example must be a new, self-contained sentence of 6 to 12 words and contain the exact English entry.
 - exampleTranslation must faithfully translate that short example.
 - usageNote must be one short pt-BR teaching sentence (max 150 characters). For a function word, explicitly show its realization in the example.

@@ -21,7 +21,6 @@ import { StudyHeader, StudyShortcutCoach, useStudyKeyboardShortcuts } from "@/co
 import { useStudyHeaderPreference } from "@/hooks/use-study-header-preference";
 import { useStudyElapsedTime } from "@/hooks/use-study-elapsed-time";
 import { useReviewMistakeThreshold } from "@/hooks/use-review-mistake-threshold";
-import { GrammaticalFormBadge } from "@/components/grammatical-form-badge";
 
 export type RegencyStudyKind = "recall" | "flip" | "choice";
 
@@ -349,7 +348,7 @@ export function RegencyStudyMode({
                 </div>
               ) : (
                 <>
-                  {(display.showCategory || display.showGrammaticalForm) && (
+                  {display.showCategory && (
                     <div className="flex flex-nowrap items-center gap-1.5 whitespace-nowrap">
                       {display.showCategory && (
                       <span
@@ -369,7 +368,6 @@ export function RegencyStudyMode({
                             : "Adjective"}
                       </span>
                       )}
-                      {display.showGrammaticalForm && <GrammaticalFormBadge form={current.grammaticalForm} />}
                     </div>
                   )}
                   <div className="flex flex-1 flex-col items-center justify-center text-center">

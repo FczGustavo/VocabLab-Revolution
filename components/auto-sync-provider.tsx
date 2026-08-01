@@ -49,14 +49,16 @@ function syncErrorMessage(error: unknown) {
 }
 
 export function AutoSyncProvider() {
-  const { syncCode, isValid, isIdentityLocked, isLoaded } = useSyncCode()
+  const { syncCode, isValid, isIdentityLocked, isSyncEnabled, isLoaded } = useSyncCode()
 
   useEffect(() => {
     if (!isLoaded) return undefined
-    if (!isValid || !isIdentityLocked) {
+    if (!isValid || !isIdentityLocked || !isSyncEnabled) {
       publishAutoSyncState({
         state: "idle",
-        message: isValid
+        message: !isSyncEnabled && isValid && isIdentityLocked
+          ? "A sincronização está desativada neste dispositivo."
+          : isValid
           ? "Confirme a palavra e o PIN para ativar a sincronização automática."
           : "Escolha uma palavra e confirme os dados para ativar a sincronização automática.",
       })
@@ -132,7 +134,7 @@ export function AutoSyncProvider() {
       window.removeEventListener(SYNC_IDENTITY_UPDATED_EVENT, identityListener)
       if (timer) clearTimeout(timer)
     }
-  }, [isIdentityLocked, isLoaded, isValid, syncCode])
+  }, [isIdentityLocked, isLoaded, isSyncEnabled, isValid, syncCode])
 
   return null
 }

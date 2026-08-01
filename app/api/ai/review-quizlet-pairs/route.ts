@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { recordGranitePerformance, resolveGraniteModel } from "@/lib/granite-failover"
+import { openRouterReasoning } from "@/lib/openrouter-config"
 
 import { guardApiRequest, readJsonWithLimit, safeApiError } from "@/lib/api-security"
 
@@ -64,6 +65,7 @@ export async function POST(req: Request) {
         temperature: 0,
         max_tokens: 1_800,
         provider: { sort: "throughput" },
+        ...openRouterReasoning(activeModel),
         response_format: { type: "json_object" },
         messages: [
           {

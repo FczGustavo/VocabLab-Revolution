@@ -41,4 +41,23 @@ describe("sync snapshot", () => {
       preferences: {},
     }).success).toBe(false)
   })
+
+  it("validates deletion markers included in backups", () => {
+    const base = {
+      version: 2,
+      exportedAt: Date.now(),
+      databases: {},
+      preferences: {},
+    }
+    expect(SyncSnapshotSchema.safeParse({
+      ...base,
+      syncTombstones: {
+        vocab: [{ id: "flashcards:one", storeName: "flashcards", entityId: "one", deletedAt: Date.now() }],
+      },
+    }).success).toBe(true)
+    expect(SyncSnapshotSchema.safeParse({
+      ...base,
+      syncTombstones: { vocab: [{ id: "flashcards:one", deletedAt: "now" }] },
+    }).success).toBe(false)
+  })
 })

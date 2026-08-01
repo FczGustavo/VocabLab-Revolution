@@ -3,6 +3,7 @@
 import { useCallback } from "react"
 import type { GrammarQuestion, GrammarAnsweredRecord, GrammarFolder, GrammarList } from "@/lib/types"
 import { QUESTIONLAB_DATA_UPDATED_EVENT } from "@/lib/constants"
+import { recordSyncTombstone } from "@/lib/sync-tombstones"
 
 // Completely separate IndexedDB from the flashcards DB
 const DB_NAME = "vocab-lab-grammar-db"
@@ -82,7 +83,7 @@ export function useGrammarDB() {
     const db = await openGrammarDB()
     return new Promise((resolve, reject) => {
       const tx = db.transaction(QUESTIONS_STORE, "readwrite")
-      tx.objectStore(QUESTIONS_STORE).put(question)
+      tx.objectStore(QUESTIONS_STORE).put({ ...question, updatedAt: Date.now() })
       tx.oncomplete = () => { notifyQuestionLabUpdated(); resolve() }
       tx.onerror = () => reject(tx.error)
     })
@@ -115,8 +116,18 @@ export function useGrammarDB() {
     const db = await openGrammarDB()
     return new Promise((resolve, reject) => {
       const tx = db.transaction(ANSWERED_STORE, "readwrite")
-      tx.objectStore(ANSWERED_STORE).clear()
-      tx.oncomplete = () => { notifyQuestionLabUpdated(); resolve() }
+      const store = tx.objectStore(ANSWERED_STORE)
+      const keysRequest = store.getAllKeys()
+      let answeredIds: string[] = []
+      keysRequest.onsuccess = () => {
+        answeredIds = keysRequest.result.map(String)
+        store.clear()
+      }
+      tx.oncomplete = () => {
+        answeredIds.forEach((id) => recordSyncTombstone("question", ANSWERED_STORE, id))
+        notifyQuestionLabUpdated()
+        resolve()
+      }
       tx.onerror = () => reject(tx.error)
     })
   }, [])
@@ -134,7 +145,8 @@ export function useGrammarDB() {
   }, [])
 
   const createFolder = useCallback(async (name: string): Promise<GrammarFolder> => {
-    const folder: GrammarFolder = { id: crypto.randomUUID(), name, createdAt: Date.now() }
+    const now = Date.now()
+    const folder: GrammarFolder = { id: crypto.randomUUID(), name, createdAt: now, updatedAt: now }
     const db = await openGrammarDB()
     return new Promise((resolve, reject) => {
       const tx = db.transaction(FOLDERS_STORE, "readwrite")
@@ -149,7 +161,7 @@ export function useGrammarDB() {
     return new Promise((resolve, reject) => {
       const tx = db.transaction(FOLDERS_STORE, "readwrite")
       tx.objectStore(FOLDERS_STORE).delete(id)
-      tx.oncomplete = () => { notifyQuestionLabUpdated(); resolve() }
+      tx.oncomplete = () => { recordSyncTombstone("question", FOLDERS_STORE, id); notifyQuestionLabUpdated(); resolve() }
       tx.onerror = () => reject(tx.error)
     })
   }, [])
@@ -167,7 +179,7 @@ export function useGrammarDB() {
           reject(new Error("Grammar folder not found"))
           return
         }
-        const renamed = { ...existing, name }
+        const renamed = { ...existing, name, updatedAt: Date.now() }
         store.put(renamed)
         tx.oncomplete = () => { notifyQuestionLabUpdated(); resolve(renamed) }
         tx.onerror = () => reject(tx.error)
@@ -191,7 +203,7 @@ export function useGrammarDB() {
     const db = await openGrammarDB()
     return new Promise((resolve, reject) => {
       const tx = db.transaction(LISTS_STORE, "readwrite")
-      tx.objectStore(LISTS_STORE).put(list)
+      tx.objectStore(LISTS_STORE).put({ ...list, updatedAt: Date.now() })
       tx.oncomplete = () => { notifyQuestionLabUpdated(); resolve() }
       tx.onerror = () => reject(tx.error)
     })
@@ -202,7 +214,7 @@ export function useGrammarDB() {
     return new Promise((resolve, reject) => {
       const tx = db.transaction(LISTS_STORE, "readwrite")
       tx.objectStore(LISTS_STORE).delete(id)
-      tx.oncomplete = () => { notifyQuestionLabUpdated(); resolve() }
+      tx.oncomplete = () => { recordSyncTombstone("question", LISTS_STORE, id); notifyQuestionLabUpdated(); resolve() }
       tx.onerror = () => reject(tx.error)
     })
   }, [])

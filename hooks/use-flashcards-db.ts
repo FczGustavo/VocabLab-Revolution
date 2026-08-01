@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import type { Flashcard, Folder } from "@/lib/types"
 import { FLASHCARDS_UPDATED_EVENT } from "@/lib/constants"
+import { recordSyncTombstone } from "@/lib/sync-tombstones"
 import {
   VOCAB_DEFAULT_CATALOG,
   VOCAB_DEFAULT_CATALOG_VERSION,
@@ -453,6 +454,7 @@ export function useFlashcardsDB() {
       }
       foldersStore.delete(id)
       await transactionComplete(transaction)
+      recordSyncTombstone("vocab", FOLDERS_STORE, id)
       setFolders((prev) => prev.filter((f) => f.id !== id))
       if (selectedFolderId === id) setSelectedFolderId(null)
       notifyFlashcardsUpdated()
@@ -567,20 +569,12 @@ export function useFlashcardsDB() {
       const transaction = db.transaction(FLASHCARDS_STORE, "readwrite")
       const store = transaction.objectStore(FLASHCARDS_STORE)
 
-      return new Promise((resolve) => {
-        const request = store.delete(id)
-
-        request.onsuccess = () => {
-          setFlashcards((prev) => prev.filter((card) => card.id !== id))
-          notifyFlashcardsUpdated()
-          resolve(true)
-        }
-
-        request.onerror = () => {
-          console.error("Error deleting flashcard:", request.error)
-          resolve(false)
-        }
-      })
+      store.delete(id)
+      await transactionComplete(transaction)
+      recordSyncTombstone("vocab", FLASHCARDS_STORE, id)
+      setFlashcards((prev) => prev.filter((card) => card.id !== id))
+      notifyFlashcardsUpdated()
+      return true
     } catch (error) {
       console.error("Error deleting flashcard:", error)
       return false

@@ -1,6 +1,6 @@
-import type { RegencyCategory, RegencyComplement } from "@/lib/types"
+import type { GrammaticalForm, RegencyCategory, RegencyComplement } from "@/lib/types"
 
-export const REGENCY_DEFAULT_CATALOG_VERSION = 3
+export const REGENCY_DEFAULT_CATALOG_VERSION = 4
 export const REGENCY_DEFAULT_FOLDER_NAME = "Regency Essentials"
 export const REGENCY_DEFAULT_FOLDER_COLOR = "default"
 
@@ -9,6 +9,7 @@ export interface RegencyCatalogEntry {
   catalogRevision: number
   term: string
   category: RegencyCategory
+  grammaticalForm: GrammaticalForm
   pattern: string
   complement: RegencyComplement
   example: string
@@ -21,7 +22,21 @@ const e = (
   catalogId: string, term: string, category: RegencyCategory, pattern: string,
   complement: RegencyComplement, example: string, exampleTranslation: string,
   meaningPt: string, contrastPt = "",
-): RegencyCatalogEntry => ({ catalogId, catalogRevision: 1, term, category, pattern, complement, example, exampleTranslation, meaningPt, contrastPt })
+): RegencyCatalogEntry => ({
+  catalogId,
+  catalogRevision: 2,
+  term,
+  category,
+  grammaticalForm: new Set(["known", "derived", "married", "accustomed"]).has(term.toLowerCase())
+    ? "past-participle"
+    : "base-form",
+  pattern,
+  complement,
+  example,
+  exampleTranslation,
+  meaningPt,
+  contrastPt,
+})
 
 // Curated from the supplied material. The PDF is a source of candidates, not runtime data.
 export const REGENCY_DEFAULT_CATALOG: readonly RegencyCatalogEntry[] = [
@@ -134,19 +149,11 @@ export const REGENCY_DEFAULT_CATALOG: readonly RegencyCatalogEntry[] = [
   e("yield-to", "yield", "verb", "to + force/demand", "prepositional-phrase", "The structure must not yield to heavy winds.", "A estrutura não deve ceder a ventos fortes.", "Apresenta a força, pressão ou exigência diante da qual alguém ou algo cede."),
 ]
 
-const contentFields = ["term", "category", "pattern", "complement", "example", "exampleTranslation", "meaningPt", "contrastPt"] as const
+const legacyContentFields = ["term", "category", "pattern", "complement", "example", "exampleTranslation", "meaningPt", "contrastPt"] as const
+const contentFields = ["term", "category", "grammaticalForm", "pattern", "complement", "example", "exampleTranslation", "meaningPt", "contrastPt"] as const
 
-export function regencyCatalogContentHash(value: {
-  term: string
-  category: RegencyCategory
-  pattern: string
-  complement: RegencyComplement
-  example: string
-  exampleTranslation?: string
-  meaningPt?: string
-  contrastPt?: string
-}): string {
-  const input = contentFields.map((field) => String(value[field] ?? "").trim()).join("\u001f")
+function hashCatalogFields(value: Record<string, unknown>, fields: readonly string[]): string {
+  const input = fields.map((field) => String(value[field] ?? "").trim()).join("\u001f")
   let hash = 0x811c9dc5
   for (let index = 0; index < input.length; index += 1) {
     hash ^= input.charCodeAt(index)
@@ -155,13 +162,31 @@ export function regencyCatalogContentHash(value: {
   return (hash >>> 0).toString(16).padStart(8, "0")
 }
 
+export function regencyCatalogContentHash(value: {
+  term: string
+  category: RegencyCategory
+  grammaticalForm?: GrammaticalForm
+  pattern: string
+  complement: RegencyComplement
+  example: string
+  exampleTranslation?: string
+  meaningPt?: string
+  contrastPt?: string
+}): string {
+  return hashCatalogFields(value as unknown as Record<string, unknown>, contentFields)
+}
+
+export function regencyCatalogLegacyContentHash(value: object): string {
+  return hashCatalogFields(value as Record<string, unknown>, legacyContentFields)
+}
+
 export function validateRegencyDefaultCatalog(): void {
   const ids = new Set<string>()
   const patterns = new Set<string>()
   const familySizes = new Map<string, number>()
   for (const entry of REGENCY_DEFAULT_CATALOG) familySizes.set(entry.term.toLowerCase(), (familySizes.get(entry.term.toLowerCase()) ?? 0) + 1)
   for (const entry of REGENCY_DEFAULT_CATALOG) {
-    const required = [entry.catalogId, entry.term, entry.pattern, entry.example, entry.exampleTranslation, entry.meaningPt]
+    const required = [entry.catalogId, entry.term, entry.grammaticalForm, entry.pattern, entry.example, entry.exampleTranslation, entry.meaningPt]
     if (required.some((value) => !value.trim())) throw new Error(`Incomplete Regency catalog entry: ${entry.catalogId || "unknown"}`)
     if (ids.has(entry.catalogId)) throw new Error(`Duplicate Regency catalog id: ${entry.catalogId}`)
     ids.add(entry.catalogId)

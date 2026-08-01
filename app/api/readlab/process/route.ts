@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { recordGranitePerformance, resolveGraniteModel } from "@/lib/granite-failover"
+import { openRouterReasoning } from "@/lib/openrouter-config"
 import { guardApiRequest, readJsonWithLimit, resolveAllowedAiModel, safeApiError } from "@/lib/api-security"
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
@@ -96,6 +97,7 @@ async function callOpenRouter<T>(
       provider: {
         sort: "throughput",
       },
+      ...openRouterReasoning(activeModel),
       ...(responseFormat ? { response_format: responseFormat } : {}),
     }),
   })

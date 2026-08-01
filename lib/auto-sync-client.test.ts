@@ -144,4 +144,20 @@ describe("mergeLabPayloads", () => {
       expect.objectContaining({ id: "remote", word: "work" }),
     ])
   })
+
+  it("does not resurrect a record covered by a newer deletion tombstone", () => {
+    const merged = mergeLabPayloads(
+      payload({ flashcards: [{ id: "1", word: "old", updatedAt: 1 }] }),
+      payload({
+        flashcards: [],
+        syncTombstones: [{ id: "flashcards:1", storeName: "flashcards", entityId: "1", deletedAt: 10 }],
+      }),
+      payload({ flashcards: [{ id: "1", word: "stale remote edit", updatedAt: 5 }] }),
+    )
+
+    expect(merged.stores.flashcards).toEqual([])
+    expect(merged.stores.syncTombstones).toEqual([
+      expect.objectContaining({ storeName: "flashcards", entityId: "1" }),
+    ])
+  })
 })

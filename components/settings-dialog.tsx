@@ -1,7 +1,7 @@
 ﻿"use client"
 
-import { useEffect, useRef, useState, type ReactNode } from "react"
-import { Settings, RotateCcw, BarChart3, Sun, Moon, Laptop, Sparkles, RefreshCcw, Clock3, Volume2, BookOpen, GraduationCap, FileText, Library, MousePointer2, Database, BrainCircuit, Cloud, WifiOff, CheckCircle2, LockKeyhole, UnlockKeyhole, Loader2, Link2 } from "lucide-react"
+import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react"
+import { Settings, RotateCcw, BarChart3, Sun, Moon, Laptop, Sparkles, RefreshCcw, Clock3, Volume2, BookOpen, GraduationCap, FileText, Library, MousePointer2, Database, BrainCircuit, Cloud, WifiOff, CheckCircle2, LockKeyhole, UnlockKeyhole, Loader2, Link2, Download, Upload } from "lucide-react"
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
@@ -52,6 +52,7 @@ import {
   startSyncPairing,
 } from "@/lib/sync-identity-client"
 import { normalizeSyncWord } from "@/lib/sync-schema"
+import { exportAllAppData, importAllAppData, summarizeSnapshot } from "@/lib/sync-client"
 import { cn } from "@/lib/utils"
 
 type ColorPalette = "blue" | "sage" | "terracotta" | "ocean"
@@ -105,14 +106,14 @@ export function SettingsDialog() {
     isValid: isSyncCodeValid,
     isIdentityLocked,
     setIdentityLocked,
+    isSyncEnabled,
+    setSyncEnabled,
     activateIdentity,
   } = useSyncCode()
   const { model, setModel } = useGptModel()
   const {
     showCategory,
     setShowCategory,
-    showGrammaticalForm: showRegencyGrammaticalForm,
-    setShowGrammaticalForm: setShowRegencyGrammaticalForm,
     showMeaning,
     setShowMeaning,
     showContrast,
@@ -141,10 +142,79 @@ export function SettingsDialog() {
   const [pairingCode, setPairingCode] = useState("")
   const [pairingExpiresAt, setPairingExpiresAt] = useState("")
   const [pairingInput, setPairingInput] = useState("")
+  const [backupBusy, setBackupBusy] = useState<"export" | "import" | null>(null)
+  const [backupMessage, setBackupMessage] = useState("")
+  const [pendingBackup, setPendingBackup] = useState<{ snapshot: unknown; totalEntities: number } | null>(null)
+  const backupInputRef = useRef<HTMLInputElement>(null)
   const [activeTab, setActiveTab] = useState<"general" | "sync" | "vocab" | "regency" | "read" | "rule" | "wiki">("general")
   const contentRef = useRef<HTMLDivElement>(null)
   const pairSyncCode = pairWord && /^\d{4}$/.test(pairPin) ? `${pairWord}-${pairPin}` : ""
   const isPairIdentityValid = /^[a-z0-9]{2,24}-\d{4}$/.test(pairSyncCode)
+  const syncStatusTitle = !isSyncCodeValid || !isIdentityLocked
+    ? "Aguardando confirmação"
+    : !isSyncEnabled
+      ? "Sincronização desativada"
+      : syncState.state === "error"
+        ? "Sincronização requer atenção"
+        : syncState.state === "conflict"
+          ? "Conflito de sincronização"
+          : syncState.state === "offline"
+            ? "Dispositivo offline"
+            : "Sincronização automática"
+
+  const handleExportBackup = async () => {
+    setBackupBusy("export")
+    setBackupMessage("")
+    try {
+      const snapshot = await exportAllAppData()
+      const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: "application/json" })
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement("a")
+      anchor.href = url
+      anchor.download = `vocab-lab-backup-${new Date().toISOString().slice(0, 10)}.json`
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+      window.setTimeout(() => URL.revokeObjectURL(url), 0)
+      setBackupMessage("Backup baixado com sucesso.")
+    } catch (error) {
+      setBackupMessage(error instanceof Error ? error.message : "Não foi possível criar o backup.")
+    } finally {
+      setBackupBusy(null)
+    }
+  }
+
+  const handleImportBackup = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ""
+    if (!file) return
+    setBackupBusy("import")
+    setBackupMessage("")
+    try {
+      const snapshot = JSON.parse(await file.text())
+      const summary = summarizeSnapshot(snapshot)
+      setPendingBackup({ snapshot, totalEntities: summary.totalEntities })
+    } catch (error) {
+      setBackupMessage(error instanceof Error ? error.message : "Não foi possível restaurar o backup.")
+    } finally {
+      setBackupBusy(null)
+    }
+  }
+
+  const confirmImportBackup = async () => {
+    if (!pendingBackup) return
+    setBackupBusy("import")
+    setBackupMessage("")
+    try {
+      await importAllAppData(pendingBackup.snapshot)
+      setPendingBackup(null)
+      setBackupMessage("Backup restaurado. As telas serão atualizadas automaticamente.")
+    } catch (error) {
+      setBackupMessage(error instanceof Error ? error.message : "Não foi possível restaurar o backup.")
+    } finally {
+      setBackupBusy(null)
+    }
+  }
 
   useEffect(() => { if (contentRef.current) contentRef.current.scrollTop = 0 }, [activeTab])
 
@@ -254,6 +324,7 @@ export function SettingsDialog() {
   }, [])
 
   return (
+    <>
     <Dialog>
       <DialogTrigger asChild>
         <Button variant="ghost" size="icon" className="relative rounded-full text-muted-foreground/50 hover:bg-background/70 hover:text-muted-foreground/70 hover:shadow-sm">
@@ -410,6 +481,22 @@ export function SettingsDialog() {
                   <section className="rounded-xl border border-border/50 bg-background/55 p-4">
                     <h4 className="mb-3 flex items-center gap-2 text-sm font-medium"><BarChart3 className="size-4 text-primary" />Histórico de estudo</h4>
                     <AlertDialog><AlertDialogTrigger asChild><Button variant="outline" className="w-full border-destructive/20 text-destructive hover:bg-destructive/10 hover:text-destructive"><RotateCcw className="mr-2 size-4" />Resetar estatísticas</Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Resetar estatísticas?</AlertDialogTitle><AlertDialogDescription>Isso apagará permanentemente seu histórico e progresso. Cards e pastas não serão afetados.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={resetStats}>Resetar agora</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+                  </section>
+
+                  <section className="space-y-3 rounded-xl border border-border/50 bg-background/55 p-4">
+                    <div><h4 className="flex items-center gap-2 text-sm font-medium"><Database className="size-4 text-primary" />Backup dos dados</h4><p className="mt-0.5 text-[10px] text-muted-foreground">Salve cards, pastas, textos, listas e preferências em um arquivo local. Chaves e códigos de sincronização nunca entram no backup.</p></div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <Button type="button" variant="outline" disabled={backupBusy !== null} onClick={() => void handleExportBackup()}>
+                        {backupBusy === "export" ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Download className="mr-2 size-4" />}
+                        Baixar backup
+                      </Button>
+                      <Button type="button" variant="outline" disabled={backupBusy !== null} onClick={() => backupInputRef.current?.click()}>
+                        {backupBusy === "import" ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Upload className="mr-2 size-4" />}
+                        Restaurar backup
+                      </Button>
+                    </div>
+                    <input ref={backupInputRef} type="file" accept="application/json,.json" className="hidden" onChange={(event) => void handleImportBackup(event)} />
+                    {backupMessage && <p className="text-[10px] text-muted-foreground">{backupMessage}</p>}
                   </section>
                 </div>
 
@@ -598,11 +685,38 @@ export function SettingsDialog() {
                           ? <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-500" />
                           : <RefreshCcw className={cn("mt-0.5 size-4 shrink-0 text-primary", syncState.state === "connecting" && "animate-spin")} />}
                       <div className="min-w-0">
-                        <p className="text-xs font-medium">{isSyncCodeValid && isIdentityLocked ? "Sincronização automática" : "Aguardando confirmação"}</p>
+                        <p className="text-xs font-medium">{syncStatusTitle}</p>
                         <p className="mt-0.5 text-[10px] leading-relaxed text-muted-foreground">{syncState.message}</p>
                         {syncState.updatedAt && <p className="mt-1 text-[9px] text-muted-foreground/75">Última atividade: {new Date(syncState.updatedAt).toLocaleString("pt-BR")}</p>}
                       </div>
                     </div>
+                    {isIdentityLocked && (
+                      isSyncEnabled ? (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button type="button" variant="outline" className="w-full border-amber-500/30 text-amber-700 hover:bg-amber-500/10 dark:text-amber-300">
+                              Pausar sincronização neste dispositivo
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Pausar sincronização?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Seus dados locais e remotos serão preservados. Este dispositivo deixará de enviar e receber atualizações até você reativar a sincronização.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => setSyncEnabled(false)}>Pausar agora</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      ) : (
+                        <Button type="button" variant="outline" className="w-full" onClick={() => setSyncEnabled(true)}>
+                          Reativar sincronização neste dispositivo
+                        </Button>
+                      )
+                    )}
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                       {(["general", "vocab", "regency", "rule", "read", "question"] as const).map((lab) => (
                         <div key={lab} className="rounded-lg border border-border/40 bg-muted/20 px-3 py-2">
@@ -666,7 +780,6 @@ export function SettingsDialog() {
                     <p className="mt-1 text-[10px] text-muted-foreground">Estas opções alteram somente a interface. Significados, contrastes, exemplos e traduções continuam sendo gerados e salvos.</p>
                   </div>
                    <DisplayPreference label="Mostrar categoria" description="Exibe a tag Verb, Noun ou Adjective nos cards e no Study." checked={showCategory} onCheckedChange={setShowCategory} />
-                   <DisplayPreference label="Mostrar forma gramatical" description="Exibe Base form, Comparative, Superlative e outras flexões, sem substituir a categoria." checked={showRegencyGrammaticalForm} onCheckedChange={setShowRegencyGrammaticalForm} />
                   <DisplayPreference label="Mostrar significado" description="Exibe a explicação em português abaixo do padrão." checked={showMeaning} onCheckedChange={setShowMeaning} />
                   <DisplayPreference label="Mostrar Compare" description="Exibe o balão que diferencia construções da mesma família." checked={showContrast} onCheckedChange={setShowContrast} />
                   <DisplayPreference label="Mostrar exemplo" description="Exibe a frase de exemplo na base do card." checked={showExample} onCheckedChange={setShowExample} />
@@ -878,6 +991,24 @@ export function SettingsDialog() {
         </div>
       </DialogContent>
     </Dialog>
+    <AlertDialog open={pendingBackup !== null} onOpenChange={(open) => { if (!open && backupBusy !== "import") setPendingBackup(null) }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Restaurar este backup?</AlertDialogTitle>
+          <AlertDialogDescription>
+            O arquivo contém {pendingBackup?.totalEntities ?? 0} registros. A restauração substituirá os dados atuais dos Labs neste dispositivo.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={backupBusy === "import"}>Cancelar</AlertDialogCancel>
+          <AlertDialogAction disabled={backupBusy === "import"} onClick={(event) => { event.preventDefault(); void confirmImportBackup() }}>
+            {backupBusy === "import" && <Loader2 className="mr-2 size-4 animate-spin" />}
+            Restaurar agora
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   )
 }
 

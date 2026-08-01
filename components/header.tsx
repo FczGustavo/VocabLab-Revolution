@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation"
 import { BookOpen, FlaskConical, BookMarked, LayoutGrid, List, LayoutPanelTop, BarChart2, ArrowUp, AlignLeft, AlignJustify, Columns2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { SettingsDialog } from "./settings-dialog"
+import { GlobalSearch } from "./global-search"
 import { useFolder } from "./folder-context"
 
 const navItems = [
@@ -117,13 +118,17 @@ export function Header() {
               <Link
                 key={item.href}
                 href={item.href}
+                aria-label={item.label}
+                aria-current={isActive ? "page" : undefined}
+                title={item.label}
                 className={cn(
-                  "flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-medium tracking-[-0.01em] transition-all",
+                  "flex size-8 shrink-0 items-center justify-center gap-1.5 rounded-full px-2 py-1 text-[12px] font-medium tracking-[-0.01em] transition-all sm:h-auto sm:w-auto sm:px-3",
                   isActive
                     ? "bg-primary/10 text-primary"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
+                <item.icon aria-hidden="true" className="size-3.5 sm:size-3" />
                 <span className="hidden sm:inline">{item.label}</span>
               </Link>
             )
@@ -131,7 +136,8 @@ export function Header() {
         </nav>
 
         {/* Settings with hover dropdown */}
-        <div className="relative flex items-center">
+        <div className="relative flex items-center gap-1">
+          <GlobalSearch />
           <div
             onMouseEnter={openSettingsTray}
             onMouseLeave={scheduleSettingsTrayClose}

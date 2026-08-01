@@ -2,7 +2,7 @@
 
 import { FileText, Image, File, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { ReadLabText, ReadLabTag } from "@/lib/types"
+import type { ReadLabText } from "@/lib/types"
 import { READLAB_TAG_LABELS, READLAB_TAG_COLORS } from "@/lib/types"
 
 interface TextCardProps {
@@ -45,7 +45,7 @@ export function TextCard({ text, onClick, onDelete, layout = "grid" }: TextCardP
         "border-border/40 bg-card/80 hover:border-primary/20 hover:shadow-md",
         layout === "list" && "flex-row items-center gap-4 p-4",
         layout === "compact" && "p-3",
-        layout === "grid" && "min-h-[168px] p-4"
+        layout === "grid" && "h-[184px] p-4"
       )}
     >
       {/* Header: icon + title + subtitle */}
@@ -67,21 +67,22 @@ export function TextCard({ text, onClick, onDelete, layout = "grid" }: TextCardP
       </div>
 
       {/* Tags */}
-      {tags.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
+      <div className={cn(
+        "flex gap-1",
+        layout === "grid" ? "mt-2 h-5 min-w-0 flex-nowrap overflow-hidden" : tags.length > 0 ? "mt-2 flex-wrap" : "hidden",
+      )}>
           {tags.map((tag) => (
             <span
               key={tag}
               className={cn(
-                "inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-medium",
+                "inline-flex shrink-0 items-center whitespace-nowrap rounded-md px-1.5 py-0.5 text-[10px] font-medium",
                 READLAB_TAG_COLORS[tag]
               )}
             >
               {READLAB_TAG_LABELS[tag]}
             </span>
           ))}
-        </div>
-      )}
+      </div>
 
       {/* Preview */}
       {layout !== "compact" && (

@@ -4,7 +4,7 @@ import { useState, useRef, useCallback, useEffect, useLayoutEffect, useMemo, typ
 import { BookOpen, Check, Folder as FolderIcon, Loader2, RotateCcw, Volume2, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { ReadLabText, ReadLabHighlight, Folder } from "@/lib/types"
-import { useFlashcardsDB, readAllFoldersFromDB } from "@/hooks/use-flashcards-db"
+import { useFlashcardsDB, readAllFlashcardsFromDB, readAllFoldersFromDB } from "@/hooks/use-flashcards-db"
 import { useGptModel } from "@/hooks/use-gpt-model"
 import { useAiPreferences } from "@/hooks/use-ai-preferences"
 import { useFolder } from "@/components/folder-context"
@@ -95,6 +95,10 @@ function isTooLongForCard(text: string): boolean {
   return words.length > 4
 }
 
+function normalizeDeckWord(value: string) {
+  return value.trim().toLocaleLowerCase("en-US").replace(/\s+/g, " ")
+}
+
 interface ReadTextViewProps {
   text: ReadLabText
   onUpdateText: (text: ReadLabText) => Promise<boolean>
@@ -165,6 +169,11 @@ export function ReadTextView({ text, onUpdateText }: ReadTextViewProps) {
   // Token used to ignore stale on-demand responses (e.g. user selected
   // something else before the previous fetch resolved).
   const lookupTokenRef = useRef(0)
+  const selectedDeckCards = useMemo(() => {
+    const selected = normalizeDeckWord(popover.selectedText)
+    if (!selected) return []
+    return allFlashcards.filter((card) => normalizeDeckWord(card.word) === selected)
+  }, [allFlashcards, popover.selectedText])
 
   const runOnDemandLookup = useCallback(
     async (selectedText: string, sourceContext: string, contextKey: string) => {
@@ -424,8 +433,34 @@ export function ReadTextView({ text, onUpdateText }: ReadTextViewProps) {
     [highlights, text, onUpdateText]
   )
 
+  const findExistingDeckCards = useCallback(async (word: string) => {
+    const deck = await readAllFlashcardsFromDB().catch(() => allFlashcards)
+    const normalizedWord = normalizeDeckWord(word)
+    return deck.filter((card) => normalizeDeckWord(card.word) === normalizedWord)
+  }, [allFlashcards])
+
+  const reportExistingDeckCards = useCallback((word: string, existing: typeof allFlashcards) => {
+    const categories = [...new Set(existing.map((card) => card.partOfSpeech))].join(", ")
+    toast({
+      title: "Already in VocabLab",
+      description: `“${word}” is already saved${categories ? ` as ${categories}` : ""}. No new AI generation was started.`,
+    })
+  }, [])
+
+  const handleOpenFolderSelector = useCallback(async () => {
+    const selectedText = popover.selectedText.trim()
+    if (!selectedText) return
+    const existing = await findExistingDeckCards(selectedText)
+    if (existing.length) {
+      reportExistingDeckCards(selectedText, existing)
+      window.getSelection()?.removeAllRanges()
+      return
+    }
+    setShowFolderSelector(true)
+  }, [findExistingDeckCards, popover.selectedText, reportExistingDeckCards])
+
   const handleAddCard = useCallback(
-    (folderId: string | null) => {
+    async (folderId: string | null) => {
       if (!popover.selectedText || !popover.translation) return
 
       const selectedText = popover.selectedText.trim()
@@ -442,6 +477,16 @@ export function ReadTextView({ text, onUpdateText }: ReadTextViewProps) {
         return
       }
 
+      // Recheck immediately before generation as well. Another tab or synced
+      // device may have added the word while the folder selector was open.
+      const existing = await findExistingDeckCards(selectedText)
+      if (existing.length) {
+        setShowFolderSelector(false)
+        reportExistingDeckCards(selectedText, existing)
+        window.getSelection()?.removeAllRanges()
+        return
+      }
+
       // Close the folder selector immediately and dismiss the native text
       // selection so the user is back to reading right away.
       setShowFolderSelector(false)
@@ -454,7 +499,7 @@ export function ReadTextView({ text, onUpdateText }: ReadTextViewProps) {
 
       // Background pipeline: same as VocabLab's AddFlashcardForm. Errors /
       // duplicates are reported via toast without re-opening any UI.
-      createCardFromAI({
+      void createCardFromAI({
         word: selectedText,
         model,
         options: {
@@ -518,7 +563,7 @@ export function ReadTextView({ text, onUpdateText }: ReadTextViewProps) {
         setPopover((prev) => ({ ...prev, visible: false }))
       }, 900)
     },
-    [popover.selectedText, popover.translation, popover.sourceContext, addFlashcard, updateFlashcard, allFlashcards, model, prefs]
+    [popover.selectedText, popover.translation, popover.sourceContext, addFlashcard, updateFlashcard, allFlashcards, model, prefs, findExistingDeckCards, reportExistingDeckCards, text.content]
   )
 
   const renderContent = () => {
@@ -701,14 +746,20 @@ export function ReadTextView({ text, onUpdateText }: ReadTextViewProps) {
                 {popover.translation &&
                   popover.status !== "loading" &&
                   !isTooLongForCard(popover.selectedText) && (
-                  <button
-                    type="button"
-                    onClick={() => setShowFolderSelector(true)}
-                    className="flex h-8 items-center gap-1.5 rounded-lg bg-emerald-500/10 px-3 text-[12px] font-medium text-emerald-600 dark:text-emerald-400 transition-colors hover:bg-emerald-500/15"
-                  >
-                    <BookOpen className="size-3.5" />
-                    Add Card
-                  </button>
+                  selectedDeckCards.length ? (
+                    <span className="flex h-8 items-center gap-1.5 rounded-lg bg-muted px-3 text-[12px] font-medium text-muted-foreground" title={`Already saved as ${[...new Set(selectedDeckCards.map((card) => card.partOfSpeech))].join(", ")}`}>
+                      <Check className="size-3.5" />In VocabLab
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => void handleOpenFolderSelector()}
+                      className="flex h-8 items-center gap-1.5 rounded-lg bg-emerald-500/10 px-3 text-[12px] font-medium text-emerald-600 dark:text-emerald-400 transition-colors hover:bg-emerald-500/15"
+                    >
+                      <BookOpen className="size-3.5" />
+                      Add Card
+                    </button>
+                  )
                 )}
               </div>
             )}

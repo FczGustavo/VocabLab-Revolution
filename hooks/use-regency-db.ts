@@ -3,12 +3,14 @@
 import { useCallback, useEffect, useState } from "react"
 import type { RegencyCard, RegencyFolder } from "@/lib/types"
 import { REGENCYLAB_CARDS_UPDATED_EVENT } from "@/lib/constants"
+import { recordSyncTombstone } from "@/lib/sync-tombstones"
 import {
   REGENCY_DEFAULT_CATALOG,
   REGENCY_DEFAULT_CATALOG_VERSION,
   REGENCY_DEFAULT_FOLDER_COLOR,
   REGENCY_DEFAULT_FOLDER_NAME,
   regencyCatalogContentHash,
+  regencyCatalogLegacyContentHash,
   validateRegencyDefaultCatalog,
 } from "@/lib/regency-default-catalog"
 
@@ -124,7 +126,9 @@ async function ensureDefaultCatalog(db: IDBDatabase): Promise<void> {
     if (current) {
       seen.add(entry.catalogId)
       const currentHash = regencyCatalogContentHash(current)
-      const isUntouched = Boolean(current.catalogContentHash) && currentHash === current.catalogContentHash
+      const legacyHash = regencyCatalogLegacyContentHash(current as unknown as Record<string, unknown>)
+      const isUntouched = Boolean(current.catalogContentHash)
+        && (currentHash === current.catalogContentHash || (current.catalogRevision ?? 1) < 2 && legacyHash === current.catalogContentHash)
       const moveFromLegacyFolder = canMigrateLegacyFolder && current.folderId === legacyFolderId
       if (moveFromLegacyFolder || (isUntouched && (current.catalogContentHash !== canonicalHash || current.catalogRevision !== entry.catalogRevision))) {
         cardsStore.put({
@@ -193,7 +197,8 @@ export function useRegencyDB() {
   }, [loadData])
 
   const addFolder = useCallback(async (name: string) => {
-    const folder: RegencyFolder = { id: crypto.randomUUID(), name: name.trim(), createdAt: Date.now() }
+    const now = Date.now()
+    const folder: RegencyFolder = { id: crypto.randomUUID(), name: name.trim(), createdAt: now, updatedAt: now }
     if (!folder.name) return null
     try {
       const db = await openDatabase()
@@ -223,7 +228,7 @@ export function useRegencyDB() {
         request.onerror = () => reject(request.error)
       })
       if (!current) return false
-      const updated = { ...current, name: nextName }
+      const updated = { ...current, name: nextName, updatedAt: Date.now() }
       await new Promise<void>((resolve, reject) => {
         const request = store.put(updated)
         request.onsuccess = () => resolve()
@@ -278,11 +283,14 @@ export function useRegencyDB() {
     try {
       const db = await openDatabase()
       await new Promise<void>((resolve, reject) => {
-        const request = db.transaction(CARDS_STORE, "readwrite").objectStore(CARDS_STORE).delete(id)
-        request.onsuccess = () => resolve()
-        request.onerror = () => reject(request.error)
+        const transaction = db.transaction(CARDS_STORE, "readwrite")
+        transaction.objectStore(CARDS_STORE).delete(id)
+        transaction.oncomplete = () => resolve()
+        transaction.onerror = () => reject(transaction.error)
+        transaction.onabort = () => reject(transaction.error)
       })
       setAllCards((items) => items.filter((item) => item.id !== id))
+      recordSyncTombstone("regency", CARDS_STORE, id)
       notifyUpdated()
       return true
     } catch { return false }
@@ -301,6 +309,7 @@ export function useRegencyDB() {
         transaction.onerror = () => reject(transaction.error)
       })
       const deleted = new Set(ids)
+      ids.forEach((id) => recordSyncTombstone("regency", CARDS_STORE, id))
       setAllCards((items) => items.filter((card) => !deleted.has(card.id)))
       notifyUpdated()
       return true
@@ -328,11 +337,14 @@ export function useRegencyDB() {
     try {
       const db = await openDatabase()
       await new Promise<void>((resolve, reject) => {
-        const request = db.transaction(FOLDERS_STORE, "readwrite").objectStore(FOLDERS_STORE).delete(id)
-        request.onsuccess = () => resolve()
-        request.onerror = () => reject(request.error)
+        const transaction = db.transaction(FOLDERS_STORE, "readwrite")
+        transaction.objectStore(FOLDERS_STORE).delete(id)
+        transaction.oncomplete = () => resolve()
+        transaction.onerror = () => reject(transaction.error)
+        transaction.onabort = () => reject(transaction.error)
       })
       setFolders((items) => items.filter((item) => item.id !== id))
+      recordSyncTombstone("regency", FOLDERS_STORE, id)
       if (selectedFolderId === id) setSelectedFolderId(null)
       notifyUpdated()
       return true

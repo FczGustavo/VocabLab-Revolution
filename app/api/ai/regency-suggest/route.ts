@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import type { RegencyCard, RegencyCategory, RegencyComplement } from "@/lib/types"
 import { resolveGrammaticalForm } from "@/lib/grammatical-forms"
 import { recordGranitePerformance, resolveGraniteModel } from "@/lib/granite-failover"
+import { openRouterReasoning } from "@/lib/openrouter-config"
 
 import {
   fetchWithTimeout,
@@ -135,6 +136,7 @@ async function callModel(apiKey: string, model: string, system: string, user: st
         temperature: 0.1,
         max_tokens: maxTokens,
         messages: [{ role: "system", content: system }, { role: "user", content: user }],
+        ...openRouterReasoning(activeModel),
       }),
     }, 30_000)
     if (response.ok) {

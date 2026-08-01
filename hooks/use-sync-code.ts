@@ -10,6 +10,7 @@ const SYNC_WORD_KEY = "vocablab_sync_word"
 const SYNC_PIN_KEY = "vocablab_sync_pin"
 const SYNC_REVISIONS_KEY = "vocablab_sync_revisions"
 const SYNC_IDENTITY_LOCKED_KEY = "vocablab_sync_identity_locked"
+const SYNC_ENABLED_KEY = "vocablab_sync_enabled"
 
 function generatePin() {
   const values = new Uint32Array(1)
@@ -30,6 +31,7 @@ export function useSyncCode() {
   const [syncPin, setSyncPinState] = useState("")
   const [revision, setRevisionState] = useState(0)
   const [isIdentityLocked, setIsIdentityLockedState] = useState(false)
+  const [isSyncEnabled, setIsSyncEnabledState] = useState(true)
   const [isLoaded, setIsLoaded] = useState(false)
 
   useEffect(() => {
@@ -51,6 +53,7 @@ export function useSyncCode() {
     setSyncWordState(word)
     setSyncPinState(pin)
     setIsIdentityLockedState(canRemainLocked)
+    setIsSyncEnabledState(localStorage.getItem(SYNC_ENABLED_KEY) !== "false")
     setRevisionState(initialCode ? readRevisions()[initialCode] ?? 0 : 0)
     localStorage.setItem(SYNC_WORD_KEY, word)
     localStorage.setItem(SYNC_PIN_KEY, pin)
@@ -74,6 +77,7 @@ export function useSyncCode() {
         && getSyncOwnerToken(code)
         && localStorage.getItem(SYNC_IDENTITY_LOCKED_KEY) === "true",
       ))
+      setIsSyncEnabledState(localStorage.getItem(SYNC_ENABLED_KEY) !== "false")
     }
     window.addEventListener(SYNC_IDENTITY_UPDATED_EVENT, reload)
     return () => window.removeEventListener(SYNC_IDENTITY_UPDATED_EVENT, reload)
@@ -125,6 +129,12 @@ export function useSyncCode() {
     return true
   }
 
+  const setSyncEnabled = (enabled: boolean) => {
+    localStorage.setItem(SYNC_ENABLED_KEY, String(enabled))
+    setIsSyncEnabledState(enabled)
+    window.dispatchEvent(new Event(SYNC_IDENTITY_UPDATED_EVENT))
+  }
+
   const activateIdentity = (wordValue: string, pinValue: string) => {
     const word = normalizeSyncWord(wordValue)
     const pin = pinValue.replace(/\D/g, "").slice(0, 4)
@@ -153,6 +163,8 @@ export function useSyncCode() {
     isValid,
     isIdentityLocked,
     setIdentityLocked,
+    isSyncEnabled,
+    setSyncEnabled,
     activateIdentity,
     isLoaded,
   }

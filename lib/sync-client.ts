@@ -15,6 +15,7 @@ import {
   type SyncLabPayload,
   type SyncSnapshot,
 } from "@/lib/sync-schema"
+import { getSyncTombstones, replaceSyncTombstones, type SyncTombstone } from "@/lib/sync-tombstones"
 
 type IndexDefinition = {
   name: string
@@ -179,7 +180,9 @@ const NEVER_SYNC_KEYS = new Set([
   "vocablab_sync_device_id",
   "vocablab_sync_status",
   "vocablab_sync_identity_locked",
+  "vocablab_sync_enabled",
   "vocablab_sync_owner_tokens",
+  "vocablab_sync_tombstones",
 ])
 
 const SYNCABLE_PREFIXES = [
@@ -422,11 +425,13 @@ function dispatchLabUpdate(lab: SyncLabId) {
 
 export async function exportLabData(lab: SyncLabId): Promise<SyncLabPayload> {
   const definition = DATABASE_BY_LAB[lab]
+  const stores = definition ? await exportDatabase(definition) : {}
+  stores.syncTombstones = getSyncTombstones(lab)
   return {
     version: SYNC_LAB_SCHEMA_VERSION,
     lab,
     exportedAt: Date.now(),
-    stores: definition ? await exportDatabase(definition) : {},
+    stores,
     preferences: exportLabPreferences(lab),
   }
 }
@@ -447,9 +452,11 @@ export async function importLabData(
     if (definition && !await replaceDatabase(definition, payload.stores, expectedLocal?.stores)) {
       return false
     }
+    replaceSyncTombstones(payload.lab, (payload.stores.syncTombstones ?? []) as SyncTombstone[])
     importLabPreferences(payload.lab, payload.preferences)
   } catch (error) {
     if (definition) await replaceDatabase(definition, backup.stores)
+    replaceSyncTombstones(payload.lab, (backup.stores.syncTombstones ?? []) as SyncTombstone[])
     importLabPreferences(payload.lab, backup.preferences)
     throw error
   }
@@ -468,6 +475,7 @@ export async function exportAllAppData(): Promise<SyncSnapshot> {
     exportedAt: Date.now(),
     databases: Object.fromEntries(databaseEntries),
     preferences: exportPreferences(),
+    syncTombstones: Object.fromEntries(SYNC_LABS.filter((lab) => lab !== "general").map((lab) => [lab, getSyncTombstones(lab)])),
   }
 }
 
@@ -479,10 +487,16 @@ export async function importAllAppData(input: unknown) {
     for (const definition of DATABASES) {
       await replaceDatabase(definition, snapshot.databases[definition.name] ?? {})
     }
+    for (const lab of SYNC_LABS) {
+      if (lab !== "general") replaceSyncTombstones(lab, (snapshot.syncTombstones?.[lab] ?? []) as SyncTombstone[])
+    }
     importPreferences(snapshot.preferences)
   } catch (error) {
     for (const definition of DATABASES) {
       await replaceDatabase(definition, backup.databases[definition.name] ?? {})
+    }
+    for (const lab of SYNC_LABS) {
+      if (lab !== "general") replaceSyncTombstones(lab, (backup.syncTombstones?.[lab] ?? []) as SyncTombstone[])
     }
     importPreferences(backup.preferences)
     throw error
@@ -494,7 +508,8 @@ export async function importAllAppData(input: unknown) {
   window.dispatchEvent(new Event(READLAB_TEXTS_UPDATED_EVENT))
 }
 
-export function summarizeSnapshot(snapshot: SyncSnapshot) {
+export function summarizeSnapshot(input: unknown) {
+  const snapshot = SyncSnapshotSchema.parse(input)
   const counts = Object.fromEntries(DATABASES.map((database) => {
     const stores = snapshot.databases[database.name] ?? {}
     return [

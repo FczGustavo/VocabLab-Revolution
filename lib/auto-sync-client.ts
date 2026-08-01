@@ -125,12 +125,49 @@ function recordKey(storeName: string, value: unknown, index: number) {
 function timestamp(value: unknown) {
   if (!value || typeof value !== "object") return 0
   const record = value as Record<string, unknown>
-  for (const key of ["updatedAt", "modifiedAt", "answeredAt", "createdAt"]) {
+  for (const key of ["updatedAt", "modifiedAt", "answeredAt", "createdAt", "deletedAt"]) {
     const raw = record[key]
     const parsed = typeof raw === "number" ? raw : Date.parse(String(raw ?? ""))
     if (Number.isFinite(parsed)) return parsed
   }
   return 0
+}
+
+function tombstoneEntityId(storeName: string, value: unknown) {
+  if (!value || typeof value !== "object") return ""
+  const record = value as Record<string, unknown>
+  for (const key of ["id", "key", "questionId"]) {
+    if (typeof record[key] === "string" || typeof record[key] === "number") {
+      return String(record[key])
+    }
+  }
+  return recordKey(storeName, value, 0)
+}
+
+function applyTombstones(stores: Record<string, unknown[]>) {
+  const tombstones = (stores.syncTombstones ?? []).filter(
+    (value): value is { storeName: string; entityId: string; deletedAt: number } => (
+      Boolean(value)
+      && typeof value === "object"
+      && typeof (value as Record<string, unknown>).storeName === "string"
+      && typeof (value as Record<string, unknown>).entityId === "string"
+      && typeof (value as Record<string, unknown>).deletedAt === "number"
+    ),
+  )
+  if (tombstones.length === 0) return stores
+  const newest = new Map<string, number>()
+  for (const tombstone of tombstones) {
+    const key = `${tombstone.storeName}:${tombstone.entityId}`
+    newest.set(key, Math.max(newest.get(key) ?? 0, tombstone.deletedAt))
+  }
+  for (const [storeName, values] of Object.entries(stores)) {
+    if (storeName === "syncTombstones") continue
+    stores[storeName] = values.filter((value) => {
+      const deletedAt = newest.get(`${storeName}:${tombstoneEntityId(storeName, value)}`)
+      return deletedAt === undefined || timestamp(value) > deletedAt
+    })
+  }
+  return stores
 }
 
 function mergeValue<T>(
@@ -306,6 +343,14 @@ export function mergeLabPayloads(
         : value
     }
   }
+
+  stores.syncTombstones = mergeStore(
+    "syncTombstones",
+    base?.stores.syncTombstones ?? [],
+    local.stores.syncTombstones ?? [],
+    remote.stores.syncTombstones ?? [],
+  )
+  applyTombstones(stores)
 
   return {
     version: 1,

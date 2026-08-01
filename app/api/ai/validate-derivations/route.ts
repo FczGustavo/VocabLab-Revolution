@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { MAX_AMBIGUOUS_DERIVATIONS } from "@/lib/derivation-validation"
 import { recordGranitePerformance, resolveGraniteModel } from "@/lib/granite-failover"
+import { openRouterReasoning } from "@/lib/openrouter-config"
 
 import { guardApiRequest, readJsonWithLimit, resolveAllowedAiModel, safeApiError } from "@/lib/api-security"
 
@@ -76,7 +77,7 @@ Return ONLY {"valid":[{"word":"...","partOfSpeech":"..."}],"invalid":[{"word":".
       // The validator emits only a small JSON classification. Disabling
       // reasoning prevents a long hidden chain-of-thought from blocking card
       // creation while preserving GLM for the genuinely ambiguous cases.
-      ...(model.startsWith("z-ai/glm-4.7") ? { reasoning: { effort: "none", exclude: true } } : {}),
+      ...(model.startsWith("z-ai/glm-4.7") ? { reasoning: { effort: "none", exclude: true } } : openRouterReasoning(activeModel)),
       provider: { sort: "throughput" },
       response_format: { type: "json_object" },
     }),

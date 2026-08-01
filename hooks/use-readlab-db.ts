@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import type { ReadLabText, ReadLabFolder } from "@/lib/types"
 import { READLAB_TEXTS_UPDATED_EVENT } from "@/lib/constants"
+import { recordSyncTombstone } from "@/lib/sync-tombstones"
 
 const DB_NAME = "readlab-db"
 const DB_VERSION = 1
@@ -38,6 +39,14 @@ function openDatabase(): Promise<IDBDatabase> {
         foldersStore.createIndex("createdAt", "createdAt", { unique: false })
       }
     }
+  })
+}
+
+function transactionComplete(transaction: IDBTransaction): Promise<void> {
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => resolve()
+    transaction.onerror = () => reject(transaction.error)
+    transaction.onabort = () => reject(transaction.error)
   })
 }
 
@@ -109,10 +118,12 @@ export function useReadlabDB() {
       const transaction = db.transaction(FOLDERS_STORE, "readwrite")
       const store = transaction.objectStore(FOLDERS_STORE)
 
+      const now = Date.now()
       const folder: ReadLabFolder = {
         id: crypto.randomUUID(),
         name: name.trim(),
-        createdAt: Date.now(),
+        createdAt: now,
+        updatedAt: now,
       }
 
       return new Promise((resolve) => {
@@ -139,19 +150,13 @@ export function useReadlabDB() {
       const foldersTransaction = db.transaction(FOLDERS_STORE, "readwrite")
       const foldersStore = foldersTransaction.objectStore(FOLDERS_STORE)
 
-      return new Promise((resolve) => {
-        const request = foldersStore.delete(id)
-        request.onsuccess = () => {
-          setFolders((prev) => prev.filter((f) => f.id !== id))
-          if (selectedFolderId === id) setSelectedFolderId(null)
-          notifyReadlabUpdated()
-          resolve(true)
-        }
-        request.onerror = () => {
-          console.error("Error deleting folder:", request.error)
-          resolve(false)
-        }
-      })
+      foldersStore.delete(id)
+      await transactionComplete(foldersTransaction)
+      recordSyncTombstone("read", FOLDERS_STORE, id)
+      setFolders((prev) => prev.filter((f) => f.id !== id))
+      if (selectedFolderId === id) setSelectedFolderId(null)
+      notifyReadlabUpdated()
+      return true
     } catch (error) {
       console.error("Error deleting folder:", error)
       return false
@@ -169,7 +174,7 @@ export function useReadlabDB() {
         getRequest.onsuccess = () => {
           const folder = getRequest.result
           if (!folder) { resolve(false); return }
-          const updatedFolder = { ...folder, name: newName.trim() }
+          const updatedFolder = { ...folder, name: newName.trim(), updatedAt: Date.now() }
           const putRequest = store.put(updatedFolder)
           putRequest.onsuccess = () => {
             setFolders((prev) => prev.map((f) => (f.id === id ? updatedFolder : f)).sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0)))
@@ -195,6 +200,7 @@ export function useReadlabDB() {
 
         const textWithFolder = {
           ...text,
+          updatedAt: text.updatedAt ?? Date.now(),
           folderId: selectedFolderId === "__general__" ? null : selectedFolderId,
         }
 
@@ -222,9 +228,10 @@ export function useReadlabDB() {
       const store = transaction.objectStore(TEXTS_STORE)
 
       return new Promise((resolve) => {
-        const request = store.put(text)
+        const updatedText = { ...text, updatedAt: Date.now() }
+        const request = store.put(updatedText)
         request.onsuccess = () => {
-          setTexts((prev) => prev.map((t) => (t.id === text.id ? text : t)))
+          setTexts((prev) => prev.map((t) => (t.id === text.id ? updatedText : t)))
           notifyReadlabUpdated()
           resolve(true)
         }
@@ -242,15 +249,12 @@ export function useReadlabDB() {
       const transaction = db.transaction(TEXTS_STORE, "readwrite")
       const store = transaction.objectStore(TEXTS_STORE)
 
-      return new Promise((resolve) => {
-        const request = store.delete(id)
-        request.onsuccess = () => {
-          setTexts((prev) => prev.filter((t) => t.id !== id))
-          notifyReadlabUpdated()
-          resolve(true)
-        }
-        request.onerror = () => resolve(false)
-      })
+      store.delete(id)
+      await transactionComplete(transaction)
+      recordSyncTombstone("read", TEXTS_STORE, id)
+      setTexts((prev) => prev.filter((t) => t.id !== id))
+      notifyReadlabUpdated()
+      return true
     } catch (error) {
       console.error("Error deleting text:", error)
       return false

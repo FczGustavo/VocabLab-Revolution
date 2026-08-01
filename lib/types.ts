@@ -139,6 +139,7 @@ export interface GrammarQuestion {
   questionType: "correct" | "incorrect"
   options: GrammarQuestionOption[]
   createdAt: number
+  updatedAt?: number
 }
 
 export interface GrammarAnsweredRecord {
@@ -152,6 +153,7 @@ export interface GrammarFolder {
   id: string
   name: string
   createdAt: number
+  updatedAt?: number
 }
 
 export interface GrammarList {
@@ -160,6 +162,7 @@ export interface GrammarList {
   folderId: string | null
   questionIds: string[]
   createdAt: number
+  updatedAt?: number
 }
 
 // ── RuleLab manual cards ────────────────────────────────────────────────────
@@ -168,6 +171,7 @@ export interface RuleFolder {
   id: string
   name: string
   createdAt: number
+  updatedAt?: number
 }
 
 export interface RuleCard {
@@ -191,6 +195,7 @@ export interface RegencyFolder {
   id: string
   name: string
   createdAt: number
+  updatedAt?: number
 }
 
 export interface RegencyCard {
@@ -255,10 +260,12 @@ export interface ReadLabText {
   /** Per-occurrence translations produced by System B. */
   contextualTranslationMap?: Record<string, string>
   createdAt: number
+  updatedAt?: number
 }
 
 export interface ReadLabFolder {
   id: string
   name: string
   createdAt: number
+  updatedAt?: number
 }

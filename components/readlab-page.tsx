@@ -3,13 +3,13 @@
 import { useEffect, useState, useCallback, useRef } from "react"
 import { Loader2, Search, X, Trash2, Image, FileText, Tag } from "lucide-react"
 import { useReadlabDB } from "@/hooks/use-readlab-db"
-import { useGptModel } from "@/hooks/use-gpt-model"
 import { useFolder } from "@/components/folder-context"
 import { FolderCard, NewFolderCard } from "@/components/folder-card"
 import { FolderDeleteChoice, FolderDeleteOptions } from "@/components/folder-delete-dialog"
 import { TextCard } from "@/components/text-card"
 import { ReadTextView } from "@/components/read-text-view"
-import { LongPressButton } from "@/components/long-press-button"
+import { FolderManagerPanel } from "@/components/folder-manager-panel"
+import { FolderTransferDialog } from "@/components/folder-transfer-dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -43,6 +43,13 @@ import type { ReadLabText, ReadLabTag } from "@/lib/types"
 import { READLAB_TAG_LABELS, READLAB_TAG_COLORS } from "@/lib/types"
 
 const ALL_TAGS: ReadLabTag[] = ["reading", "read", "pending"]
+const READLAB_FOLDER_COLORS = [
+  { id: "default", className: "bg-blue-400/50", label: "Blue" },
+  { id: "violet", className: "bg-violet-400/30", label: "Violet" },
+  { id: "emerald", className: "bg-emerald-400/30", label: "Green" },
+  { id: "amber", className: "bg-amber-400/30", label: "Yellow" },
+  { id: "rose", className: "bg-rose-400/30", label: "Rose" },
+]
 
 function normalizeForSearch(value: string) {
   return value
@@ -66,7 +73,6 @@ export function ReadlabPage() {
     renameFolder,
   } = useReadlabDB()
 
-  const { model } = useGptModel()
   const { setIsInsideFolder, setGoBack } = useFolder()
 
   const [selectedTextId, setSelectedTextId] = useState<string | null>(null)
@@ -84,6 +90,7 @@ export function ReadlabPage() {
   const [managedTextId, setManagedTextId] = useState<string | null>(null)
   const [managedTextTitle, setManagedTextTitle] = useState("")
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false)
+  const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false)
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null)
   const [editingFolderName, setEditingFolderName] = useState("")
   const [isRenamingFolder, setIsRenamingFolder] = useState(false)
@@ -114,7 +121,7 @@ export function ReadlabPage() {
     localStorage.setItem("readlab_folder_colors", JSON.stringify(newColors))
   }
 
-  const getFolderGradient = (folderId: string, index: number): "default" | "violet" | "emerald" | "amber" | "rose" => {
+  const getFolderGradient = (folderId: string): "default" | "violet" | "emerald" | "amber" | "rose" => {
     const color = folderColors[folderId]
     if (color) return color as "default" | "violet" | "emerald" | "amber" | "rose"
     return "default"
@@ -360,6 +367,17 @@ export function ReadlabPage() {
     }
   }
 
+  const transferSelectedTexts = async (ids: string[], destinationId: string) => {
+    const destinationFolderId = destinationId === "__general__" ? null : destinationId
+    const selected = new Set(ids)
+    const results = await Promise.all(allTexts
+      .filter((text) => selected.has(text.id))
+      .map((text) => updateText({ ...text, folderId: destinationFolderId })))
+    const success = results.length === ids.length && results.every(Boolean)
+    if (success) toast({ title: "Texts moved", description: `${ids.length} ${ids.length === 1 ? "text" : "texts"} transferred successfully.` })
+    return success
+  }
+
   const openTextManager = (text: ReadLabText) => {
     setManagedTextId(text.id)
     setManagedTextTitle(text.title)
@@ -376,7 +394,6 @@ export function ReadlabPage() {
     }
   }
 
-  const selectedFolder = folders.find((f) => f.id === selectedFolderId)
   const isViewingFolder = selectedFolderId !== null
   const isGeneralFolder = selectedFolderId === "__general__"
 
@@ -442,7 +459,7 @@ export function ReadlabPage() {
               {!generalFolderDeleted && <FolderCard
                 name={generalFolderName}
                 wordCount={allTexts.filter((t) => !t.folderId).length}
-                gradient={getFolderGradient("__general__", 0)}
+                gradient={getFolderGradient("__general__")}
                 isSelected={selectedFolderId === "__general__"}
                 onClick={() => {
                   setSelectedFolderId("__general__")
@@ -456,14 +473,14 @@ export function ReadlabPage() {
               />}
 
               {/* User folders */}
-              {folders.map((folder, idx) => {
+              {folders.map((folder) => {
                 const folderTexts = allTexts.filter((t) => t.folderId === folder.id)
                 return (
                   <FolderCard
                     key={folder.id}
                     name={folder.name}
                     wordCount={folderTexts.length}
-                    gradient={getFolderGradient(folder.id, idx)}
+                    gradient={getFolderGradient(folder.id)}
                     isSelected={selectedFolderId === folder.id}
                     onClick={() => setSelectedFolderId(folder.id)}
                     onSettings={(e) => {
@@ -578,7 +595,7 @@ export function ReadlabPage() {
                     setShowAddDialog(true)
                   }}
                   className={cn(
-                    "group order-last flex w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-border/50 bg-transparent p-8",
+                    "group order-last flex h-[184px] w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-border/50 bg-transparent p-8",
                     "transition-all duration-300",
                     "hover:border-primary/30 hover:bg-primary/5"
                   )}
@@ -841,118 +858,50 @@ export function ReadlabPage() {
                 : `Gerencie a pasta "${editingFolderName}".`}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 mt-2">
-            {/* Folder name */}
-            <div className="space-y-2">
-              <label className="text-[12px] font-medium text-muted-foreground">Nome da pasta</label>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Nome da pasta"
-                  value={editingFolderName}
-                  onChange={(e) => setEditingFolderName(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleRenameFolder() }}
-                />
-                <Button
-                  onClick={handleRenameFolder}
-                  disabled={isRenamingFolder || !editingFolderName.trim()}
-                  variant="outline"
-                >
-                  {isRenamingFolder ? <Loader2 className="size-4 animate-spin" /> : "Rename"}
-                </Button>
-              </div>
-            </div>
-
-            {/* Color options */}
-            <div className="space-y-2">
-              <label className="text-[12px] font-medium text-muted-foreground">Cor da pasta</label>
-              <div className="flex gap-2">
-                {[
-                  { id: "default", color: "bg-blue-400/50", label: "Blue" },
-                  { id: "violet", color: "bg-violet-400/30", label: "Violet" },
-                  { id: "emerald", color: "bg-emerald-400/30", label: "Green" },
-                  { id: "amber", color: "bg-amber-400/30", label: "Yellow" },
-                  { id: "rose", color: "bg-rose-400/30", label: "Rose" },
-                ].map((colorOption) => (
-                  <button
-                    key={colorOption.id}
-                    type="button"
-                    onClick={() => {
-                      if (editingFolderId === null) {
-                        const newColors = { ...folderColors, ["__general__"]: colorOption.id }
-                        setFolderColors(newColors)
-                        localStorage.setItem("readlab_folder_colors", JSON.stringify(newColors))
-                      } else {
-                        updateFolderColor(editingFolderId, colorOption.id)
-                      }
-                    }}
-                    className={cn(
-                      "size-8 rounded-full transition-all",
-                      colorOption.color,
-                      (folderColors[editingFolderId || "__general__"] || "default") === colorOption.id
-                        ? "ring-2 ring-offset-2 ring-foreground/30"
-                        : "hover:scale-110"
-                    )}
-                    title={colorOption.label}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* Delete folder */}
-            <div className="space-y-3 pt-2 border-t border-border/30">
-              <LongPressButton
-                onLongPress={() => setShowDeleteConfirm(true)}
-                className="w-full h-10 rounded-md border border-destructive/20 bg-destructive/5 text-destructive hover:bg-destructive/10 transition-colors"
-              >
-                <Trash2 className="size-4 text-muted-foreground" />
-                <span>Segure para excluir</span>
-              </LongPressButton>
-            </div>
-
-            {/* Transfer texts */}
-            {editingFolderId !== null && (
-              <div className="space-y-2 pt-2 border-t border-border/30">
-                <label className="text-[12px] font-medium text-muted-foreground">Move all texts to</label>
-                <div className="flex flex-wrap gap-2">
-                  {!generalFolderDeleted && <button
-                    type="button"
-                    onClick={async () => {
-                      const textsToMove = allTexts.filter((t) => t.folderId === editingFolderId)
-                      await Promise.all(textsToMove.map((t) => updateText({ ...t, folderId: null })))
-                      toast({
-                        title: "Texts moved",
-                        description: `${textsToMove.length} texts moved to "${generalFolderName}".`,
-                      })
-                      setIsRenameDialogOpen(false)
-                    }}
-                    className="rounded-full border border-border/30 px-3 py-1 text-[12px] text-muted-foreground hover:border-border/60 hover:text-foreground transition-colors"
-                  >
-                    {generalFolderName}
-                  </button>}
-                  {folders.filter((f) => f.id !== editingFolderId).map((folder) => (
-                    <button
-                      key={folder.id}
-                      type="button"
-                      onClick={async () => {
-                      const textsToMove = allTexts.filter((t) => t.folderId === editingFolderId)
-                        await Promise.all(textsToMove.map((t) => updateText({ ...t, folderId: folder.id })))
-                        toast({
-                          title: "Texts moved",
-                          description: `${textsToMove.length} texts moved to "${folder.name}".`,
-                        })
-                        setIsRenameDialogOpen(false)
-                      }}
-                      className="rounded-full border border-border/30 px-3 py-1 text-[12px] text-muted-foreground hover:border-border/60 hover:text-foreground transition-colors"
-                    >
-                      {folder.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+          <FolderManagerPanel
+            name={editingFolderName}
+            onNameChange={setEditingFolderName}
+            onRename={() => void handleRenameFolder()}
+            renaming={isRenamingFolder}
+            colors={READLAB_FOLDER_COLORS}
+            activeColor={folderColors[editingFolderId ?? "__general__"] ?? "default"}
+            onColorChange={(color) => {
+              if (editingFolderId === null) {
+                const next = { ...folderColors, __general__: color }
+                setFolderColors(next)
+                localStorage.setItem("readlab_folder_colors", JSON.stringify(next))
+              } else updateFolderColor(editingFolderId, color)
+            }}
+            cardCount={allTexts.filter((text) => text.folderId === editingFolderId).length}
+            groupCount={new Set(allTexts.filter((text) => text.folderId === editingFolderId).flatMap((text) => text.tags ?? [])).size}
+            groupLabel="tags usadas"
+            itemLabel="textos"
+            transferHint="Selecionar ou filtrar"
+            onTransfer={() => { setIsRenameDialogOpen(false); setIsTransferDialogOpen(true) }}
+            onDelete={() => setShowDeleteConfirm(true)}
+          />
         </DialogContent>
       </Dialog>
+
+      <FolderTransferDialog
+        open={isTransferDialogOpen}
+        onOpenChange={setIsTransferDialogOpen}
+        sourceName={editingFolderId === null ? generalFolderName : folders.find((folder) => folder.id === editingFolderId)?.name ?? editingFolderName}
+        items={allTexts.filter((text) => text.folderId === editingFolderId).map((text) => ({ id: text.id, label: text.title, detail: `${text.content.split(/\s+/).filter(Boolean).length} words`, tag: text.tags ?? [], tagLabel: (text.tags ?? []).map((tag) => READLAB_TAG_LABELS[tag]).join(" · ") }))}
+        folders={[
+          ...(!generalFolderDeleted && editingFolderId !== null ? [{ id: "__general__", name: generalFolderName, count: allTexts.filter((text) => !text.folderId).length }] : []),
+          ...folders.filter((folder) => folder.id !== editingFolderId).map((folder) => ({ id: folder.id, name: folder.name, count: allTexts.filter((text) => text.folderId === folder.id).length })),
+        ]}
+        tagOptions={ALL_TAGS.map((tag) => ({ value: tag, label: READLAB_TAG_LABELS[tag] }))}
+        onCreateFolder={async (name) => await addFolder(name)}
+        onTransfer={transferSelectedTexts}
+        itemNounSingular="texto"
+        itemNounPlural="textos"
+        filterLabel="Tag"
+        filterModeLabel="Por tag"
+        showStreakFilter={false}
+        allowAllTags={false}
+      />
 
       {/* ═══ DELETE FOLDER CONFIRMATION ═══ */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>

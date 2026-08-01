@@ -71,9 +71,18 @@ export function StudyMode({ flashcards, folderName, onExit, onMarkForReview, onM
   useEffect(() => {
     if (!finished || saved) return
     const wordsToReview = Object.keys(wrongCount).map((id) => flashcards.find((card) => card.id === id)?.word).filter((word): word is string => Boolean(word))
-    saveStudySession({ folderName, totalCards: flashcards.length, correctFirstTry: known, wordsToReview })
+    const mistakeCards = Object.keys(wrongCount).length
+    const correctFirstTry = Math.max(0, flashcards.length - mistakeCards)
+    saveStudySession({
+      folderName,
+      totalCards: flashcards.length,
+      correctFirstTry,
+      wordsToReview,
+      mistakeCards,
+      totalMistakes: Object.values(wrongCount).reduce((sum, count) => sum + count, 0),
+    })
     setSaved(true)
-  }, [finished, flashcards, folderName, known, saved, saveStudySession, wrongCount])
+  }, [finished, flashcards, folderName, saved, saveStudySession, wrongCount])
 
   const speak = async (word: string) => {
     const normalized = word.trim().toLowerCase()

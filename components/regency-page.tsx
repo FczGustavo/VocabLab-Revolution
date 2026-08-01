@@ -16,11 +16,10 @@ import { RegencyStudyMode, type RegencyStudyKind } from "@/components/regency-st
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import type { GrammaticalForm, RegencyCard, RegencyCategory, RegencyComplement, RegencyFolder } from "@/lib/types"
-import { grammaticalFormLabels, grammaticalForms } from "@/lib/grammatical-forms"
-import { GrammaticalFormBadge } from "@/components/grammatical-form-badge"
+import type { RegencyCard, RegencyCategory, RegencyComplement, RegencyFolder } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { reviewFolderTitle } from "@/lib/review-folder-title"
 import { REGENCY_DEFAULT_FOLDER_NAME } from "@/lib/regency-default-catalog"
@@ -288,7 +287,10 @@ export function RegencyPage() {
       {isInsideFolder && (
         <>
           <div className="mb-8 flex flex-col items-center gap-6 pt-4 sm:mb-10 sm:pt-6"><h1 className="lab-title select-none font-serif text-[clamp(3rem,14vw,5rem)] font-normal leading-none tracking-[-0.02em] text-foreground/15">RegencyLab</h1></div>
-          {!isReviewFolderSelected && <div className="mx-auto w-full max-w-md">
+          {!isReviewFolderSelected && <div className={cn(
+            "mx-auto w-full transition-[max-width] duration-500 ease-in-out",
+            inputMode === "manual" ? "max-w-5xl" : "max-w-md",
+          )}>
             <section className="relative rounded-2xl border border-border/40 bg-card/80 px-4 py-3 shadow-sm backdrop-blur-sm">
               <form onSubmit={(event) => { event.preventDefault(); if (inputMode === "single") void createSingleCards(); else void saveCard() }} className="space-y-0">
                 <div className="px-1">
@@ -310,15 +312,13 @@ export function RegencyPage() {
                 <div className="overflow-hidden">
                   <div className={cn("rounded-2xl border border-border/50 bg-background/45 p-3.5 shadow-sm transition-transform duration-300 sm:p-4", inputMode === "manual" ? "translate-y-0" : "-translate-y-2")}>
                     <div className="mb-3 flex items-center justify-between gap-3">{editingCard ? <p className="text-xs text-muted-foreground">Editing this construction</p> : <p className="text-xs text-muted-foreground">Write every field yourself, or use optional suggestions.</p>}{editingCard && <Button type="button" variant="ghost" size="sm" onClick={resetEditor}>Cancel edit</Button>}</div>
-                    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_150px]">
-                      <Field label="Term"><Input value={editor.term} onChange={(event) => setEditor((current) => ({ ...current, term: event.target.value }))} placeholder="e.g. struggle" /></Field>
-                      <Field label="Category"><select value={editor.category} onChange={(event) => setEditor((current) => ({ ...current, category: event.target.value as RegencyCategory }))} className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"><option value="verb">Verb</option><option value="adjective">Adjective</option><option value="noun">Noun</option></select></Field>
-                      <Field label="Grammatical form"><select value={editor.grammaticalForm ?? "base-form"} onChange={(event) => setEditor((current) => ({ ...current, grammaticalForm: event.target.value as GrammaticalForm }))} className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm">{grammaticalForms.map((form) => <option key={form} value={form}>{grammaticalFormLabels[form]}</option>)}</select></Field>
-                      <Field label="Pattern"><Input value={editor.pattern} onChange={(event) => setEditor((current) => ({ ...current, pattern: event.target.value }))} placeholder="e.g. to + infinitive" /></Field>
-                      <Field label="Complement"><select value={editor.complement} onChange={(event) => setEditor((current) => ({ ...current, complement: event.target.value as RegencyComplement }))} className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm">{complements.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></Field>
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      <div className="lg:col-span-2"><Field label="Term"><Input value={editor.term} onChange={(event) => setEditor((current) => ({ ...current, term: event.target.value }))} placeholder="e.g. struggle" /></Field></div>
+                      <Field label="Category"><Select value={editor.category} onValueChange={(value) => setEditor((current) => ({ ...current, category: value as RegencyCategory }))}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="verb">Verb</SelectItem><SelectItem value="adjective">Adjective</SelectItem><SelectItem value="noun">Noun</SelectItem></SelectContent></Select></Field>
+                      <div className="lg:col-span-2"><Field label="Pattern"><Input value={editor.pattern} onChange={(event) => setEditor((current) => ({ ...current, pattern: event.target.value }))} placeholder="e.g. to + infinitive" /></Field></div>
+                      <Field label="Complement"><Select value={editor.complement} onValueChange={(value) => setEditor((current) => ({ ...current, complement: value as RegencyComplement }))}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{complements.map((item) => <SelectItem key={item.id} value={item.id}>{item.label}</SelectItem>)}</SelectContent></Select></Field>
                     </div>
-                    <div className="mt-3"><Field label="Example"><Textarea value={editor.example} onChange={(event) => setEditor((current) => ({ ...current, example: event.target.value }))} placeholder="e.g. I struggle to balance work and family commitments." className="min-h-20 resize-y" /></Field></div>
-                    <div className="mt-3"><Field label="Example translation (PT-BR)"><Textarea value={editor.exampleTranslation} onChange={(event) => setEditor((current) => ({ ...current, exampleTranslation: event.target.value }))} placeholder="e.g. Eu luto para equilibrar o trabalho e os compromissos familiares." className="min-h-16 resize-y" /></Field></div>
+                    <div className="mt-3 grid gap-3 lg:grid-cols-2"><Field label="Example"><Textarea value={editor.example} onChange={(event) => setEditor((current) => ({ ...current, example: event.target.value }))} placeholder="e.g. I struggle to balance work and family commitments." className="min-h-24 resize-y" /></Field><Field label="Example translation (PT-BR)"><Textarea value={editor.exampleTranslation} onChange={(event) => setEditor((current) => ({ ...current, exampleTranslation: event.target.value }))} placeholder="e.g. Eu luto para equilibrar o trabalho e os compromissos familiares." className="min-h-24 resize-y" /></Field></div>
                     <div className="mt-3 grid gap-3 sm:grid-cols-2"><Field label="Meaning (PT-BR)"><Textarea value={editor.meaningPt} onChange={(event) => setEditor((current) => ({ ...current, meaningPt: event.target.value }))} placeholder="Quando e por que usar esta construção." className="min-h-20 resize-y" /></Field><Field label="Contrast (PT-BR, optional)"><Textarea value={editor.contrastPt} onChange={(event) => setEditor((current) => ({ ...current, contrastPt: event.target.value }))} placeholder="Diferença para outros padrões da mesma palavra." className="min-h-20 resize-y" /></Field></div>
                     <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border/30 pt-4"><Button type="button" variant="outline" size="sm" onClick={requestSuggestion} disabled={suggesting}>{suggesting ? <Loader2 className="mr-1.5 size-3.5 animate-spin" /> : <Sparkles className="mr-1.5 size-3.5" />}Suggest patterns</Button><Button type="button" variant="outline" size="sm" onClick={requestExample} disabled={generatingExample}>{generatingExample ? <Loader2 className="mr-1.5 size-3.5 animate-spin" /> : <Sparkles className="mr-1.5 size-3.5" />}Generate example</Button><Button type="button" size="sm" className="ml-auto" onClick={saveCard}>{editingCard ? "Save changes" : "Create card"}</Button></div>
                     {suggestions.length > 0 && <div className="mt-4 rounded-xl border border-primary/15 bg-primary/5 p-3"><p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-primary">Review a suggested pattern</p><div className="space-y-2">{suggestions.map((suggestion, index) => <button key={`${suggestion.pattern}-${index}`} type="button" onClick={() => chooseSuggestion(suggestion)} className="w-full rounded-lg border border-border/40 bg-background p-3 text-left transition-colors hover:border-primary/30"><p className="text-sm font-medium text-foreground/80">{suggestion.pattern}</p><p className="mt-1 text-xs text-foreground/70">{suggestion.meaningPt}</p>{suggestion.contrastPt && <p className="mt-1 text-[11px] text-primary/75"><span className="font-semibold">Compare:</span> {suggestion.contrastPt}</p>}<p className="mt-2 text-xs italic text-muted-foreground">“{suggestion.example}”</p><p className="mt-1 text-xs text-muted-foreground/75">{suggestion.exampleTranslation}</p></button>)}</div></div>}
@@ -426,10 +426,9 @@ function RegencyCardView({ card, layout, squareCards, display, onEdit, onDelete 
       <div className={cn("min-w-0 pr-24", layout === "grid" && "border-b border-border/35 pb-3")}>
         <div className="flex min-w-0 items-center gap-2">
           <h3 className="min-w-0 shrink truncate text-xl font-medium tracking-tight text-foreground/80">{card.term}</h3>
-          {(display.showCategory || display.showGrammaticalForm) && (
+          {display.showCategory && (
             <div className="flex shrink-0 flex-nowrap items-center gap-1.5 whitespace-nowrap">
               {display.showCategory && <span className={cn("ghost-tag inline-flex h-5 w-fit shrink-0 items-center justify-center whitespace-nowrap px-2 py-0.5 text-[10px] font-medium leading-none", card.category === "verb" ? "bg-blue-500/10 text-blue-700 dark:bg-blue-700 dark:text-white/90" : card.category === "noun" ? "bg-emerald-500/10 text-emerald-700 dark:bg-emerald-700 dark:text-white/90" : "bg-amber-500/10 text-amber-700 dark:bg-amber-700 dark:text-white/90")}>{card.category === "verb" ? "Verb" : card.category === "noun" ? "Noun" : "Adjective"}</span>}
-              {display.showGrammaticalForm && <GrammaticalFormBadge form={card.grammaticalForm} />}
             </div>
           )}
         </div>

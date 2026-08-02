@@ -736,6 +736,9 @@ export function SettingsDialog() {
                                   <p className="truncate text-[11px] font-medium">{device.label}</p>
                                   <p className="text-[9px] text-muted-foreground">Última atividade: {new Date(device.lastSeenAt).toLocaleString("pt-BR")}</p>
                                 </div>
+                                {device.current && (
+                                  <span className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-1 text-[9px] font-medium text-emerald-600 dark:text-emerald-300">Este dispositivo</span>
+                                )}
                                 <Select value={device.role} onValueChange={(value) => void handleSetDeviceRole(device.id, value as SyncDeviceRole)} disabled={roleBusy !== null}>
                                   <SelectTrigger className="h-7 w-[112px] shrink-0 text-[9px]">
                                     <SelectValue />
@@ -745,9 +748,7 @@ export function SettingsDialog() {
                                     <SelectItem value="study">Somente estudo</SelectItem>
                                   </SelectContent>
                                 </Select>
-                                {device.current ? (
-                                  <span className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-1 text-[9px] font-medium text-emerald-600 dark:text-emerald-300">Este dispositivo</span>
-                                ) : (
+                                {!device.current && (
                                   <Button type="button" variant="ghost" size="icon" className="size-7 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => setDeviceToRevoke(device.id)} disabled={deviceBusy !== null} aria-label={`Desconectar ${device.label}`}>
                                     <Unplug className="size-3.5" />
                                   </Button>

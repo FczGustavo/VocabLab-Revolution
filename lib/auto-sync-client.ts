@@ -444,12 +444,12 @@ async function pushLab(
   return Number(json.revision)
 }
 
-export async function synchronizeLab(syncCode: string, lab: SyncLabId) {
+async function synchronizeLabUnlocked(syncCode: string, lab: SyncLabId) {
   const ownerToken = getSyncOwnerToken(syncCode)
   if (!ownerToken) throw new Error("Este navegador ainda não foi autorizado.")
+  const key = `${syncCode}:${lab}`
   for (let attempt = 0; attempt < 3; attempt++) {
     const studyOnly = getSyncDeviceRole() === "study"
-    const key = `${syncCode}:${lab}`
     const [baseline, local, remoteState] = await Promise.all([
       getBaseline(key),
       exportLabData(lab),
@@ -511,7 +511,43 @@ export async function synchronizeLab(syncCode: string, lab: SyncLabId) {
     })
     return remoteState.revision
   }
+  // A second tab or a background request can still win the revision between
+  // the final pull and push. Adopt the newest remote state and let the next
+  // scheduled cycle publish any remaining local change instead of surfacing a
+  // persistent error for a recoverable race.
+  try {
+    const latest = await pullLab(syncCode, lab, ownerToken)
+    if (latest.payload) {
+      const latestLocal = await exportLabData(lab)
+      const latestBaseline = await getBaseline(key)
+      const latestMerged = getSyncDeviceRole() === "study"
+        ? studyStatePreservingPayload(latest.payload, latestLocal)
+        : mergeLabPayloads(latestBaseline?.payload, latestLocal, latest.payload)
+      if (payloadFingerprint(latestMerged) !== payloadFingerprint(latestLocal)) {
+        await importLabData(latestMerged, latestLocal)
+      }
+      await putBaseline({ key, revision: latest.revision, payload: latestMerged, updatedAt: Date.now() })
+      return latest.revision
+    }
+  } catch {
+    // Preserve the original error only when the recovery pull also fails.
+  }
   throw new Error("Houve atualizações simultâneas demais. A sincronização tentará novamente.")
+}
+
+export async function synchronizeLab(syncCode: string, lab: SyncLabId) {
+  if (typeof navigator !== "undefined" && "locks" in navigator) {
+    const lockManager = (navigator as Navigator & { locks: LockManager }).locks
+    const result = await lockManager.request(
+      `vocablab-sync:${syncCode}:${lab}`,
+      { ifAvailable: true },
+      async (lock) => lock ? synchronizeLabUnlocked(syncCode, lab) : null,
+    )
+    // Another tab is already synchronizing this Lab. It will publish the
+    // result; skipping here avoids two writers racing on the same revision.
+    return result ?? 0
+  }
+  return synchronizeLabUnlocked(syncCode, lab)
 }
 
 export function publishAutoSyncState(state: AutoSyncState) {

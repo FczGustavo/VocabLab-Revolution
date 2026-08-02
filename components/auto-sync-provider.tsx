@@ -102,12 +102,16 @@ export function AutoSyncProvider() {
         }
       } catch (error) {
         if (!disposed) {
+          const message = syncErrorMessage(error)
           publishAutoSyncState({
             state: "error",
-            message: syncErrorMessage(error),
+            message,
             updatedAt: Date.now(),
             labs: revisions,
           })
+          if (/atualizações simultâneas|conflito de sincronização/i.test(message)) {
+            schedule(3_000, requested)
+          }
         }
       } finally {
         running = false

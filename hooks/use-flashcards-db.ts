@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import type { Flashcard, Folder } from "@/lib/types"
 import { FLASHCARDS_UPDATED_EVENT } from "@/lib/constants"
 import { recordSyncTombstone } from "@/lib/sync-tombstones"
+import { isSyncStudyOnly } from "@/lib/sync-device"
 import {
   VOCAB_DEFAULT_CATALOG,
   VOCAB_DEFAULT_CATALOG_VERSION,
@@ -412,6 +413,7 @@ export function useFlashcardsDB() {
 
   // Folder operations
   const addFolder = useCallback(async (name: string): Promise<Folder | null> => {
+    if (isSyncStudyOnly()) return null
     try {
       const db = await openDatabase()
       const transaction = db.transaction(FOLDERS_STORE, "readwrite")
@@ -445,6 +447,7 @@ export function useFlashcardsDB() {
   }, [])
 
   const deleteFolder = useCallback(async (id: string): Promise<boolean> => {
+    if (isSyncStudyOnly()) return false
     try {
       const db = await openDatabase()
       const transaction = db.transaction([FLASHCARDS_STORE, FOLDERS_STORE], "readwrite")
@@ -476,6 +479,7 @@ export function useFlashcardsDB() {
   }, [selectedFolderId])
 
   const renameFolder = useCallback(async (id: string, newName: string): Promise<boolean> => {
+    if (isSyncStudyOnly()) return false
     try {
       const db = await openDatabase()
       const transaction = db.transaction(FOLDERS_STORE, "readwrite")
@@ -520,6 +524,7 @@ export function useFlashcardsDB() {
   // Flashcard operations
   const addFlashcard = useCallback(
     async (flashcard: Flashcard, explicitFolderId?: string | null): Promise<boolean> => {
+      if (isSyncStudyOnly()) return false
       try {
         const db = await openDatabase()
         const transaction = db.transaction(FLASHCARDS_STORE, "readwrite")
@@ -574,6 +579,7 @@ export function useFlashcardsDB() {
   )
 
   const deleteFlashcard = useCallback(async (id: string): Promise<boolean> => {
+    if (isSyncStudyOnly()) return false
     try {
       const db = await openDatabase()
       const transaction = db.transaction(FLASHCARDS_STORE, "readwrite")
@@ -646,6 +652,7 @@ export function useFlashcardsDB() {
   }, [])
 
   const moveFlashcardToFolder = useCallback(async (flashcardId: string, folderId: string | null): Promise<boolean> => {
+    if (isSyncStudyOnly()) return false
     try {
       const db = await openDatabase()
       const transaction = db.transaction(FLASHCARDS_STORE, "readwrite")

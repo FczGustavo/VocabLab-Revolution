@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import type { ReadLabText, ReadLabFolder } from "@/lib/types"
 import { READLAB_TEXTS_UPDATED_EVENT } from "@/lib/constants"
 import { recordSyncTombstone } from "@/lib/sync-tombstones"
+import { isSyncStudyOnly } from "@/lib/sync-device"
 
 const DB_NAME = "readlab-db"
 const DB_VERSION = 1
@@ -113,6 +114,7 @@ export function useReadlabDB() {
   }, [loadData])
 
   const addFolder = useCallback(async (name: string): Promise<ReadLabFolder | null> => {
+    if (isSyncStudyOnly()) return null
     try {
       const db = await openDatabase()
       const transaction = db.transaction(FOLDERS_STORE, "readwrite")
@@ -145,6 +147,7 @@ export function useReadlabDB() {
   }, [])
 
   const deleteFolder = useCallback(async (id: string): Promise<boolean> => {
+    if (isSyncStudyOnly()) return false
     try {
       const db = await openDatabase()
       const foldersTransaction = db.transaction(FOLDERS_STORE, "readwrite")
@@ -164,6 +167,7 @@ export function useReadlabDB() {
   }, [selectedFolderId])
 
   const renameFolder = useCallback(async (id: string, newName: string): Promise<boolean> => {
+    if (isSyncStudyOnly()) return false
     try {
       const db = await openDatabase()
       const transaction = db.transaction(FOLDERS_STORE, "readwrite")
@@ -193,6 +197,7 @@ export function useReadlabDB() {
 
   const addText = useCallback(
     async (text: ReadLabText): Promise<boolean> => {
+      if (isSyncStudyOnly()) return false
       try {
         const db = await openDatabase()
         const transaction = db.transaction(TEXTS_STORE, "readwrite")
@@ -222,6 +227,7 @@ export function useReadlabDB() {
   )
 
   const updateText = useCallback(async (text: ReadLabText): Promise<boolean> => {
+    if (isSyncStudyOnly()) return false
     try {
       const db = await openDatabase()
       const transaction = db.transaction(TEXTS_STORE, "readwrite")
@@ -244,6 +250,7 @@ export function useReadlabDB() {
   }, [])
 
   const deleteText = useCallback(async (id: string): Promise<boolean> => {
+    if (isSyncStudyOnly()) return false
     try {
       const db = await openDatabase()
       const transaction = db.transaction(TEXTS_STORE, "readwrite")

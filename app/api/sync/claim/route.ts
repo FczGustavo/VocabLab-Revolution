@@ -8,12 +8,19 @@ import {
   hashOwnerToken,
   hashSyncCode,
   normalizeOwnerToken,
+  normalizeSyncDeviceId,
+  normalizeSyncDeviceKind,
+  normalizeSyncDeviceLabel,
+  touchSyncDevice,
   verifySyncOwner,
 } from "@/lib/sync-server"
 
 type ClaimRequest = {
   syncCode?: unknown
   ownerToken?: unknown
+  deviceId?: unknown
+  deviceLabel?: unknown
+  deviceKind?: unknown
 }
 
 export async function POST(request: Request) {
@@ -44,11 +51,23 @@ export async function POST(request: Request) {
     })
 
     if (!insertError) {
+      await touchSyncDevice(supabase, syncHash, ownerToken, config.pepper, {
+        id: normalizeSyncDeviceId(body.deviceId),
+        label: normalizeSyncDeviceLabel(body.deviceLabel),
+        kind: normalizeSyncDeviceKind(body.deviceKind),
+        role: "primary",
+      })
       return NextResponse.json({ ok: true, claimed: true })
     }
     if (insertError.code !== "23505") throw insertError
 
     if (await verifySyncOwner(supabase, syncHash, ownerToken, config.pepper)) {
+      await touchSyncDevice(supabase, syncHash, ownerToken, config.pepper, {
+        id: normalizeSyncDeviceId(body.deviceId),
+        label: normalizeSyncDeviceLabel(body.deviceLabel),
+        kind: normalizeSyncDeviceKind(body.deviceKind),
+        role: "primary",
+      })
       return NextResponse.json({ ok: true, claimed: false })
     }
 

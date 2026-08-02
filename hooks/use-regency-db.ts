@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react"
 import type { RegencyCard, RegencyFolder } from "@/lib/types"
 import { REGENCYLAB_CARDS_UPDATED_EVENT } from "@/lib/constants"
 import { recordSyncTombstone } from "@/lib/sync-tombstones"
+import { isSyncStudyOnly } from "@/lib/sync-device"
 import {
   REGENCY_DEFAULT_CATALOG,
   REGENCY_DEFAULT_CATALOG_VERSION,
@@ -206,6 +207,7 @@ export function useRegencyDB() {
   }, [loadData])
 
   const addFolder = useCallback(async (name: string) => {
+    if (isSyncStudyOnly()) return null
     const now = Date.now()
     const folder: RegencyFolder = { id: crypto.randomUUID(), name: name.trim(), createdAt: now, updatedAt: now }
     if (!folder.name) return null
@@ -225,6 +227,7 @@ export function useRegencyDB() {
   }, [])
 
   const renameFolder = useCallback(async (id: string, name: string) => {
+    if (isSyncStudyOnly()) return false
     const nextName = name.trim()
     if (!nextName) return false
     try {
@@ -250,6 +253,7 @@ export function useRegencyDB() {
   }, [])
 
   const addCard = useCallback(async (card: Omit<RegencyCard, "id" | "folderId" | "createdAt" | "updatedAt">) => {
+    if (isSyncStudyOnly()) return { ok: false, error: "This connection is study-only. Use the primary connection to create cards." }
     const term = card.term.trim()
     const pattern = card.pattern.trim()
     const example = card.example.trim()
@@ -289,6 +293,7 @@ export function useRegencyDB() {
   }, [])
 
   const deleteCard = useCallback(async (id: string) => {
+    if (isSyncStudyOnly()) return false
     try {
       const db = await openDatabase()
       await new Promise<void>((resolve, reject) => {
@@ -306,6 +311,7 @@ export function useRegencyDB() {
   }, [])
 
   const deleteCardsInFolder = useCallback(async (folderId: string | null) => {
+    if (isSyncStudyOnly()) return false
     const ids = allCards.filter((card) => card.folderId === folderId).map((card) => card.id)
     if (!ids.length) return true
     try {
@@ -326,6 +332,7 @@ export function useRegencyDB() {
   }, [allCards])
 
   const moveCards = useCallback(async (fromFolderId: string | null, toFolderId: string | null) => {
+    if (isSyncStudyOnly()) return false
     const moving = allCards.filter((card) => card.folderId === fromFolderId).map((card) => ({ ...card, folderId: toFolderId, updatedAt: Date.now() }))
     if (!moving.length) return true
     try {
@@ -343,6 +350,7 @@ export function useRegencyDB() {
   }, [allCards])
 
   const deleteFolder = useCallback(async (id: string) => {
+    if (isSyncStudyOnly()) return false
     try {
       const db = await openDatabase()
       await new Promise<void>((resolve, reject) => {

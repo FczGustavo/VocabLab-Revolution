@@ -78,6 +78,242 @@ export function normalizeOwnerToken(value: unknown) {
     : ""
 }
 
+export type SyncDeviceKind = "mobile" | "tablet" | "desktop" | "unknown"
+export type SyncDeviceRole = "primary" | "study"
+
+export type SyncDeviceRecord = {
+  id: string
+  tokenHash: string
+  label: string
+  kind: SyncDeviceKind
+  role: SyncDeviceRole
+  createdAt: string
+  lastSeenAt: string
+}
+
+export function normalizeSyncDeviceId(value: unknown) {
+  return typeof value === "string" && /^[a-zA-Z0-9-]{8,64}$/.test(value)
+    ? value
+    : ""
+}
+
+export function normalizeSyncDeviceLabel(value: unknown) {
+  if (typeof value !== "string") return "Dispositivo"
+  const label = value.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 80)
+  return label || "Dispositivo"
+}
+
+export function normalizeSyncDeviceKind(value: unknown): SyncDeviceKind {
+  return value === "mobile" || value === "tablet" || value === "desktop" || value === "unknown"
+    ? value
+    : "unknown"
+}
+
+export function normalizeSyncDeviceRole(value: unknown): SyncDeviceRole {
+  return value === "study" ? "study" : "primary"
+}
+
+export function isMissingSyncDevicesColumn(error: unknown) {
+  const candidate = error as { code?: unknown; message?: unknown } | null
+  const code = String(candidate?.code ?? "")
+  const message = String(candidate?.message ?? error ?? "").toLowerCase()
+  return code === "42703" || code === "PGRST204" || (message.includes("devices") && (message.includes("column") || message.includes("schema cache")))
+}
+
+function validStoredDevices(value: unknown) {
+  if (!Array.isArray(value)) return [] as SyncDeviceRecord[]
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object") return []
+    const record = item as Record<string, unknown>
+    const id = normalizeSyncDeviceId(record.id)
+    const tokenHash = typeof record.tokenHash === "string" ? record.tokenHash : ""
+    if (!id || !/^[a-f0-9]{64}$/.test(tokenHash)) return []
+    return [{
+      id,
+      tokenHash,
+      label: normalizeSyncDeviceLabel(record.label),
+      kind: normalizeSyncDeviceKind(record.kind),
+      role: normalizeSyncDeviceRole(record.role),
+      createdAt: typeof record.createdAt === "string" ? record.createdAt : new Date().toISOString(),
+      lastSeenAt: typeof record.lastSeenAt === "string" ? record.lastSeenAt : new Date().toISOString(),
+    }]
+  })
+}
+
+export async function touchSyncDevice(
+  supabase: SupabaseClient,
+  syncHash: string,
+  ownerToken: string,
+  pepper: string,
+  metadata: { id: unknown; label?: unknown; kind?: unknown; role?: unknown },
+) {
+  const id = normalizeSyncDeviceId(metadata.id)
+  if (!id) return false
+  const table = getSyncClaimsTable()
+  const { data, error } = await supabase
+    .from(table)
+    .select("devices, device_token_hashes")
+    .eq("sync_code", syncHash)
+    .maybeSingle()
+  if (error) {
+    if (isMissingSyncDevicesColumn(error)) return false
+    throw error
+  }
+  if (!data) return false
+
+  const now = new Date().toISOString()
+  const tokenHash = hashOwnerToken(ownerToken, pepper)
+  const devices = validStoredDevices(data.devices)
+  const existing = devices.find((device) => device.id === id)
+  const nextDevice: SyncDeviceRecord = {
+    id,
+    tokenHash,
+    label: normalizeSyncDeviceLabel(metadata.label),
+    kind: normalizeSyncDeviceKind(metadata.kind),
+    role: existing?.role ?? normalizeSyncDeviceRole(metadata.role),
+    createdAt: existing?.createdAt ?? now,
+    lastSeenAt: now,
+  }
+  // Older claims can be backfilled with a legacy placeholder derived from the
+  // token hash. Replace that placeholder as soon as the real browser checks in.
+  const withoutLegacyAlias = devices.filter((device) => (
+    !(device.id.startsWith("legacy-") && device.tokenHash === tokenHash && device.id !== id)
+  ))
+  const nextDevices = existing
+    ? withoutLegacyAlias.map((device) => device.id === id ? nextDevice : device)
+    : [...withoutLegacyAlias, nextDevice]
+  const tokenHashes = Array.isArray(data.device_token_hashes)
+    ? data.device_token_hashes.filter((value): value is string => typeof value === "string")
+    : []
+  const nextHashes = [...new Set([...tokenHashes, tokenHash])].slice(-20)
+  const { error: updateError } = await supabase
+    .from(table)
+    .update({ devices: nextDevices, device_token_hashes: nextHashes, updated_at: now })
+    .eq("sync_code", syncHash)
+  if (updateError) {
+    if (isMissingSyncDevicesColumn(updateError)) return false
+    throw updateError
+  }
+  return true
+}
+
+export async function listStoredSyncDevices(
+  supabase: SupabaseClient,
+  syncHash: string,
+) {
+  const { data, error } = await supabase
+    .from(getSyncClaimsTable())
+    .select("devices")
+    .eq("sync_code", syncHash)
+    .maybeSingle()
+  if (error) {
+    if (isMissingSyncDevicesColumn(error)) return null
+    throw error
+  }
+  if (!data) return []
+  return validStoredDevices(data.devices)
+    .map(({ tokenHash: _tokenHash, ...device }) => device)
+    .sort((a, b) => Date.parse(b.lastSeenAt) - Date.parse(a.lastSeenAt))
+}
+
+export async function getStoredSyncDeviceRole(
+  supabase: SupabaseClient,
+  syncHash: string,
+  ownerToken: string,
+  pepper: string,
+  deviceId: string,
+) {
+  const { data, error } = await supabase
+    .from(getSyncClaimsTable())
+    .select("devices")
+    .eq("sync_code", syncHash)
+    .maybeSingle()
+  if (error) {
+    if (isMissingSyncDevicesColumn(error)) return null
+    throw error
+  }
+  const tokenHash = hashOwnerToken(ownerToken, pepper)
+  const device = validStoredDevices(data?.devices).find((item) => item.id === deviceId && item.tokenHash === tokenHash)
+  return device?.role ?? "unknown"
+}
+
+export async function setStoredSyncDeviceRole(
+  supabase: SupabaseClient,
+  syncHash: string,
+  ownerToken: string,
+  pepper: string,
+  actorDeviceId: string,
+  targetDeviceId: string,
+  role: SyncDeviceRole,
+) {
+  const table = getSyncClaimsTable()
+  const { data, error } = await supabase
+    .from(table)
+    .select("devices")
+    .eq("sync_code", syncHash)
+    .maybeSingle()
+  if (error) {
+    if (isMissingSyncDevicesColumn(error)) return null
+    throw error
+  }
+  if (!data) return false
+  const devices = validStoredDevices(data.devices)
+  const tokenHash = hashOwnerToken(ownerToken, pepper)
+  const actor = devices.find((item) => item.id === actorDeviceId && item.tokenHash === tokenHash)
+  const target = devices.find((item) => item.id === targetDeviceId)
+  if (!actor || !target) return false
+  if (actor.id !== target.id && actor.role !== "primary") return "forbidden" as const
+  const nextDevices = devices.map((item) => ({
+    ...item,
+    role: item.id === targetDeviceId ? role : role === "primary" ? "study" : item.role,
+  }))
+  const { error: updateError } = await supabase
+    .from(table)
+    .update({ devices: nextDevices, updated_at: new Date().toISOString() })
+    .eq("sync_code", syncHash)
+  if (updateError) {
+    if (isMissingSyncDevicesColumn(updateError)) return null
+    throw updateError
+  }
+  return true
+}
+
+export async function revokeStoredSyncDevice(
+  supabase: SupabaseClient,
+  syncHash: string,
+  deviceId: string,
+) {
+  const table = getSyncClaimsTable()
+  const { data, error } = await supabase
+    .from(table)
+    .select("devices, device_token_hashes")
+    .eq("sync_code", syncHash)
+    .maybeSingle()
+  if (error) {
+    if (isMissingSyncDevicesColumn(error)) return null
+    throw error
+  }
+  if (!data) return false
+  const devices = validStoredDevices(data.devices)
+  const target = devices.find((device) => device.id === deviceId)
+  if (!target) return false
+  const nextDevices = devices.filter((device) => device.id !== deviceId)
+  const stillUsed = new Set(nextDevices.map((device) => device.tokenHash))
+  const hashes = Array.isArray(data.device_token_hashes)
+    ? data.device_token_hashes.filter((value): value is string => typeof value === "string")
+    : []
+  const nextHashes = hashes.filter((hash) => hash !== target.tokenHash || stillUsed.has(hash))
+  const { error: updateError } = await supabase
+    .from(table)
+    .update({ devices: nextDevices, device_token_hashes: nextHashes, updated_at: new Date().toISOString() })
+    .eq("sync_code", syncHash)
+  if (updateError) {
+    if (isMissingSyncDevicesColumn(updateError)) return null
+    throw updateError
+  }
+  return true
+}
+
 export function hashOwnerToken(ownerToken: string, pepper: string) {
   return createHmac("sha256", pepper)
     .update(`owner:${ownerToken}`)

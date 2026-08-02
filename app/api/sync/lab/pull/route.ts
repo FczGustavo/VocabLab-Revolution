@@ -9,8 +9,13 @@ import {
   createSyncServerClient,
   getSyncLabTable,
   getSyncServerConfig,
+  getStoredSyncDeviceRole,
   hashSyncCode,
+  normalizeSyncDeviceId,
+  normalizeSyncDeviceKind,
+  normalizeSyncDeviceLabel,
   normalizeOwnerToken,
+  touchSyncDevice,
   verifySyncOwner,
 } from "@/lib/sync-server"
 
@@ -18,6 +23,9 @@ type PullRequest = {
   syncCode?: unknown
   lab?: unknown
   ownerToken?: unknown
+  deviceId?: unknown
+  deviceLabel?: unknown
+  deviceKind?: unknown
 }
 
 export async function POST(request: Request) {
@@ -46,6 +54,19 @@ export async function POST(request: Request) {
       )
     }
 
+    await touchSyncDevice(supabase, syncHash, ownerToken, config.pepper, {
+      id: normalizeSyncDeviceId(body.deviceId),
+      label: normalizeSyncDeviceLabel(body.deviceLabel),
+      kind: normalizeSyncDeviceKind(body.deviceKind),
+    })
+    const deviceRole = await getStoredSyncDeviceRole(
+      supabase,
+      syncHash,
+      ownerToken,
+      config.pepper,
+      normalizeSyncDeviceId(body.deviceId),
+    )
+
     const { data, error } = await supabase
       .from(getSyncLabTable(lab.data))
       .select("payload, updated_at, revision, schema_version")
@@ -53,7 +74,7 @@ export async function POST(request: Request) {
       .maybeSingle()
 
     if (error) throw error
-    if (!data) return NextResponse.json({ payload: null, revision: 0 })
+    if (!data) return NextResponse.json({ payload: null, revision: 0, deviceRole })
     const payload = SyncLabPayloadSchema.safeParse(data.payload)
     if (!payload.success || payload.data.lab !== lab.data) {
       return NextResponse.json(
@@ -66,6 +87,7 @@ export async function POST(request: Request) {
       revision: data.revision,
       updatedAt: data.updated_at,
       schemaVersion: data.schema_version,
+      deviceRole,
     })
   } catch (error) {
     return safeApiError(error, "Não foi possível receber as atualizações.")

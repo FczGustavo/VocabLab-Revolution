@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react"
 import type { RuleCard, RuleFolder } from "@/lib/types"
 import { RULELAB_CARDS_UPDATED_EVENT } from "@/lib/constants"
 import { recordSyncTombstone } from "@/lib/sync-tombstones"
+import { isSyncStudyOnly } from "@/lib/sync-device"
 
 const DB_NAME = "rulelab-db"
 const DB_VERSION = 2
@@ -125,6 +126,7 @@ export function useRuleDB() {
   }, [loadData])
 
   const addFolder = useCallback(async (name: string) => {
+    if (isSyncStudyOnly()) return null
     const now = Date.now()
     const folder: RuleFolder = { id: crypto.randomUUID(), name: name.trim(), createdAt: now, updatedAt: now }
     if (!folder.name) return null
@@ -137,6 +139,7 @@ export function useRuleDB() {
   }, [])
 
   const renameFolder = useCallback(async (id: string, name: string) => {
+    if (isSyncStudyOnly()) return false
     const current = folders.find((folder) => folder.id === id)
     const nextName = name.trim()
     if (!current || !nextName) return false
@@ -150,6 +153,7 @@ export function useRuleDB() {
   }, [folders])
 
   const deleteFolder = useCallback(async (id: string) => {
+    if (isSyncStudyOnly()) return false
     try {
       await write(FOLDERS_STORE, (store) => store.delete(id))
       setFolders((items) => items.filter((item) => item.id !== id))
@@ -161,6 +165,7 @@ export function useRuleDB() {
   }, [selectedFolderId])
 
   const addCard = useCallback(async (front: string, back: string) => {
+    if (isSyncStudyOnly()) return { ok: false, error: "This connection is study-only. Use the primary connection to create cards." }
     const cleanedFront = front.trim()
     const cleanedBack = back.trim()
     if (!selectedFolderId || !cleanedFront || !cleanedBack) return { ok: false, error: "Complete both sides of the card." }
@@ -188,6 +193,7 @@ export function useRuleDB() {
   }, [])
 
   const deleteCard = useCallback(async (id: string) => {
+    if (isSyncStudyOnly()) return false
     try {
       await write(CARDS_STORE, (store) => store.delete(id))
       setAllCards((items) => items.filter((item) => item.id !== id))
@@ -198,6 +204,7 @@ export function useRuleDB() {
   }, [])
 
   const deleteCardsInFolder = useCallback(async (folderId: string) => {
+    if (isSyncStudyOnly()) return false
     const ids = allCards.filter((card) => card.folderId === folderId).map((card) => card.id)
     if (!ids.length) return true
     try {
@@ -216,6 +223,7 @@ export function useRuleDB() {
   }, [allCards])
 
   const moveCards = useCallback(async (fromFolderId: string, toFolderId: string) => {
+    if (isSyncStudyOnly()) return false
     const moving = allCards.filter((card) => card.folderId === fromFolderId).map((card) => ({ ...card, folderId: toFolderId, updatedAt: Date.now() }))
     if (!moving.length) return true
     try {

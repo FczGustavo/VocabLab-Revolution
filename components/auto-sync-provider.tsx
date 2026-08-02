@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useSyncCode } from "@/hooks/use-sync-code"
 import {
   AI_PREFERENCES_UPDATED_EVENT,
@@ -19,6 +19,7 @@ import {
   SYNC_IDENTITY_UPDATED_EVENT,
   synchronizeLab,
 } from "@/lib/auto-sync-client"
+import { getSyncDeviceRole, SYNC_DEVICE_ROLE_UPDATED_EVENT } from "@/lib/sync-device"
 import { SYNC_LABS } from "@/lib/sync-client"
 import type { SyncLabId } from "@/lib/sync-schema"
 
@@ -50,6 +51,14 @@ function syncErrorMessage(error: unknown) {
 
 export function AutoSyncProvider() {
   const { syncCode, isValid, isIdentityLocked, isSyncEnabled, isLoaded } = useSyncCode()
+  const [studyOnly, setStudyOnly] = useState(() => getSyncDeviceRole() === "study")
+
+  useEffect(() => {
+    const updateRole = () => setStudyOnly(getSyncDeviceRole() === "study")
+    updateRole()
+    window.addEventListener(SYNC_DEVICE_ROLE_UPDATED_EVENT, updateRole)
+    return () => window.removeEventListener(SYNC_DEVICE_ROLE_UPDATED_EVENT, updateRole)
+  }, [])
 
   useEffect(() => {
     if (!isLoaded) return undefined
@@ -80,7 +89,7 @@ export function AutoSyncProvider() {
       running = true
       const requested = pending.size ? [...pending] : [...SYNC_LABS]
       pending.clear()
-      publishAutoSyncState({ state: "connecting", message: "Enviando e recebendo atualizações…" })
+      publishAutoSyncState({ state: "connecting", message: getSyncDeviceRole() === "study" ? "Recebendo atualizações para estudo…" : "Enviando e recebendo atualizações…" })
       try {
         for (const lab of requested) revisions[lab] = await synchronizeLab(syncCode, lab)
         if (!disposed) {
@@ -125,6 +134,7 @@ export function AutoSyncProvider() {
     })
     const identityListener = () => schedule(200)
     window.addEventListener(SYNC_IDENTITY_UPDATED_EVENT, identityListener)
+    window.addEventListener(SYNC_DEVICE_ROLE_UPDATED_EVENT, identityListener)
     return () => {
       disposed = true
       window.clearInterval(interval)
@@ -132,9 +142,16 @@ export function AutoSyncProvider() {
       window.removeEventListener("online", onOnline)
       for (const cleanup of cleanups) cleanup()
       window.removeEventListener(SYNC_IDENTITY_UPDATED_EVENT, identityListener)
+      window.removeEventListener(SYNC_DEVICE_ROLE_UPDATED_EVENT, identityListener)
       if (timer) clearTimeout(timer)
     }
   }, [isIdentityLocked, isLoaded, isSyncEnabled, isValid, syncCode])
 
-  return null
+  return studyOnly ? (
+    <div className="pointer-events-none fixed inset-x-0 bottom-3 z-40 flex justify-center px-3">
+      <div className="rounded-full border border-sky-400/25 bg-sky-500/10 px-3 py-1.5 text-[10px] font-medium text-sky-700 shadow-sm backdrop-blur-md dark:text-sky-300">
+        Somente estudo · recebendo da conexão primária
+      </div>
+    </div>
+  ) : null
 }

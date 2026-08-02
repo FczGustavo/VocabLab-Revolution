@@ -7,10 +7,12 @@ import {
   type SyncLabPayload,
 } from "./sync-schema"
 import { getSyncOwnerToken } from "./sync-identity-client"
+import { getOrCreateSyncDeviceId, getSyncDeviceKind, getSyncDeviceLabel, getSyncDeviceRole, setSyncDeviceRole } from "./sync-device"
+
+export { getOrCreateSyncDeviceId } from "./sync-device"
 
 export const AUTO_SYNC_STATUS_EVENT = "vocablab-auto-sync-status"
 export const SYNC_IDENTITY_UPDATED_EVENT = "vocablab-sync-identity-updated"
-export const SYNC_DEVICE_ID_KEY = "vocablab_sync_device_id"
 
 export type AutoSyncState = {
   state: "idle" | "connecting" | "synced" | "offline" | "conflict" | "error"
@@ -102,6 +104,34 @@ function stable(value: unknown): string {
 
 export function payloadFingerprint(payload: SyncLabPayload) {
   return stable({ stores: payload.stores, preferences: payload.preferences })
+}
+
+function studyStatePreservingPayload(remote: SyncLabPayload, local: SyncLabPayload) {
+  const storeNames = remote.lab === "vocab" || remote.lab === "regency" || remote.lab === "rule"
+    ? [remote.lab === "vocab" ? "flashcards" : "cards"]
+    : []
+  const stores = { ...remote.stores }
+  for (const storeName of storeNames) {
+    const localById = new Map((local.stores[storeName] ?? []).flatMap((value) => {
+      if (!value || typeof value !== "object") return []
+      const id = (value as Record<string, unknown>).id
+      return typeof id === "string" ? [[id, value] as const] : []
+    }))
+    stores[storeName] = (remote.stores[storeName] ?? []).map((value) => {
+      if (!value || typeof value !== "object") return value
+      const id = (value as Record<string, unknown>).id
+      const localValue = typeof id === "string" ? localById.get(id) : undefined
+      if (!localValue || typeof localValue !== "object") return value
+      const localRecord = localValue as Record<string, unknown>
+      const remoteRecord = value as Record<string, unknown>
+      const preserved: Record<string, unknown> = { ...remoteRecord }
+      for (const key of ["studyStreak", "isReviewFolder"]) {
+        if (key in localRecord) preserved[key] = localRecord[key]
+      }
+      return preserved
+    })
+  }
+  return { ...remote, stores }
 }
 
 function recordKey(storeName: string, value: unknown, index: number) {
@@ -361,22 +391,22 @@ export function mergeLabPayloads(
   } satisfies SyncLabPayload
 }
 
-export function getOrCreateSyncDeviceId() {
-  const saved = localStorage.getItem(SYNC_DEVICE_ID_KEY)
-  if (saved) return saved
-  const generated = crypto.randomUUID()
-  localStorage.setItem(SYNC_DEVICE_ID_KEY, generated)
-  return generated
-}
-
 async function pullLab(syncCode: string, lab: SyncLabId, ownerToken: string) {
   const response = await fetch("/api/sync/lab/pull", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ syncCode, lab, ownerToken }),
+    body: JSON.stringify({
+      syncCode,
+      lab,
+      ownerToken,
+      deviceId: getOrCreateSyncDeviceId(),
+      deviceLabel: getSyncDeviceLabel(),
+      deviceKind: getSyncDeviceKind(),
+    }),
   })
   const json = await response.json().catch(() => ({}))
   if (!response.ok) throw new Error(json?.error || "Falha ao receber atualizações.")
+  if (json.deviceRole === "primary" || json.deviceRole === "study") setSyncDeviceRole(json.deviceRole)
   return {
     payload: json.payload ? SyncLabPayloadSchema.parse(json.payload) : null,
     revision: Number(json.revision ?? 0),
@@ -399,11 +429,17 @@ async function pushLab(
       payload,
       expectedRevision,
       deviceId: getOrCreateSyncDeviceId(),
+      deviceLabel: getSyncDeviceLabel(),
+      deviceKind: getSyncDeviceKind(),
       ownerToken,
     }),
   })
   const json = await response.json().catch(() => ({}))
   if (response.status === 409) return null
+  if (response.status === 403 && json?.code === "SYNC_DEVICE_READ_ONLY") {
+    setSyncDeviceRole("study")
+    return null
+  }
   if (!response.ok) throw new Error(json?.error || "Falha ao enviar atualizações.")
   return Number(json.revision)
 }
@@ -412,6 +448,7 @@ export async function synchronizeLab(syncCode: string, lab: SyncLabId) {
   const ownerToken = getSyncOwnerToken(syncCode)
   if (!ownerToken) throw new Error("Este navegador ainda não foi autorizado.")
   for (let attempt = 0; attempt < 3; attempt++) {
+    const studyOnly = getSyncDeviceRole() === "study"
     const key = `${syncCode}:${lab}`
     const [baseline, local, remoteState] = await Promise.all([
       getBaseline(key),
@@ -420,6 +457,7 @@ export async function synchronizeLab(syncCode: string, lab: SyncLabId) {
     ])
 
     if (!remoteState.payload) {
+      if (studyOnly) return 0
       const revision = await pushLab(syncCode, lab, local, 0, ownerToken)
       if (revision === null) continue
       await putBaseline({ key, revision, payload: local, updatedAt: Date.now() })
@@ -433,6 +471,20 @@ export async function synchronizeLab(syncCode: string, lab: SyncLabId) {
     if (payloadFingerprint(currentLocal) !== payloadFingerprint(local)) continue
 
     const merged = mergeLabPayloads(baseline?.payload, currentLocal, remoteState.payload)
+    if (studyOnly) {
+      const studyPayload = studyStatePreservingPayload(remoteState.payload, currentLocal)
+      if (payloadFingerprint(studyPayload) !== payloadFingerprint(currentLocal)) {
+        const imported = await importLabData(studyPayload, currentLocal)
+        if (!imported) continue
+      }
+      await putBaseline({
+        key,
+        revision: remoteState.revision,
+        payload: studyPayload,
+        updatedAt: Date.now(),
+      })
+      return remoteState.revision
+    }
     if (payloadFingerprint(merged) !== payloadFingerprint(currentLocal)) {
       const imported = await importLabData(merged, currentLocal)
       if (!imported) continue

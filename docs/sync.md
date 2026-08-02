@@ -6,6 +6,8 @@ Abra **Supabase → SQL Editor → New query**, cole todo o conteúdo de
 `supabase/migrations/202607290002_per_lab_autosync.sql` e execute uma vez.
 Em seguida, execute
 `supabase/migrations/202607290003_sync_identity_claims.sql`.
+Por fim, execute `supabase/migrations/202608020001_sync_devices.sql` para
+ativar o painel de dispositivos pareados e a desconexão individual.
 
 O script cria seis tabelas independentes:
 
@@ -82,6 +84,26 @@ um Lab inteiro. Em uma colisão de edição entre dispositivos autorizados, venc
 o registro com data de atualização mais recente; sem data, o conteúdo local é
 preservado. Para recuperação de conta quando todos os dispositivos forem
 perdidos, a evolução recomendada continua sendo Supabase Auth.
+
+### Dispositivos pareados
+
+Em **Configurações → Sincronização**, o bloco **Dispositivos pareados** mostra
+quantos navegadores estão autorizados, o tipo de aparelho e a última atividade.
+O botão de desconectar revoga somente o token daquele aparelho. Cards, textos,
+pastas e revisões remotas permanecem intactos; o aparelho desconectado precisará
+ser pareado novamente para voltar a sincronizar. O servidor armazena apenas um
+identificador técnico, rótulo, datas e hashes das chaves — nunca a chave privada
+do navegador.
+
+Cada dispositivo também possui um papel de conexão:
+
+- **Primária · envia**: recebe dados e pode publicar alterações. Ao escolher
+  outra conexão como primária, a anterior passa automaticamente para estudo.
+- **Somente estudo**: recebe o estado da conexão primária, mas não publica
+  alterações. Os comandos de criação, edição estrutural, exclusão e organização
+  ficam bloqueados; respostas de estudo continuam funcionando localmente. Se
+  alguma alteração local ocorrer por uma ação de estudo, ela não é enviada e
+  pode ser substituída pela próxima atualização recebida.
 
 ## 4. Áudio
 

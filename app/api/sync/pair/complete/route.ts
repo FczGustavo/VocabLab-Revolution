@@ -9,12 +9,19 @@ import {
   hashPairingCode,
   hashSyncCode,
   normalizeOwnerToken,
+  normalizeSyncDeviceId,
+  normalizeSyncDeviceKind,
+  normalizeSyncDeviceLabel,
+  touchSyncDevice,
 } from "@/lib/sync-server"
 
 type PairCompleteRequest = {
   syncCode?: unknown
   pairingCode?: unknown
   ownerToken?: unknown
+  deviceId?: unknown
+  deviceLabel?: unknown
+  deviceKind?: unknown
 }
 
 export async function POST(request: Request) {
@@ -89,6 +96,13 @@ export async function POST(request: Request) {
         { status: 409 },
       )
     }
+
+    await touchSyncDevice(supabase, syncHash, ownerToken, config.pepper, {
+      id: normalizeSyncDeviceId(body.deviceId),
+      label: normalizeSyncDeviceLabel(body.deviceLabel),
+      kind: normalizeSyncDeviceKind(body.deviceKind),
+      role: "study",
+    })
 
     return NextResponse.json({ ok: true })
   } catch (error) {

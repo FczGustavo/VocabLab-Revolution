@@ -330,6 +330,16 @@ export async function readAllFlashcardsFromDB(): Promise<Flashcard[]> {
   })
 }
 
+async function readFlashcardByIdFromDB(id: string): Promise<Flashcard | undefined> {
+  const db = await openDatabase()
+  return new Promise((resolve) => {
+    const transaction = db.transaction(FLASHCARDS_STORE, "readonly")
+    const request = transaction.objectStore(FLASHCARDS_STORE).get(id)
+    request.onsuccess = () => resolve(request.result as Flashcard | undefined)
+    request.onerror = () => resolve(undefined)
+  })
+}
+
 export async function readAllFoldersFromDB(): Promise<Folder[]> {
   const db = await openDatabase()
   return new Promise((resolve) => {
@@ -755,29 +765,29 @@ export function useFlashcardsDB() {
 
   const addToReviewFolder = useCallback(
     async (id: string): Promise<boolean> => {
-      const card = flashcards.find((f) => f.id === id)
+      const card = await readFlashcardByIdFromDB(id)
       if (!card || card.isReviewFolder) return false
       return updateFlashcard({ ...card, isReviewFolder: true })
     },
-    [flashcards, updateFlashcard]
+    [updateFlashcard]
   )
 
   const removeFromReviewFolder = useCallback(
     async (id: string): Promise<boolean> => {
-      const card = flashcards.find((f) => f.id === id)
+      const card = await readFlashcardByIdFromDB(id)
       if (!card) return false
       return updateFlashcard({ ...card, isReviewFolder: false })
     },
-    [flashcards, updateFlashcard]
+    [updateFlashcard]
   )
 
   const recordStudyResult = useCallback(
     async (id: string, knewIt: boolean): Promise<boolean> => {
-      const card = flashcards.find((item) => item.id === id)
+      const card = await readFlashcardByIdFromDB(id)
       if (!card) return false
       return updateFlashcard({ ...card, studyStreak: knewIt ? (card.studyStreak ?? 0) + 1 : 0 })
     },
-    [flashcards, updateFlashcard],
+    [updateFlashcard],
   )
 
   const reviewFlashcards = flashcards.filter((f) => f.isReviewFolder === true)

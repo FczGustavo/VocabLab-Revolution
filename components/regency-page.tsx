@@ -137,6 +137,11 @@ export function RegencyPage() {
     return activeCards.filter((card) => normalize(`${card.term} ${card.pattern} ${card.example} ${card.exampleTranslation ?? ""} ${card.meaningPt ?? ""} ${card.contrastPt ?? ""}`).includes(query))
   }, [activeCards, search])
 
+  const deleteDisplayedCard = async (id: string) => {
+    if (isReviewFolderSelected) return removeFromReviewFolder(id)
+    return deleteCard(id)
+  }
+
   const openFolderManager = (folder: RegencyFolder | null) => {
     setEditingFolder(folder)
     setEditingFolderName(folder?.name ?? generalFolderName)
@@ -330,7 +335,7 @@ export function RegencyPage() {
 
           <section className="mt-7">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div className={cn("flex h-9 min-w-0 items-center gap-2 rounded-full border border-border/50 bg-background/80 px-3 py-0 shadow-sm", layout === "list" && "w-full", layout === "grid" && "w-full sm:w-[calc((100%-1rem)/2)] lg:w-[calc((100%-2rem)/3)]", layout === "compact" && "w-full sm:w-[calc((100%-1rem)/2)] lg:w-[calc((100%-2rem)/4)] xl:w-[calc((100%-4rem)/5)]")}><Search className="size-4 shrink-0 text-muted-foreground/60" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by term, pattern or example" className="h-6 border-0 bg-transparent px-0 py-0 text-sm leading-6 shadow-none focus-visible:ring-0" /></div><Button size="sm" variant="outline" onClick={() => setStudyPickerOpen(true)} disabled={!activeCards.length} className="h-9 gap-1.5 rounded-full px-3 text-[13px]"><GraduationCap className="size-3.5" />Study in <span className="font-medium text-blue-600 dark:text-blue-400">{currentFolderName}</span> as {activeCards.length} cards</Button></div>
-            {isLoading ? <div className="flex justify-center py-16"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div> : displayedCards.length === 0 ? <p className="py-14 text-center text-sm text-muted-foreground">{activeCards.length ? "No cards match your search." : isReviewFolderSelected ? "No cards to review." : "Create the first pattern for this folder."}</p> : <div className={cn("mt-6", layout === "grid" ? "grid items-start grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" : "space-y-3")}>{displayedCards.map((card) => <RegencyCardView key={card.id} card={card} layout={layout} squareCards={squareCards} display={{ showCategory, showGrammaticalForm, showMeaning, showContrast, showExample, showTranslation }} onEdit={() => beginEdit(card)} onDelete={() => void deleteCard(card.id)} />)}</div>}
+            {isLoading ? <div className="flex justify-center py-16"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div> : displayedCards.length === 0 ? <p className="py-14 text-center text-sm text-muted-foreground">{activeCards.length ? "No cards match your search." : isReviewFolderSelected ? "No cards to review." : "Create the first pattern for this folder."}</p> : <div className={cn("mt-6", layout === "grid" ? "grid items-start grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" : "space-y-3")}>{displayedCards.map((card) => <RegencyCardView key={card.id} card={card} layout={layout} squareCards={squareCards} display={{ showCategory, showGrammaticalForm, showMeaning, showContrast, showExample, showTranslation }} onEdit={() => beginEdit(card)} onDelete={() => void deleteDisplayedCard(card.id)} />)}</div>}
           </section>
         </>
       )}

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
   CheckCircle2,
   Clock3,
@@ -19,6 +19,8 @@ import { useStudyHeaderPreference } from "@/hooks/use-study-header-preference"
 import { useStudyElapsedTime } from "@/hooks/use-study-elapsed-time"
 import { useAnimations } from "@/hooks/use-animations"
 import { useReviewMistakeThreshold } from "@/hooks/use-review-mistake-threshold"
+import { useGrammarProgress } from "@/hooks/use-grammar-progress"
+import { isReviewMistakeThresholdReached } from "@/lib/study-preferences"
 import type { RuleCard } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -52,6 +54,7 @@ export function RuleStudyMode({
   onMarkAsLearned,
   onRecordResult,
 }: RuleStudyModeProps) {
+  const { saveStudySession } = useGrammarProgress()
   const [queue, setQueue] = useState(() => shuffle(cards))
   const [knownIds, setKnownIds] = useState<Set<string>>(new Set())
   const [wrongCounts, setWrongCounts] = useState<Record<string, number>>({})
@@ -61,6 +64,7 @@ export function RuleStudyMode({
   const [finished, setFinished] = useState(false)
   const [exiting, setExiting] = useState<"known" | "again" | null>(null)
   const [lastRating, setLastRating] = useState<"known" | "again" | null>(null)
+  const savedRef = useRef(false)
   const [showCoach, setShowCoach] = useState(true)
   const { startCollapsed } = useStudyHeaderPreference()
   const [headerCollapsed, setHeaderCollapsed] = useState(startCollapsed)
@@ -71,6 +75,26 @@ export function RuleStudyMode({
   const title = mode === "flip" ? "Flip cards" : "Active recall"
 
   useEffect(() => setHeaderCollapsed(startCollapsed), [startCollapsed])
+
+  useEffect(() => {
+    if (!finished || savedRef.current) return
+    const wordsToReview = Object.keys(wrongCounts)
+      .map((id) => cards.find((card) => card.id === id)?.front)
+      .filter((front): front is string => Boolean(front))
+    saveStudySession({
+      folderName,
+      totalCards: cards.length,
+      correctFirstTry: Math.max(0, cards.length - Object.keys(wrongCounts).length),
+      wordsToReview,
+      mistakeCards: Object.keys(wrongCounts).length,
+      totalMistakes: Object.values(wrongCounts).reduce((sum, count) => sum + count, 0),
+      lab: "rule",
+      mode: mode === "recall" ? "active-recall" : "flip",
+      cardIds: cards.map((card) => card.id),
+      durationSeconds: studyTime.elapsedSeconds,
+    })
+    savedRef.current = true
+  }, [cards, finished, folderName, mode, saveStudySession, studyTime.elapsedSeconds, wrongCounts])
 
   const advance = async (known: boolean) => {
     if (!current || exiting) return
@@ -97,7 +121,7 @@ export function RuleStudyMode({
         ...items,
         [current.id]: nextWrongCount,
       }))
-      if (reviewMistakeThreshold > 0 && nextWrongCount >= reviewMistakeThreshold) {
+      if (isReviewMistakeThresholdReached(nextWrongCount, reviewMistakeThreshold)) {
         await onMarkForReview?.(current.id)
       }
       setQueue((items) =>
@@ -136,6 +160,7 @@ export function RuleStudyMode({
     setFlipped(false)
     setRevealed(false)
     setAnswer("")
+    savedRef.current = false
   }
 
   if (finished) {

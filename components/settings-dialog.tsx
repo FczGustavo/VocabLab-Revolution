@@ -1119,6 +1119,23 @@ function SettingsWiki({ reviewMistakeThreshold }: { reviewMistakeThreshold: numb
         ]} /></AccordionContent>
       </AccordionItem>
 
+      <AccordionItem value="study-progress" className="rounded-xl border border-border/50 bg-background/55 px-4">
+        <AccordionTrigger className="text-sm"><span className="flex items-center gap-2"><BarChart3 className="size-4 text-primary" />Study Progress: como ler o painel</span></AccordionTrigger>
+        <AccordionContent><WikiSteps items={[
+          "Abra o painel pelo ícone de gráfico no VocabLab. O cabeçalho fica fixo e o conteúdo pode ser rolado; a barra de rolagem é invisível para preservar o visual.",
+          "No deck mostra quantos cards existem no conjunto atual. No Review mostra quantos cards estão aguardando reforço na fila virtual; remover um card da fila não apaga o original.",
+          "Mastered conta cards com pelo menos três acertos consecutivos. Cobertura é a porcentagem de cards do deck que já atingiram esse nível.",
+          "Sessões é o número de estudos concluídos. Cards estudados soma todas as passagens por cards, enquanto Cards únicos conta cada card diferente apenas uma vez quando o histórico possui seu ID.",
+          "Acertos 1ª mostra quantos cards foram respondidos corretamente sem um Again na sessão. Precisão média é a proporção desses acertos em relação aos cards estudados.",
+          "Again soma todas as respostas erradas. Cards com erro conta quantos cards diferentes receberam pelo menos um erro; por isso os dois números podem ser diferentes.",
+          "Tempo total soma a duração registrada nas sessões. Sessões feitas com o cronômetro desativado podem não acrescentar tempo, sem afetar as demais métricas.",
+          "Ritmo recente mostra sessões nos últimos sete dias, dias estudados, média de cards por sessão e a melhor precisão registrada em uma sessão.",
+          "Distribuição por Lab e por modo mostra onde o histórico foi produzido: VocabLab, RegencyLab, RuleLab, Flip Cards, Multiple Choice, Active Recall ou Writing.",
+          "Última sessão identifica a pasta e a data do estudo mais recente. O histórico fica salvo localmente e é atualizado quando uma sessão termina; fechar o estudo antes do fim não cria uma sessão.",
+          "Resetar estatísticas remove o histórico usado pelo painel, mas não remove cards, pastas, textos nem a fila de Review.",
+        ]} /></AccordionContent>
+      </AccordionItem>
+
       <AccordionItem value="data" className="rounded-xl border border-border/50 bg-background/55 px-4">
         <AccordionTrigger className="text-sm"><span className="flex items-center gap-2"><Database className="size-4 text-primary" />Dados, sincronização, IA e áudio</span></AccordionTrigger>
         <AccordionContent><WikiSteps items={[

@@ -13,6 +13,8 @@ import type { Flashcard } from "@/lib/types"
 import { StudyHeader, useStudyKeyboardShortcuts } from "@/components/study-shell-controls"
 import { useStudyHeaderPreference } from "@/hooks/use-study-header-preference"
 import { useReviewMistakeThreshold } from "@/hooks/use-review-mistake-threshold"
+import { useGrammarProgress } from "@/hooks/use-grammar-progress"
+import { isReviewMistakeThresholdReached } from "@/lib/study-preferences"
 import { GrammaticalFormBadge } from "@/components/grammatical-form-badge"
 import { VerbTypeBadge } from "@/components/verb-type-badge"
 
@@ -46,6 +48,7 @@ function formatElapsedTime(totalSeconds: number) {
  */
 export function WritingMode({ flashcards, folderName, onExit, onMarkForReview, onMarkAsLearned, onRecordResult }: WritingModeProps) {
   const { enabled: animationsEnabled } = useAnimations()
+  const { saveStudySession } = useGrammarProgress()
   const { enabled: studyTimerEnabled } = useStudyTimer()
   const { threshold: reviewMistakeThreshold } = useReviewMistakeThreshold()
   const { showContext, contextInPortuguese, showIPA, includeMultipleTranslations } = useAiPreferences()
@@ -60,6 +63,7 @@ export function WritingMode({ flashcards, folderName, onExit, onMarkForReview, o
   const [removedIds, setRemovedIds] = useState<Set<string>>(new Set())
   const [lastRating, setLastRating] = useState<"known" | "again" | null>(null)
   const [exiting, setExiting] = useState<"known" | "again" | null>(null)
+  const savedRef = useRef(false)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [headerCollapsed, setHeaderCollapsed] = useState(false)
   const { startCollapsed } = useStudyHeaderPreference()
@@ -79,6 +83,26 @@ export function WritingMode({ flashcards, folderName, onExit, onMarkForReview, o
   }, [current?.id])
 
   useEffect(() => setHeaderCollapsed(startCollapsed), [startCollapsed])
+
+  useEffect(() => {
+    if (!finished || savedRef.current) return
+    const wordsToReview = Object.keys(wrongCounts)
+      .map((id) => flashcards.find((card) => card.id === id)?.word)
+      .filter((word): word is string => Boolean(word))
+    saveStudySession({
+      folderName,
+      totalCards: flashcards.length,
+      correctFirstTry: Math.max(0, flashcards.length - Object.keys(wrongCounts).length),
+      wordsToReview,
+      mistakeCards: Object.keys(wrongCounts).length,
+      totalMistakes: Object.values(wrongCounts).reduce((sum, count) => sum + count, 0),
+      lab: "vocab",
+      mode: "writing",
+      cardIds: flashcards.map((card) => card.id),
+      durationSeconds: elapsedSeconds,
+    })
+    savedRef.current = true
+  }, [elapsedSeconds, finished, flashcards, folderName, saveStudySession, wrongCounts])
 
   useEffect(() => {
     if (!studyTimerEnabled || finished) return
@@ -112,7 +136,7 @@ export function WritingMode({ flashcards, folderName, onExit, onMarkForReview, o
       await onRecordResult?.(current.id, false)
       const nextWrongCount = (wrongCounts[current.id] ?? 0) + 1
       setWrongCounts((counts) => ({ ...counts, [current.id]: nextWrongCount }))
-      if (reviewMistakeThreshold > 0 && nextWrongCount >= reviewMistakeThreshold) {
+      if (isReviewMistakeThresholdReached(nextWrongCount, reviewMistakeThreshold)) {
         await onMarkForReview?.(current.id)
       }
     }
@@ -141,6 +165,7 @@ export function WritingMode({ flashcards, folderName, onExit, onMarkForReview, o
     setRemovedIds(new Set())
     setLastRating(null)
     setExiting(null)
+    savedRef.current = false
     startedAtRef.current = Date.now()
     setElapsedSeconds(0)
   }

@@ -84,6 +84,15 @@ function write<T>(storeName: string, operation: (store: IDBObjectStore) => IDBRe
   }))
 }
 
+async function readRuleCardById(id: string): Promise<RuleCard | undefined> {
+  const db = await openDatabase()
+  return new Promise((resolve) => {
+    const request = db.transaction(CARDS_STORE, "readonly").objectStore(CARDS_STORE).get(id)
+    request.onsuccess = () => resolve(request.result as RuleCard | undefined)
+    request.onerror = () => resolve(undefined)
+  })
+}
+
 export function useRuleDB() {
   const [allCards, setAllCards] = useState<RuleCard[]>([])
   const [folders, setFolders] = useState<RuleFolder[]>([])
@@ -224,18 +233,18 @@ export function useRuleDB() {
   }, [allCards])
 
   const addToReviewFolder = useCallback(async (id: string) => {
-    const card = allCards.find((item) => item.id === id)
+    const card = await readRuleCardById(id)
     return card && !card.isReviewFolder ? updateCard({ ...card, isReviewFolder: true }) : false
-  }, [allCards, updateCard])
+  }, [updateCard])
 
   const removeFromReviewFolder = useCallback(async (id: string) => {
-    const card = allCards.find((item) => item.id === id)
+    const card = await readRuleCardById(id)
     return card?.isReviewFolder ? updateCard({ ...card, isReviewFolder: false }) : false
-  }, [allCards, updateCard])
+  }, [updateCard])
   const recordStudyResult = useCallback(async (id: string, knewIt: boolean) => {
-    const card = allCards.find((item) => item.id === id)
+    const card = await readRuleCardById(id)
     return card ? updateCard({ ...card, studyStreak: knewIt ? (card.studyStreak ?? 0) + 1 : 0 }) : false
-  }, [allCards, updateCard])
+  }, [updateCard])
 
   const cards = selectedFolderId ? allCards.filter((card) => card.folderId === selectedFolderId) : allCards
   const reviewCards = allCards.filter((card) => card.isReviewFolder)

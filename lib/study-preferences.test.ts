@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   DEFAULT_REVIEW_MISTAKE_THRESHOLD,
+  isReviewMistakeThresholdReached,
   normalizeReviewMistakeThreshold,
 } from "@/lib/study-preferences"
 
@@ -27,5 +28,12 @@ describe("normalizeReviewMistakeThreshold", () => {
     expect(normalizeReviewMistakeThreshold("not-a-number")).toBe(
       DEFAULT_REVIEW_MISTAKE_THRESHOLD,
     )
+  })
+
+  it("uses the same automatic Review rule for every study mode", () => {
+    expect(isReviewMistakeThresholdReached(1, 2)).toBe(false)
+    expect(isReviewMistakeThresholdReached(2, 2)).toBe(true)
+    expect(isReviewMistakeThresholdReached(4, 1)).toBe(true)
+    expect(isReviewMistakeThresholdReached(10, 0)).toBe(false)
   })
 })

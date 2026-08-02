@@ -12,6 +12,9 @@ export interface GrammarSession {
   wordsUsed: string[]
 }
 
+export type StudyLab = "vocab" | "regency" | "rule"
+export type StudyMode = "flip" | "multiple-choice" | "active-recall" | "writing"
+
 export interface StudySession {
   id: string
   date: number
@@ -23,6 +26,14 @@ export interface StudySession {
   mistakeCards?: number
   /** Total Again presses during the session. */
   totalMistakes?: number
+  /** Lab that produced the session. Older records default to VocabLab. */
+  lab?: StudyLab
+  /** Study surface used for the session. */
+  mode?: StudyMode
+  /** Stable card IDs seen in the session, when available. */
+  cardIds?: string[]
+  /** Elapsed seconds when the study timer was enabled. */
+  durationSeconds?: number
 }
 
 const GRAMMAR_PROGRESS_KEY = "vocablab-grammar-progress"
@@ -169,12 +180,44 @@ export function useGrammarProgress() {
         averageAccuracy: 0,
         lastSession: null,
         wordsToReview: [],
+        totalMistakes: 0,
+        mistakeCards: 0,
+        uniqueCardsStudied: 0,
+        bestAccuracy: 0,
+        averageSessionCards: 0,
+        totalStudyMinutes: 0,
+        daysStudied: 0,
+        sessionsLast7Days: 0,
+        labBreakdown: { vocab: 0, regency: 0, rule: 0 },
+        modeBreakdown: { flip: 0, "multiple-choice": 0, "active-recall": 0, writing: 0 },
       }
     }
 
     const totalCards = studySessions.reduce((sum, s) => sum + s.totalCards, 0)
     const totalCorrectFirstTry = studySessions.reduce((sum, s) => sum + s.correctFirstTry, 0)
-    
+    const totalMistakes = studySessions.reduce(
+      (sum, session) => sum + (session.totalMistakes ?? Math.max(0, session.totalCards - session.correctFirstTry)),
+      0,
+    )
+    const mistakeCards = studySessions.reduce(
+      (sum, session) => sum + (session.mistakeCards ?? (session.totalCards > session.correctFirstTry ? 1 : 0)),
+      0,
+    )
+    const uniqueCardIds = new Set(studySessions.flatMap((session) => session.cardIds ?? []))
+    const sessionsWithoutCardIds = studySessions.filter((session) => !session.cardIds?.length)
+    const accuracyValues = studySessions.map((session) => session.totalCards > 0
+      ? Math.round((session.correctFirstTry / session.totalCards) * 100)
+      : 0)
+    const labBreakdown: Record<StudyLab, number> = { vocab: 0, regency: 0, rule: 0 }
+    const modeBreakdown: Record<StudyMode, number> = { flip: 0, "multiple-choice": 0, "active-recall": 0, writing: 0 }
+    for (const session of studySessions) {
+      labBreakdown[session.lab ?? "vocab"] += 1
+      if (session.mode) modeBreakdown[session.mode] += 1
+    }
+    const today = Date.now()
+    const sevenDaysAgo = today - 7 * 24 * 60 * 60 * 1000
+    const daysStudied = new Set(studySessions.map((session) => new Date(session.date).toISOString().slice(0, 10)))
+
     // Get unique words that need review from last 5 sessions
     const recentWords = studySessions
       .slice(0, 5)
@@ -190,6 +233,16 @@ export function useGrammarProgress() {
       averageAccuracy: totalCards > 0 ? Math.round((totalCorrectFirstTry / totalCards) * 100) : 0,
       lastSession: studySessions[0] || null,
       wordsToReview,
+      totalMistakes,
+      mistakeCards,
+      uniqueCardsStudied: uniqueCardIds.size + sessionsWithoutCardIds.reduce((sum, session) => sum + session.totalCards, 0),
+      bestAccuracy: Math.max(...accuracyValues),
+      averageSessionCards: studySessions.length > 0 ? Math.round(totalCards / studySessions.length) : 0,
+      totalStudyMinutes: Math.round(studySessions.reduce((sum, session) => sum + (session.durationSeconds ?? 0), 0) / 60),
+      daysStudied: daysStudied.size,
+      sessionsLast7Days: studySessions.filter((session) => session.date >= sevenDaysAgo).length,
+      labBreakdown,
+      modeBreakdown,
     }
   }, [studySessions, dismissedReviewWords])
 

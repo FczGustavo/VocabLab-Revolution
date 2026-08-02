@@ -20,3 +20,18 @@ export function normalizeReviewMistakeThreshold(value: unknown) {
     Math.max(MIN_REVIEW_MISTAKE_THRESHOLD, Math.trunc(parsed)),
   )
 }
+
+/**
+ * Keeps the Review rule identical across every study surface and Lab.
+ * A threshold of zero explicitly disables automatic Review.
+ */
+export function isReviewMistakeThresholdReached(
+  mistakeCount: number,
+  threshold: number,
+) {
+  const normalizedMistakes = Number.isFinite(mistakeCount)
+    ? Math.max(0, Math.trunc(mistakeCount))
+    : 0
+  const normalizedThreshold = normalizeReviewMistakeThreshold(threshold)
+  return normalizedThreshold > 0 && normalizedMistakes >= normalizedThreshold
+}

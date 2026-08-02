@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { CheckCircle2, Clock3, Languages, Trophy, Volume2, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -15,6 +15,7 @@ import { StudyHeader, StudyShortcutCoach, useStudyKeyboardShortcuts } from "@/co
 import { useStudyHeaderPreference } from "@/hooks/use-study-header-preference"
 import { useStudyElapsedTime } from "@/hooks/use-study-elapsed-time"
 import { useReviewMistakeThreshold } from "@/hooks/use-review-mistake-threshold"
+import { isReviewMistakeThresholdReached } from "@/lib/study-preferences"
 import { GrammaticalFormBadge } from "@/components/grammatical-form-badge"
 import { VerbTypeBadge } from "@/components/verb-type-badge"
 
@@ -49,7 +50,7 @@ export function StudyMode({ flashcards, folderName, onExit, onMarkForReview, onM
   const [flipped, setFlipped] = useState(false)
   const [showTranslations, setShowTranslations] = useState(false)
   const [finished, setFinished] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const savedRef = useRef(false)
   const [lastRating, setLastRating] = useState<"known" | "again" | null>(null)
   const [exiting, setExiting] = useState<"known" | "again" | null>(null)
   const [headerCollapsed, setHeaderCollapsed] = useState(false)
@@ -69,7 +70,7 @@ export function StudyMode({ flashcards, folderName, onExit, onMarkForReview, onM
   useEffect(() => setHeaderCollapsed(startCollapsed), [startCollapsed])
 
   useEffect(() => {
-    if (!finished || saved) return
+    if (!finished || savedRef.current) return
     const wordsToReview = Object.keys(wrongCount).map((id) => flashcards.find((card) => card.id === id)?.word).filter((word): word is string => Boolean(word))
     const mistakeCards = Object.keys(wrongCount).length
     const correctFirstTry = Math.max(0, flashcards.length - mistakeCards)
@@ -80,9 +81,13 @@ export function StudyMode({ flashcards, folderName, onExit, onMarkForReview, onM
       wordsToReview,
       mistakeCards,
       totalMistakes: Object.values(wrongCount).reduce((sum, count) => sum + count, 0),
+      lab: "vocab",
+      mode: "flip",
+      cardIds: flashcards.map((card) => card.id),
+      durationSeconds: studyTime.elapsedSeconds,
     })
-    setSaved(true)
-  }, [finished, flashcards, folderName, saved, saveStudySession, wrongCount])
+    savedRef.current = true
+  }, [finished, flashcards, folderName, saveStudySession, studyTime.elapsedSeconds, wrongCount])
 
   const speak = async (word: string) => {
     const normalized = word.trim().toLowerCase()
@@ -120,7 +125,7 @@ export function StudyMode({ flashcards, folderName, onExit, onMarkForReview, onM
       await onRecordResult?.(current.id, false)
       const nextWrongCount = (wrongCount[current.id] ?? 0) + 1
       setWrongCount((counts) => ({ ...counts, [current.id]: nextWrongCount }))
-      if (reviewMistakeThreshold > 0 && nextWrongCount >= reviewMistakeThreshold) {
+      if (isReviewMistakeThresholdReached(nextWrongCount, reviewMistakeThreshold)) {
         await onMarkForReview?.(current.id)
       }
     }

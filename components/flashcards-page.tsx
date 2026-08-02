@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { BookOpen, Loader2, FolderPlus, Folder, FolderOpen, GraduationCap, TrendingUp, Target, Calendar, LayoutGrid, List, LayoutPanelTop, MoreVertical, Trash2, BookMarked, Pencil, Plus, BarChart2, X, Search, Tag, Settings, FileUp, FileText, CheckCircle2, ArrowRightLeft } from "lucide-react"
+import { BookOpen, Loader2, FolderPlus, Folder, FolderOpen, GraduationCap, TrendingUp, Target, Calendar, CalendarDays, Timer, Layers3, Flame, LayoutGrid, List, LayoutPanelTop, MoreVertical, Trash2, BookMarked, Pencil, Plus, BarChart2, X, XCircle, Search, Tag, Settings, FileUp, FileText, CheckCircle2, ArrowRightLeft } from "lucide-react"
 import { useFlashcardsDB, readAllFlashcardsFromDB } from "@/hooks/use-flashcards-db"
 import { useGrammarProgress } from "@/hooks/use-grammar-progress"
 import { useGptModel } from "@/hooks/use-gpt-model"
@@ -186,7 +186,8 @@ async function renderQuizletPdfPages(file: File): Promise<string[]> {
 export function FlashcardsPage() {
   const { squareCards } = useCardShape()
   const { 
-    flashcards, 
+    flashcards,
+    allFlashcards,
     folders,
     reviewFlashcards,
     selectedFolderId,
@@ -205,6 +206,8 @@ export function FlashcardsPage() {
   
   const { getStudyStats, isLoaded: isProgressLoaded } = useGrammarProgress()
   const studyStats = getStudyStats()
+  const masteredCards = allFlashcards.filter((card) => (card.studyStreak ?? 0) >= 3).length
+  const deckCoverage = allFlashcards.length > 0 ? Math.round((masteredCards / allFlashcards.length) * 100) : 0
   const { model } = useGptModel()
   const { setIsInsideFolder, setGoBack, layout, setLayout, setOnShowStats } = useFolder()
   const {
@@ -402,6 +405,27 @@ export function FlashcardsPage() {
     })
   }
 
+  const clearReviewFolderByParent = async (parentFolderId: string) => {
+    const cardsToClear = allFlashcards.filter((card) => (
+      card.isReviewFolder && (card.folderId ?? "__general__") === parentFolderId
+    ))
+    if (cardsToClear.length === 0) return 0
+
+    const results = await Promise.all(cardsToClear.map((card) => removeFromReviewFolder(card.id)))
+    return results.filter(Boolean).length
+  }
+
+  const handleDeleteDisplayedFlashcard = async (id: string) => {
+    if (isReviewFolderSelected) {
+      const removed = await removeFromReviewFolder(id)
+      if (removed) {
+        toast({ title: "Removed from Review", description: "The original card remains in its folder." })
+      }
+      return removed
+    }
+    return deleteFlashcard(id)
+  }
+
   const transferWithRules = async () => {
     if (isEditingReviewFolder || transferBusy) return
     const sourceCards = flashcards.filter((card) => {
@@ -447,6 +471,20 @@ export function FlashcardsPage() {
   }
 
   const handleDeleteFolderWithMigration = async (folderId: string | null, targetFolderId: string | null) => {
+    if (isEditingReviewFolder && selectedReviewFolderId) {
+      const removedCount = await clearReviewFolderByParent(selectedReviewFolderId)
+      setIsRenameDialogOpen(false)
+      setShowDeleteConfirm(false)
+      setDeleteTargetFolderId(null)
+      toast({
+        title: "Review folder deleted",
+        description: removedCount > 0
+          ? `${removedCount} cards were removed from Review. The original cards were preserved.`
+          : "The Review folder was already empty.",
+      })
+      return
+    }
+
     if (folderId === null) {
       // General folder - can't delete, just clear
       await handleDeleteGeneralFolder()
@@ -1446,6 +1484,14 @@ export function FlashcardsPage() {
                           setSelectedFolderId(null)
                           setSelectedReviewFolderId(parentFolderId)
                         }}
+                        onSettings={(event) => {
+                          event.stopPropagation()
+                          setEditingFolderId(parentFolderId === "__general__" ? null : parentFolderId)
+                          setEditingFolderName(parentFolderName)
+                          setSelectedReviewFolderId(parentFolderId)
+                          setIsEditingReviewFolder(true)
+                          setIsRenameDialogOpen(true)
+                        }}
                       />
                     )
                   })}
@@ -1694,7 +1740,7 @@ export function FlashcardsPage() {
                       <FlashcardCard
                         key={flashcard.id}
                         flashcard={flashcard}
-                        onDelete={deleteFlashcard}
+                        onDelete={handleDeleteDisplayedFlashcard}
                         onCreateFromAlternative={createCardFromAlternative}
                         onUpdateFlashcard={updateFlashcard}
                         layout={layout}
@@ -1711,16 +1757,36 @@ export function FlashcardsPage() {
 
       {/* ── Stats Sheet ──────────────────────────────────────── */}
       <Sheet open={isStatsOpen} onOpenChange={setIsStatsOpen}>
-        <SheetContent side="right" className="w-[88vw] max-w-sm p-0 sm:w-80">
-          <SheetHeader className="border-b border-border/50 px-5 pb-4 pt-5">
-            <SheetTitle className="flex items-center gap-2 text-[15px]">
-              <BarChart2 className="size-4 text-primary" />
+        <SheetContent side="right" className="w-[92vw] max-w-md p-0 sm:w-[26rem]">
+          <SheetHeader className="shrink-0 border-b border-border/50 px-5 pb-4 pt-5">
+            <SheetTitle className="flex items-center gap-2 text-[15px] leading-none">
+              <BarChart2 className="size-4 shrink-0 text-primary" />
               Study Progress
             </SheetTitle>
           </SheetHeader>
-          <div className="p-5">
-            {isProgressLoaded && studyStats.totalSessions > 0 ? (
-              <div className="grid grid-cols-2 gap-3">
+          <div className="min-h-0 flex-1 overflow-y-auto scrollbar-hide">
+            <div className="p-5">
+            <div className="space-y-5">
+              <section className="grid grid-cols-2 gap-3">
+                {[
+                  { icon: Layers3, label: "No deck", value: allFlashcards.length, tone: "text-primary/70" },
+                  { icon: Target, label: "No Review", value: reviewFlashcards.length, tone: "text-amber-500/80" },
+                  { icon: Flame, label: "Mastered", value: masteredCards, tone: "text-success/80" },
+                  { icon: TrendingUp, label: "Cobertura", value: `${deckCoverage}%`, tone: "text-primary/70" },
+                ].map((stat) => (
+                  <div key={stat.label} className="stat-bento min-h-[98px] flex-col items-center justify-between gap-2 px-3 py-3 text-center">
+                    <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10">
+                      <stat.icon className={cn("size-3.5", stat.tone)} />
+                    </div>
+                    <div className="flex w-full min-w-0 flex-col items-center gap-1">
+                      <p className="text-2xl font-bold leading-none tracking-[-0.03em] tabular-nums">{stat.value}</p>
+                      <p className="max-w-full truncate text-[10px] uppercase leading-3 tracking-[0.07em] text-muted-foreground">{stat.label}</p>
+                    </div>
+                  </div>
+                ))}
+              </section>
+              {isProgressLoaded && studyStats.totalSessions > 0 ? (
+              <div className="hidden">
                 {[
                   { icon: Calendar, label: "Sessões", value: studyStats.totalSessions, tone: "text-primary/70" },
                   { icon: GraduationCap, label: "Cards estudados", value: studyStats.totalCards, tone: "text-primary/70" },
@@ -1739,13 +1805,77 @@ export function FlashcardsPage() {
                 ))}
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="mb-3 flex size-12 items-center justify-center rounded-full bg-muted">
+              <div className="flex items-center gap-3 rounded-2xl border border-dashed border-border/50 bg-muted/20 p-4">
+                <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-muted">
                   <BarChart2 className="size-6 text-muted-foreground" />
                 </div>
-                <p className="text-sm text-muted-foreground">No study sessions recorded yet. Study some flashcards to see your progress here.</p>
+                <p className="text-sm text-muted-foreground">Ainda não há sessões salvas. Estude alguns cards para começar a acompanhar seu progresso.</p>
               </div>
             )}
+            {isProgressLoaded && studyStats.totalSessions > 0 && (
+              <>
+                <section className="grid grid-cols-2 gap-3">
+                  {[
+                    { icon: Calendar, label: "Sessões", value: studyStats.totalSessions, tone: "text-primary/70" },
+                    { icon: GraduationCap, label: "Cards estudados", value: studyStats.totalCards, tone: "text-primary/70" },
+                    { icon: BookOpen, label: "Cards únicos", value: studyStats.uniqueCardsStudied, tone: "text-primary/70" },
+                    { icon: CheckCircle2, label: "Acertos 1ª", value: studyStats.totalCorrectFirstTry, tone: "text-success/80" },
+                    { icon: TrendingUp, label: "Precisão média", value: `${studyStats.averageAccuracy}%`, tone: "text-primary/70" },
+                    { icon: XCircle, label: "Again", value: studyStats.totalMistakes, tone: "text-destructive/80" },
+                    { icon: Target, label: "Cards com erro", value: studyStats.mistakeCards, tone: "text-amber-500/80" },
+                    { icon: Timer, label: "Tempo total", value: `${studyStats.totalStudyMinutes} min`, tone: "text-primary/70" },
+                  ].map((stat) => (
+                    <div key={stat.label} className="stat-bento min-h-[92px] flex-col items-center justify-between gap-2 px-3 py-3 text-center">
+                      <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10">
+                        <stat.icon className={cn("size-3.5", stat.tone)} />
+                      </div>
+                      <div className="flex w-full min-w-0 flex-col items-center gap-1">
+                        <p className="text-xl font-bold leading-none tracking-[-0.03em] tabular-nums">{stat.value}</p>
+                        <p className="max-w-full truncate text-[10px] uppercase leading-3 tracking-[0.07em] text-muted-foreground">{stat.label}</p>
+                      </div>
+                    </div>
+                  ))}
+                </section>
+                <section className="rounded-2xl border border-border/40 bg-card/60 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold text-foreground/80">Ritmo recente</p>
+                      <p className="mt-1 text-[11px] text-muted-foreground">{studyStats.sessionsLast7Days} sessões nos últimos 7 dias · {studyStats.daysStudied} dias estudados</p>
+                    </div>
+                    <CalendarDays className="size-4 text-primary/70" />
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-3 text-[11px]">
+                    <div><span className="text-muted-foreground">Média por sessão</span><p className="mt-1 text-sm font-semibold tabular-nums">{studyStats.averageSessionCards} cards</p></div>
+                    <div><span className="text-muted-foreground">Melhor precisão</span><p className="mt-1 text-sm font-semibold tabular-nums">{studyStats.bestAccuracy}%</p></div>
+                  </div>
+                </section>
+                <section className="rounded-2xl border border-border/40 bg-card/60 p-4">
+                  <p className="text-xs font-semibold text-foreground/80">Distribuição por Lab</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {Object.entries(studyStats.labBreakdown).map(([lab, count]) => (
+                      <span key={lab} className="rounded-full border border-border/40 bg-muted/30 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
+                        {lab === "vocab" ? "VocabLab" : lab === "regency" ? "RegencyLab" : "RuleLab"}: {count}
+                      </span>
+                    ))}
+                  </div>
+                </section>
+                <section className="rounded-2xl border border-border/40 bg-card/60 p-4">
+                  <p className="text-xs font-semibold text-foreground/80">Distribuição por modo</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {Object.entries(studyStats.modeBreakdown).filter(([, count]) => count > 0).map(([mode, count]) => (
+                      <span key={mode} className="rounded-full border border-border/40 bg-muted/30 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
+                        {mode === "multiple-choice" ? "Multiple choice" : mode === "active-recall" ? "Active recall" : mode === "writing" ? "Writing" : "Flip cards"}: {count}
+                      </span>
+                    ))}
+                  </div>
+                </section>
+                <p className="text-[11px] text-muted-foreground">
+                  Última sessão: {studyStats.lastSession?.folderName ?? "—"} · {studyStats.lastSession ? new Date(studyStats.lastSession.date).toLocaleDateString("pt-BR") : "—"}
+                </p>
+              </>
+            )}
+            </div>
+            </div>
           </div>
         </SheetContent>
       </Sheet>
@@ -1777,7 +1907,9 @@ export function FlashcardsPage() {
           <DialogHeader>
             <DialogTitle>Gerenciar pasta</DialogTitle>
             <DialogDescription>
-              {editingFolderId === null
+              {isEditingReviewFolder
+                ? `Gerencie a fila de revisão de "${editingFolderName}".`
+                : editingFolderId === null
                 ? `Gerencie a pasta "${generalFolderName}".`
                 : `Gerencie a pasta "${editingFolderName}".`}
             </DialogDescription>
@@ -1808,6 +1940,30 @@ export function FlashcardsPage() {
             onTransfer={() => { setTransferMode("all"); setTransferTag("all"); setTransferSelectedIds(new Set()); setTransferStreak(0); setTransferDestination(""); setTransferTrayOpen(true) }}
             onDelete={() => setShowDeleteConfirm(true)}
           />}
+          {isEditingReviewFolder && selectedReviewFolderId && (
+            <div className="space-y-4 rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] p-4">
+              <div>
+                <p className="text-sm font-semibold text-foreground/85">Review queue</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                  This is a virtual view of the original cards. Removing a card here only removes it from Review; it never deletes the source card.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-xl border border-border/40 bg-background/50 p-3">
+                <p className="text-xl font-semibold tabular-nums">{allFlashcards.filter((card) => card.isReviewFolder && (card.folderId ?? "__general__") === selectedReviewFolderId).length}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">cards in review</p>
+                </div>
+                <div className="rounded-xl border border-border/40 bg-background/50 p-3">
+                <p className="text-xl font-semibold tabular-nums">{new Set(allFlashcards.filter((card) => card.isReviewFolder && (card.folderId ?? "__general__") === selectedReviewFolderId).map((card) => card.partOfSpeech)).size}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">tags</p>
+                </div>
+              </div>
+              <Button variant="destructive" className="w-full gap-2" onClick={() => setShowDeleteConfirm(true)}>
+                <Trash2 className="size-4" />
+                Delete Review folder
+              </Button>
+            </div>
+          )}
           <div className="hidden">
             {!isEditingReviewFolder && <div className="grid grid-cols-2 gap-2 rounded-xl border border-border/40 bg-muted/20 p-3"><div><p className="text-xl font-semibold tabular-nums">{flashcards.filter((card) => card.folderId === editingFolderId && !card.isReviewFolder).length}</p><p className="text-[10px] uppercase tracking-wider text-muted-foreground">cards</p></div><div><p className="text-xl font-semibold tabular-nums">{new Set(flashcards.filter((card) => card.folderId === editingFolderId && !card.isReviewFolder).map((card) => card.partOfSpeech)).size}</p><p className="text-[10px] uppercase tracking-wider text-muted-foreground">tags</p></div></div>}
             {/* Folder name - renameable for all folders including General */}
@@ -1962,14 +2118,16 @@ export function FlashcardsPage() {
           <AlertDialogHeader className="pr-8">
             <AlertDialogTitle>Excluir pasta?</AlertDialogTitle>
             <AlertDialogDescription>
-              {editingFolderId === null 
+              {isEditingReviewFolder
+                ? `Excluir a pasta de revisão de "${editingFolderName}"? Os cards originais serão preservados e apenas sairão da fila de Review.`
+                : editingFolderId === null
                 ? `Excluir a pasta "${generalFolderName}" e todos os seus cards?`
                 : `Excluir a pasta "${editingFolderName}"? Escolha entre transferir ou apagar seus cards permanentemente.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           
           {/* Folder selection for moving cards - regular folders */}
-          {editingFolderId !== null && (
+          {editingFolderId !== null && !isEditingReviewFolder && (
             <FolderDeleteOptions label="O que deve acontecer com os cards?">
                 {/* Other user folders */}
                 {folders.filter(f => f.id !== editingFolderId).map((folder) => (
@@ -1992,7 +2150,7 @@ export function FlashcardsPage() {
           )}
 
           {/* Folder selection for moving review cards */}
-          {editingFolderId !== null && isEditingReviewFolder && selectedReviewFolderId && (
+          {isEditingReviewFolder && selectedReviewFolderId && (
             <FolderDeleteOptions label="Transferir cards de revisão para">
                 {Object.keys(reviewFoldersByParent)
                   .filter(id => id !== selectedReviewFolderId)
@@ -2022,7 +2180,7 @@ export function FlashcardsPage() {
             </AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive hover:bg-destructive/90"
-              disabled={editingFolderId !== null && !isEditingReviewFolder && !deleteTargetFolderId}
+              disabled={!isEditingReviewFolder && editingFolderId !== null && !deleteTargetFolderId}
               onClick={() => handleDeleteFolderWithMigration(editingFolderId, deleteTargetFolderId)}
             >
               Excluir

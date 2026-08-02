@@ -157,6 +157,11 @@ export function RulePage() {
     [activeCards, search],
   );
 
+  const deleteDisplayedCard = async (id: string) => {
+    if (isReviewSelected) return removeFromReviewFolder(id)
+    return deleteCard(id)
+  };
+
   const openEditor = (card?: RuleCard) => {
     setEditingCard(card ?? null);
     setFront(card?.front ?? "");
@@ -398,7 +403,7 @@ export function RulePage() {
                 layout={layout}
                 squareCards={squareCards}
                 onEdit={() => openEditor(card)}
-                onDelete={() => void deleteCard(card.id)}
+                onDelete={() => void deleteDisplayedCard(card.id)}
               />
             ))}
           </div>

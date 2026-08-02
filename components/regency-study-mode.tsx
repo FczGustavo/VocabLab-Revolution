@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CheckCircle2,
   Clock3,
@@ -21,6 +21,8 @@ import { StudyHeader, StudyShortcutCoach, useStudyKeyboardShortcuts } from "@/co
 import { useStudyHeaderPreference } from "@/hooks/use-study-header-preference";
 import { useStudyElapsedTime } from "@/hooks/use-study-elapsed-time";
 import { useReviewMistakeThreshold } from "@/hooks/use-review-mistake-threshold";
+import { useGrammarProgress } from "@/hooks/use-grammar-progress";
+import { isReviewMistakeThresholdReached } from "@/lib/study-preferences";
 
 export type RegencyStudyKind = "recall" | "flip" | "choice";
 
@@ -126,6 +128,7 @@ export function RegencyStudyMode({
   onExit: () => void;
 }) {
   const { enabled: animationsEnabled } = useAnimations();
+  const { saveStudySession } = useGrammarProgress();
   const { threshold: reviewMistakeThreshold } = useReviewMistakeThreshold();
   const { pronunciationVoice } = useAiPreferences();
   const { ensurePronunciation, resultFor } = usePronunciation();
@@ -143,10 +146,30 @@ export function RegencyStudyMode({
   const [selectedChoice, setSelectedChoice] = useState<string | null>(null);
   const [translationVisible, setTranslationVisible] = useState(false);
   const [wrongCounts, setWrongCounts] = useState<Record<string, number>>({});
+  const savedRef = useRef(false);
   const current = queue[0];
   const progress = cards.length ? (known / cards.length) * 100 : 0;
   const studyTime = useStudyElapsedTime(finished);
   useEffect(() => setHeaderCollapsed(startCollapsed), [startCollapsed]);
+  useEffect(() => {
+    if (!finished || savedRef.current) return;
+    const wordsToReview = Object.keys(wrongCounts)
+      .map((id) => cards.find((card) => card.id === id)?.term)
+      .filter((term): term is string => Boolean(term));
+    saveStudySession({
+      folderName,
+      totalCards: cards.length,
+      correctFirstTry: Math.max(0, cards.length - Object.keys(wrongCounts).length),
+      wordsToReview,
+      mistakeCards: Object.keys(wrongCounts).length,
+      totalMistakes: Object.values(wrongCounts).reduce((sum, count) => sum + count, 0),
+      lab: "regency",
+      mode: mode === "choice" ? "multiple-choice" : mode === "recall" ? "active-recall" : "flip",
+      cardIds: cards.map((card) => card.id),
+      durationSeconds: studyTime.elapsedSeconds,
+    });
+    savedRef.current = true;
+  }, [cards, finished, folderName, mode, saveStudySession, studyTime.elapsedSeconds, wrongCounts]);
   const title = useMemo(
     () =>
       mode === "recall"
@@ -210,7 +233,7 @@ export function RegencyStudyMode({
       await onRecordResult?.(current.id, false);
       const nextWrongCount = (wrongCounts[current.id] ?? 0) + 1;
       setWrongCounts((counts) => ({ ...counts, [current.id]: nextWrongCount }));
-      if (reviewMistakeThreshold > 0 && nextWrongCount >= reviewMistakeThreshold) {
+      if (isReviewMistakeThresholdReached(nextWrongCount, reviewMistakeThreshold)) {
         await onMarkForReview?.(current.id);
       }
     }

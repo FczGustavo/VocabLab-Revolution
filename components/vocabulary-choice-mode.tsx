@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CheckCircle2,
   Clock3,
@@ -23,6 +23,8 @@ import {
 import { useStudyHeaderPreference } from "@/hooks/use-study-header-preference";
 import { useStudyElapsedTime } from "@/hooks/use-study-elapsed-time";
 import { useReviewMistakeThreshold } from "@/hooks/use-review-mistake-threshold";
+import { useGrammarProgress } from "@/hooks/use-grammar-progress";
+import { isReviewMistakeThresholdReached } from "@/lib/study-preferences";
 import { GrammaticalFormBadge } from "@/components/grammatical-form-badge";
 import { VerbTypeBadge } from "@/components/verb-type-badge";
 
@@ -91,6 +93,7 @@ export function VocabularyChoiceMode({
   onRecordResult,
 }: VocabularyChoiceModeProps) {
   const { enabled: animationsEnabled } = useAnimations();
+  const { saveStudySession } = useGrammarProgress();
   const { threshold: reviewMistakeThreshold } = useReviewMistakeThreshold();
   const { pronunciationVoice, showIPA, showContext, contextInPortuguese, includeMultipleTranslations, showGrammaticalForm } =
     useAiPreferences();
@@ -102,6 +105,7 @@ export function VocabularyChoiceMode({
   const [showTranslations, setShowTranslations] = useState(false);
   const [finished, setFinished] = useState(false);
   const [exiting, setExiting] = useState<"known" | "again" | null>(null);
+  const savedRef = useRef(false);
   const [headerCollapsed, setHeaderCollapsed] = useState(false);
   const { startCollapsed } = useStudyHeaderPreference();
   const current = queue[0];
@@ -116,6 +120,27 @@ export function VocabularyChoiceMode({
   const studyTime = useStudyElapsedTime(finished);
 
   useEffect(() => setHeaderCollapsed(startCollapsed), [startCollapsed]);
+
+  useEffect(() => {
+    if (!finished || savedRef.current) return;
+    const wordsToReview = Object.keys(wrongCounts)
+      .map((id) => flashcards.find((card) => card.id === id)?.word)
+      .filter((word): word is string => Boolean(word));
+    const mistakeCards = Object.keys(wrongCounts).length;
+    saveStudySession({
+      folderName,
+      totalCards: flashcards.length,
+      correctFirstTry: Math.max(0, flashcards.length - mistakeCards),
+      wordsToReview,
+      mistakeCards,
+      totalMistakes: Object.values(wrongCounts).reduce((sum, count) => sum + count, 0),
+      lab: "vocab",
+      mode: "multiple-choice",
+      cardIds: flashcards.map((card) => card.id),
+      durationSeconds: studyTime.elapsedSeconds,
+    });
+    savedRef.current = true;
+  }, [finished, flashcards, folderName, saveStudySession, studyTime.elapsedSeconds, wrongCounts]);
 
   const speak = async () => {
     if (!current) return;
@@ -155,7 +180,7 @@ export function VocabularyChoiceMode({
       await onRecordResult?.(current.id, false);
       const nextWrongCount = (wrongCounts[current.id] ?? 0) + 1;
       setWrongCounts((counts) => ({ ...counts, [current.id]: nextWrongCount }));
-      if (reviewMistakeThreshold > 0 && nextWrongCount >= reviewMistakeThreshold) {
+      if (isReviewMistakeThresholdReached(nextWrongCount, reviewMistakeThreshold)) {
         await onMarkForReview?.(current.id);
       }
     }

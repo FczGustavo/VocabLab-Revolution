@@ -76,6 +76,15 @@ function transactionComplete(transaction: IDBTransaction): Promise<void> {
   })
 }
 
+async function readRegencyCardById(id: string): Promise<RegencyCard | undefined> {
+  const db = await openDatabase()
+  return new Promise((resolve) => {
+    const request = db.transaction(CARDS_STORE, "readonly").objectStore(CARDS_STORE).get(id)
+    request.onsuccess = () => resolve(request.result as RegencyCard | undefined)
+    request.onerror = () => resolve(undefined)
+  })
+}
+
 function applyDefaultGeneralPreferences() {
   try {
     const colorKey = "regencylab_folder_colors"
@@ -352,20 +361,20 @@ export function useRegencyDB() {
   }, [selectedFolderId])
 
   const addToReviewFolder = useCallback(async (id: string) => {
-    const card = allCards.find((item) => item.id === id)
+    const card = await readRegencyCardById(id)
     if (!card || card.isReviewFolder) return false
     return updateCard({ ...card, isReviewFolder: true })
-  }, [allCards, updateCard])
+  }, [updateCard])
 
   const removeFromReviewFolder = useCallback(async (id: string) => {
-    const card = allCards.find((item) => item.id === id)
+    const card = await readRegencyCardById(id)
     if (!card || !card.isReviewFolder) return false
     return updateCard({ ...card, isReviewFolder: false })
-  }, [allCards, updateCard])
+  }, [updateCard])
   const recordStudyResult = useCallback(async (id: string, knewIt: boolean) => {
-    const card = allCards.find((item) => item.id === id)
+    const card = await readRegencyCardById(id)
     return card ? updateCard({ ...card, studyStreak: knewIt ? (card.studyStreak ?? 0) + 1 : 0 }) : false
-  }, [allCards, updateCard])
+  }, [updateCard])
 
   const cards = selectedFolderId
     ? allCards.filter((card) => selectedFolderId === "__general__" ? !card.folderId : card.folderId === selectedFolderId)

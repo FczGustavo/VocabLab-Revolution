@@ -60,7 +60,7 @@ export function FolderDeleteChoice({
       >
         {selected && (danger ? <Trash2 className="size-2.5" /> : <Check className="size-2.5" />)}
       </span>
-      <span className="min-w-0 truncate">{children}</span>
+      <span className="min-w-0 break-words whitespace-normal leading-snug [overflow-wrap:anywhere]">{children}</span>
     </button>
   )
 }

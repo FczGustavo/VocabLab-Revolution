@@ -346,7 +346,7 @@ export function RegencyPage() {
         <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[94vw] overflow-y-auto sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Gerenciar pasta</DialogTitle>
-            <DialogDescription>{editingFolder ? `Gerencie a pasta "${editingFolder.name}".` : `Gerencie a pasta "${generalFolderName}".`}</DialogDescription>
+            <DialogDescription className="break-words [overflow-wrap:anywhere]">{editingFolder ? `Gerencie a pasta "${editingFolder.name}".` : `Gerencie a pasta "${generalFolderName}".`}</DialogDescription>
           </DialogHeader>
           <FolderManagerPanel
             name={editingFolderName}
@@ -430,7 +430,7 @@ function RegencyCardView({ card, layout, squareCards, display, onEdit, onDelete 
 
       <div className={cn("min-w-0 pr-24", layout === "grid" && "border-b border-border/35 pb-3")}>
         <div className="flex min-w-0 items-center gap-2">
-          <h3 className="min-w-0 shrink truncate text-xl font-medium tracking-tight text-foreground/80">{card.term}</h3>
+          <h3 className="min-w-0 shrink break-words text-lg font-medium leading-snug tracking-tight text-foreground/80 [overflow-wrap:anywhere] sm:text-xl">{card.term}</h3>
           {display.showCategory && (
             <div className="flex shrink-0 flex-nowrap items-center gap-1.5 whitespace-nowrap">
               {display.showCategory && <span className={cn("ghost-tag inline-flex h-5 w-fit shrink-0 items-center justify-center whitespace-nowrap px-2 py-0.5 text-[10px] font-medium leading-none", card.category === "verb" ? "bg-blue-500/10 text-blue-700 dark:bg-blue-700 dark:text-white/90" : card.category === "noun" ? "bg-emerald-500/10 text-emerald-700 dark:bg-emerald-700 dark:text-white/90" : "bg-amber-500/10 text-amber-700 dark:bg-amber-700 dark:text-white/90")}>{card.category === "verb" ? "Verb" : card.category === "noun" ? "Noun" : "Adjective"}</span>}

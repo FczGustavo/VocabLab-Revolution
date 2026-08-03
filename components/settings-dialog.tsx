@@ -728,12 +728,12 @@ export function SettingsDialog() {
                         ) : (
                           <div className="space-y-1.5">
                             {devices.map((device) => (
-                              <div key={device.id} className="flex items-center gap-2.5 rounded-lg border border-border/40 bg-background/35 px-2.5 py-2">
+                              <div key={device.id} className="flex flex-wrap items-start gap-2.5 rounded-lg border border-border/40 bg-background/35 px-2.5 py-2">
                                 <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted/70 text-muted-foreground">
                                   {device.kind === "mobile" ? <Smartphone className="size-3.5" /> : device.kind === "tablet" ? <Tablet className="size-3.5" /> : <Monitor className="size-3.5" />}
                                 </div>
-                                <div className="min-w-0 flex-1">
-                                  <p className="truncate text-[11px] font-medium">{device.label}</p>
+                                <div className="min-w-0 flex-1 basis-[calc(100%-2.5rem)] sm:basis-auto">
+                                  <p className="line-clamp-2 break-words text-[11px] font-medium leading-snug [overflow-wrap:anywhere]">{device.label}</p>
                                   <p className="text-[9px] text-muted-foreground">Última atividade: {new Date(device.lastSeenAt).toLocaleString("pt-BR")}</p>
                                 </div>
                                 {device.current && (

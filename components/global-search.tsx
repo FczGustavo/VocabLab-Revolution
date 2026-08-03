@@ -136,7 +136,7 @@ export function GlobalSearch() {
             <button key={`${result.lab}-${result.title}-${index}`} type="button" className="w-full rounded-lg border border-border/40 px-3 py-2 text-left transition-colors hover:bg-muted" onClick={() => { setOpen(false); router.push(result.href) }}>
               <p className="text-[10px] font-medium text-primary">{result.lab}</p>
               <p className="text-sm font-medium">{result.title}</p>
-              {result.detail && <p className="truncate text-xs text-muted-foreground">{result.detail}</p>}
+              {result.detail && <p className="line-clamp-2 break-words text-xs leading-snug text-muted-foreground [overflow-wrap:anywhere]">{result.detail}</p>}
             </button>
           ))}
         </div>

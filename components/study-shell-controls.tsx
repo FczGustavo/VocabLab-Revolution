@@ -11,7 +11,7 @@ export function StudyHeader({ folderName, subtitle, progress, current, total, ra
     <div className={cn("relative z-50 shrink-0 transition-[height] duration-300 ease-in-out", collapsed ? "h-0" : "h-[65px]")}>
       <header className={cn("absolute inset-x-0 top-0 flex h-[65px] items-center gap-3 border-b border-border/40 bg-background px-4 py-3 transition-transform duration-300 ease-in-out sm:px-6", collapsed && "-translate-y-full")}>
         <Button variant="ghost" size="icon" onClick={onExit} className="text-muted-foreground" aria-label="Exit study"><X className="size-5" /></Button>
-        <div className="min-w-0"><p className="truncate text-sm font-medium text-foreground/85">{folderName}</p><p className="truncate text-xs text-muted-foreground">{subtitle}</p></div>
+        <div className="min-w-0 max-w-[42%] sm:max-w-none"><p className="line-clamp-2 break-words text-sm font-medium leading-snug text-foreground/85 [overflow-wrap:anywhere]">{folderName}</p><p className="mt-0.5 line-clamp-2 break-words text-xs leading-snug text-muted-foreground [overflow-wrap:anywhere]">{subtitle}</p></div>
         <div className="mx-3 h-1.5 flex-1 overflow-hidden rounded-full bg-muted"><div className={cn("h-full rounded-full transition-all duration-300", rating === "known" ? "bg-success" : rating === "again" ? "bg-destructive/40" : "bg-primary")} style={{ width: `${progress}%` }} /></div>
         <span className="text-xs font-medium text-muted-foreground">{current}/{total}</span>
         {trailing}

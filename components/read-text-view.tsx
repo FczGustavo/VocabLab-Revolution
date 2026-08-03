@@ -627,7 +627,7 @@ export function ReadTextView({ text, onUpdateText }: ReadTextViewProps) {
           Here we only show the title and the word/highlight counters. */}
       <div className="mb-6 flex items-center gap-3">
         <div className="flex-1 min-w-0">
-          <h2 className="text-lg font-semibold text-foreground truncate">{text.title}</h2>
+          <h2 className="line-clamp-2 break-words text-lg font-semibold leading-snug text-foreground [overflow-wrap:anywhere]">{text.title}</h2>
           <p className="text-[12px] text-muted-foreground/60">
             {text.content.split(/\s+/).filter(Boolean).length} words · {highlights.length} highlights
           </p>

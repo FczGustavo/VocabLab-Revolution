@@ -460,7 +460,7 @@ export function FlashcardCard({ flashcard, onDelete, onCreateFromAlternative, on
           onClick={toggleFlipSafely}
         >
           <div className="flex items-center gap-2">
-            <h3 className="max-w-[45%] min-w-0 shrink truncate text-lg font-medium text-foreground/80">{flashcard.word}</h3>
+            <h3 className="max-w-[45%] min-w-0 shrink break-words text-lg font-medium leading-snug text-foreground/80 [overflow-wrap:anywhere]">{flashcard.word}</h3>
             <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
               <PronunciationButton word={flashcard.word} size="sm" savedAudioSrc={flashcard.audioSrc} />
               {onUpdateFlashcard && (
@@ -491,7 +491,7 @@ export function FlashcardCard({ flashcard, onDelete, onCreateFromAlternative, on
             </div>
           </div>
           {!isFlipped && hasExample && (
-            <p className="text-xs text-muted-foreground italic leading-snug truncate">{flashcard.example}</p>
+            <p className="line-clamp-2 break-words text-xs italic leading-snug text-muted-foreground [overflow-wrap:anywhere]">{flashcard.example}</p>
           )}
           {isFlipped && (
             <div className="grid w-full gap-3 border-t border-border pt-3 animate-in fade-in slide-in-from-top-2 sm:grid-cols-2" style={{ animationDuration: animationsEnabled ? "300ms" : "0ms" }}>
@@ -604,7 +604,7 @@ export function FlashcardCard({ flashcard, onDelete, onCreateFromAlternative, on
             </Button>
           )}
           <div className="flex-1 flex items-center justify-center">
-            <h3 className="text-center text-base font-medium leading-snug text-foreground/80 truncate w-full">{flashcard.word}</h3>
+            <h3 className="w-full break-words text-center text-base font-medium leading-snug text-foreground/80 [overflow-wrap:anywhere]">{flashcard.word}</h3>
           </div>
         </div>
         <div className={cn(

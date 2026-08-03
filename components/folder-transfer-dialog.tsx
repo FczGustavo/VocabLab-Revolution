@@ -71,7 +71,7 @@ export function FolderTransferDialog({ open, onOpenChange, sourceName, items, fo
   }
 
   return <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent className="flex max-h-[calc(100dvh-2rem)] max-w-[96vw] flex-col overflow-hidden sm:max-w-2xl">
+    <DialogContent className="flex max-h-[calc(100dvh-2rem)] max-w-[96vw] flex-col overflow-hidden [&_span.truncate]:whitespace-normal [&_span.truncate]:break-words [&_span.truncate]:overflow-visible [&_span.truncate]:leading-snug sm:max-w-2xl">
       <DialogHeader><DialogTitle className="flex items-center gap-2"><span className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary"><ArrowRightLeft className="size-4" /></span>Sistema de transferência</DialogTitle><DialogDescription>Organize os {itemNounPlural} de “{sourceName}” sem apagar a pasta de origem.</DialogDescription></DialogHeader>
       <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pr-1 scrollbar-hide">
         <section className="space-y-3 rounded-xl border border-border/50 bg-muted/20 p-4">

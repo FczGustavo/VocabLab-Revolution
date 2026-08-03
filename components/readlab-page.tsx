@@ -703,7 +703,7 @@ export function ReadlabPage() {
         <DialogContent className="max-h-[90vh] max-w-[92vw] overflow-hidden sm:max-w-lg flex flex-col" ref={addDialogRef}>
           <DialogHeader>
             <DialogTitle>Add Text</DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="break-words [overflow-wrap:anywhere]">
               Paste English text or paste an image from clipboard (Ctrl+V) for OCR processing.
             </DialogDescription>
           </DialogHeader>

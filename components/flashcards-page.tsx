@@ -1195,7 +1195,7 @@ export function FlashcardsPage() {
         >
           <DialogHeader className="shrink-0">
             <DialogTitle>Import a Quizlet PDF</DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="break-words [overflow-wrap:anywhere]">
               Upload a Quizlet export with English on one side and Portuguese on the other. The original Portuguese translation is kept on each card.
             </DialogDescription>
           </DialogHeader>
@@ -1208,7 +1208,7 @@ export function FlashcardsPage() {
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-medium text-foreground/80">Choose Quizlet PDF</span>
-                  <span className="block truncate text-xs text-muted-foreground">
+                  <span className="block line-clamp-2 break-words text-xs leading-snug text-muted-foreground [overflow-wrap:anywhere]">
                     {quizletPdf ? quizletPdf.name : "PDF only · up to the first 30 pages"}
                   </span>
                 </span>
@@ -1344,7 +1344,7 @@ export function FlashcardsPage() {
       </Dialog>
 
       <Dialog open={false} onOpenChange={() => undefined}>
-        <DialogContent className="flex max-h-[calc(100dvh-2rem)] max-w-[96vw] flex-col overflow-hidden sm:max-w-2xl">
+        <DialogContent className="flex max-h-[calc(100dvh-2rem)] max-w-[96vw] flex-col overflow-hidden [&_span.truncate]:whitespace-normal [&_span.truncate]:break-words [&_span.truncate]:overflow-visible [&_span.truncate]:leading-snug sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><span className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary"><ArrowRightLeft className="size-4" /></span>Sistema de transferência</DialogTitle>
             <DialogDescription>1. Selecione um grupo · 2. Escolha o destino · 3. Confirme. A pasta de origem nunca é apagada.</DialogDescription>
@@ -1780,7 +1780,7 @@ export function FlashcardsPage() {
                     </div>
                     <div className="flex w-full min-w-0 flex-col items-center gap-1">
                       <p className="text-2xl font-bold leading-none tracking-[-0.03em] tabular-nums">{stat.value}</p>
-                      <p className="max-w-full truncate text-[10px] uppercase leading-3 tracking-[0.07em] text-muted-foreground">{stat.label}</p>
+                      <p className="max-w-full line-clamp-2 break-words text-[10px] uppercase leading-3 tracking-[0.07em] text-muted-foreground [overflow-wrap:anywhere]">{stat.label}</p>
                     </div>
                   </div>
                 ))}
@@ -1831,7 +1831,7 @@ export function FlashcardsPage() {
                       </div>
                       <div className="flex w-full min-w-0 flex-col items-center gap-1">
                         <p className="text-xl font-bold leading-none tracking-[-0.03em] tabular-nums">{stat.value}</p>
-                        <p className="max-w-full truncate text-[10px] uppercase leading-3 tracking-[0.07em] text-muted-foreground">{stat.label}</p>
+                        <p className="max-w-full line-clamp-2 break-words text-[10px] uppercase leading-3 tracking-[0.07em] text-muted-foreground [overflow-wrap:anywhere]">{stat.label}</p>
                       </div>
                     </div>
                   ))}

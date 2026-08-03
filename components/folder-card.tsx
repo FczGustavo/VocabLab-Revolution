@@ -47,8 +47,6 @@ export function FolderCard({
   isReview = false,
   subtitle,
 }: FolderCardProps) {
-  const keepCuratedTitleOnOneLine = name === "Phrasal Verbs Essentials"
-
   return (
     <button
       type="button"
@@ -90,14 +88,7 @@ export function FolderCard({
           <div className="flex min-w-0 items-start gap-2 text-left">
             <Folder className={cn("mt-0.5 size-4 shrink-0", iconColors[gradient])} />
             <div className="min-w-0 space-y-1">
-              <h3
-                className={cn(
-                  "text-[15px] font-semibold leading-snug text-foreground/80",
-                  keepCuratedTitleOnOneLine
-                    ? "whitespace-nowrap"
-                    : "break-words",
-                )}
-              >
+              <h3 className="max-w-full break-words text-[14px] font-semibold leading-snug text-foreground/80 [overflow-wrap:anywhere] sm:text-[15px]">
                 {name}
               </h3>
               <p className="text-[12px] leading-snug text-muted-foreground/70">

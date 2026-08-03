@@ -509,7 +509,7 @@ export function RulePage() {
         <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[94vw] overflow-y-auto sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Gerenciar pasta</DialogTitle>
-            <p className="text-sm text-muted-foreground">
+            <p className="break-words text-sm text-muted-foreground [overflow-wrap:anywhere]">
               Gerencie a pasta “{managerFolder?.name}”.
             </p>
           </DialogHeader>

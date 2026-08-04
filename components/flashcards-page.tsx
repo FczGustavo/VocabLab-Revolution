@@ -205,9 +205,6 @@ export function FlashcardsPage() {
   } = useFlashcardsDB()
   
   const { getStudyStats, isLoaded: isProgressLoaded } = useGrammarProgress()
-  const studyStats = getStudyStats()
-  const masteredCards = allFlashcards.filter((card) => (card.studyStreak ?? 0) >= 3).length
-  const deckCoverage = allFlashcards.length > 0 ? Math.round((masteredCards / allFlashcards.length) * 100) : 0
   const { model } = useGptModel()
   const { setIsInsideFolder, setGoBack, layout, setLayout, setOnShowStats } = useFolder()
   const {
@@ -557,6 +554,11 @@ export function FlashcardsPage() {
         )
       : "Review")
     : (selectedFolder?.name ?? "All words")
+  const studyFolderId = isReviewFolderSelected
+    ? selectedReviewFolderId
+    : isViewingGeneral
+      ? null
+      : selectedFolderId
   
   const effectiveStudyCards = studyCards ?? flashcards
   const inputFolderId = addDestinationFolderId === "__general__"
@@ -607,8 +609,6 @@ export function FlashcardsPage() {
     ? flashcards.filter((f) => f.folderId === selectedFolderId)
     : flashcards
   
-  const visibleReviewWords = studyStats.wordsToReview
-
   const normalizedSearch = useMemo(
     () => normalizeForSearch(searchQuery.trim()),
     [searchQuery]
@@ -637,6 +637,12 @@ export function FlashcardsPage() {
       return normalizedHaystack.includes(normalizedSearch)
     })
   }, [displayedFlashcards, normalizedSearch, selectedTag])
+  const studyStats = getStudyStats({ lab: "vocab", folderName: studyFolderName, folderId: studyFolderId })
+  const progressCards = displayedFlashcards
+  const progressReviewCards = progressCards.filter((card) => card.isReviewFolder)
+  const progressMasteredCards = progressCards.filter((card) => (card.studyStreak ?? 0) >= 3).length
+  const progressCoverage = progressCards.length > 0 ? Math.round((progressMasteredCards / progressCards.length) * 100) : 0
+  const visibleReviewWords = studyStats.wordsToReview
   const studyFlashcards = filteredFlashcards
   const studyFilterChip = selectedTag === "all"
     ? null
@@ -1135,6 +1141,7 @@ export function FlashcardsPage() {
       <WritingMode
         flashcards={writingModeCards}
         folderName={isReviewStudy ? "Review" : studyFolderName}
+        folderId={isReviewStudy ? selectedReviewFolderId : studyFolderId}
         onMarkForReview={isReviewStudy ? undefined : addToReviewFolder}
         onRecordResult={recordStudyResult}
         onMarkAsLearned={isReviewStudy ? removeFromReviewFolder : undefined}
@@ -1152,6 +1159,7 @@ export function FlashcardsPage() {
       <StudyMode
         flashcards={effectiveStudyCards}
         folderName={isReviewStudy ? "Review" : studyFolderName}
+        folderId={isReviewStudy ? selectedReviewFolderId : studyFolderId}
         onMarkForReview={isReviewStudy ? undefined : addToReviewFolder}
         onRecordResult={recordStudyResult}
         onMarkAsLearned={isReviewStudy ? removeFromReviewFolder : undefined}
@@ -1169,6 +1177,7 @@ export function FlashcardsPage() {
       <VocabularyChoiceMode
         flashcards={effectiveStudyCards}
         folderName={isReviewStudy ? "Review" : studyFolderName}
+        folderId={isReviewStudy ? selectedReviewFolderId : studyFolderId}
         onMarkForReview={isReviewStudy ? undefined : addToReviewFolder}
         onRecordResult={recordStudyResult}
         onMarkAsLearned={isReviewStudy ? removeFromReviewFolder : undefined}
@@ -1763,16 +1772,17 @@ export function FlashcardsPage() {
               <BarChart2 className="size-4 shrink-0 text-primary" />
               Study Progress
             </SheetTitle>
+            <p className="truncate text-left text-xs text-muted-foreground" title={studyFolderName}>{studyFolderName}</p>
           </SheetHeader>
           <div className="min-h-0 flex-1 overflow-y-auto scrollbar-hide">
             <div className="p-5">
             <div className="space-y-5">
               <section className="grid grid-cols-2 gap-3">
                 {[
-                  { icon: Layers3, label: "No deck", value: allFlashcards.length, tone: "text-primary/70" },
-                  { icon: Target, label: "No Review", value: reviewFlashcards.length, tone: "text-amber-500/80" },
-                  { icon: Flame, label: "Mastered", value: masteredCards, tone: "text-success/80" },
-                  { icon: TrendingUp, label: "Cobertura", value: `${deckCoverage}%`, tone: "text-primary/70" },
+                  { icon: Layers3, label: "No deck", value: progressCards.length, tone: "text-primary/70" },
+                  { icon: Target, label: "No Review", value: progressReviewCards.length, tone: "text-amber-500/80" },
+                  { icon: Flame, label: "Mastered", value: progressMasteredCards, tone: "text-success/80" },
+                  { icon: TrendingUp, label: "Cobertura", value: `${progressCoverage}%`, tone: "text-primary/70" },
                 ].map((stat) => (
                   <div key={stat.label} className="stat-bento min-h-[98px] flex-col items-center justify-between gap-2 px-3 py-3 text-center">
                     <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10">

@@ -111,6 +111,7 @@ function buildCloze(card: RegencyCard) {
 export function RegencyStudyMode({
   cards,
   folderName,
+  folderId,
   mode,
   display,
   onMarkForReview,
@@ -120,6 +121,7 @@ export function RegencyStudyMode({
 }: {
   cards: RegencyCard[];
   folderName: string;
+  folderId?: string | null;
   mode: RegencyStudyKind;
   display: RegencyDisplayPreferences;
   onMarkForReview?: (id: string) => Promise<boolean>;
@@ -164,12 +166,13 @@ export function RegencyStudyMode({
       mistakeCards: Object.keys(wrongCounts).length,
       totalMistakes: Object.values(wrongCounts).reduce((sum, count) => sum + count, 0),
       lab: "regency",
+      folderId,
       mode: mode === "choice" ? "multiple-choice" : mode === "recall" ? "active-recall" : "flip",
       cardIds: cards.map((card) => card.id),
       durationSeconds: studyTime.elapsedSeconds,
     });
     savedRef.current = true;
-  }, [cards, finished, folderName, mode, saveStudySession, studyTime.elapsedSeconds, wrongCounts]);
+  }, [cards, finished, folderId, folderName, mode, saveStudySession, studyTime.elapsedSeconds, wrongCounts]);
   const title = useMemo(
     () =>
       mode === "recall"

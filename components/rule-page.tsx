@@ -26,6 +26,7 @@ import {
   RuleStudyMode,
   type RuleStudyKind,
 } from "@/components/rule-study-mode";
+import { StudyProgressSheet } from "@/components/study-progress-sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -80,7 +81,7 @@ export function RulePage() {
     removeFromReviewFolder,
     recordStudyResult,
   } = useRuleDB();
-  const { setIsInsideFolder, setGoBack, layout } = useFolder();
+  const { setIsInsideFolder, setGoBack, setOnShowStats, layout } = useFolder();
   const { squareCards } = useCardShape();
   const [isReviewSelected, setIsReviewSelected] = useState(false);
   const [selectedReviewFolderId, setSelectedReviewFolderId] = useState<
@@ -105,6 +106,7 @@ export function RulePage() {
   const [studyPickerOpen, setStudyPickerOpen] = useState(false);
   const [studyKind, setStudyKind] = useState<RuleStudyKind | null>(null);
   const [search, setSearch] = useState("");
+  const [isStatsOpen, setIsStatsOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -133,6 +135,9 @@ export function RulePage() {
     });
     return () => setIsInsideFolder(false);
   }, [inside, setGoBack, setIsInsideFolder, setSelectedFolderId]);
+  useEffect(() => {
+    setOnShowStats(() => setIsStatsOpen(true));
+  }, [setOnShowStats]);
 
   const activeCards = isReviewSelected
     ? reviewCards.filter(
@@ -252,6 +257,7 @@ export function RulePage() {
       <RuleStudyMode
         cards={activeCards}
         folderName={currentName}
+        folderId={isReviewSelected ? selectedReviewFolderId : selectedFolderId === "__general__" ? null : selectedFolderId}
         mode={studyKind}
         onExit={() => setStudyKind(null)}
         onMarkForReview={isReviewSelected ? undefined : addToReviewFolder}
@@ -686,6 +692,7 @@ export function RulePage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <StudyProgressSheet open={isStatsOpen} onOpenChange={setIsStatsOpen} cards={activeCards} folderName={currentName} folderId={isReviewSelected ? selectedReviewFolderId : selectedFolderId === "__general__" ? null : selectedFolderId} lab="rule" />
     </div>
   );
 }

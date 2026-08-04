@@ -31,6 +31,7 @@ function shuffle(cards: Flashcard[]) {
 interface StudyModeProps {
   flashcards: Flashcard[]
   folderName: string
+  folderId?: string | null
   onExit: () => void
   onMarkForReview?: (id: string) => Promise<boolean>
   onMarkAsLearned?: (id: string) => Promise<boolean>
@@ -38,7 +39,7 @@ interface StudyModeProps {
 }
 
 /** Shared VocabLab study surface: normal folders and review folders use this exact experience. */
-export function StudyMode({ flashcards, folderName, onExit, onMarkForReview, onMarkAsLearned, onRecordResult }: StudyModeProps) {
+export function StudyMode({ flashcards, folderName, folderId, onExit, onMarkForReview, onMarkAsLearned, onRecordResult }: StudyModeProps) {
   const { saveStudySession } = useGrammarProgress()
   const { showContext, contextInPortuguese, showIPA, pronunciationVoice, includeMultipleTranslations } = useAiPreferences()
   const { ensurePronunciation, resultFor } = usePronunciation()
@@ -82,12 +83,13 @@ export function StudyMode({ flashcards, folderName, onExit, onMarkForReview, onM
       mistakeCards,
       totalMistakes: Object.values(wrongCount).reduce((sum, count) => sum + count, 0),
       lab: "vocab",
+      folderId,
       mode: "flip",
       cardIds: flashcards.map((card) => card.id),
       durationSeconds: studyTime.elapsedSeconds,
     })
     savedRef.current = true
-  }, [finished, flashcards, folderName, saveStudySession, studyTime.elapsedSeconds, wrongCount])
+  }, [finished, flashcards, folderId, folderName, saveStudySession, studyTime.elapsedSeconds, wrongCount])
 
   const speak = async (word: string) => {
     const normalized = word.trim().toLowerCase()

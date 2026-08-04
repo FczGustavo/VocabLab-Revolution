@@ -12,6 +12,7 @@ import { FolderCard, NewFolderCard } from "@/components/folder-card"
 import { FolderDeleteChoice, FolderDeleteOptions } from "@/components/folder-delete-dialog"
 import { LongPressButton } from "@/components/long-press-button"
 import { RegencyStudyMode, type RegencyStudyKind } from "@/components/regency-study-mode"
+import { StudyProgressSheet } from "@/components/study-progress-sheet"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -50,7 +51,7 @@ export function RegencyPage() {
   const { allCards, cards, reviewCards, folders, selectedFolderId, setSelectedFolderId, isLoading, addFolder, renameFolder, deleteFolder, addCard, updateCard, deleteCard, deleteCardsInFolder, moveCards, addToReviewFolder, removeFromReviewFolder, recordStudyResult } = useRegencyDB()
   const { showCategory, showGrammaticalForm, showMeaning, showContrast, showExample, showTranslation } = useRegencyPreferences()
   const { squareCards } = useCardShape()
-  const { setIsInsideFolder, setGoBack, layout } = useFolder()
+  const { setIsInsideFolder, setGoBack, setOnShowStats, layout } = useFolder()
   const [generalFolderName, setGeneralFolderName] = useState("General")
   const [colors, setColors] = useState<Record<string, string>>({})
   const [folderDialogOpen, setFolderDialogOpen] = useState(false)
@@ -76,6 +77,7 @@ export function RegencyPage() {
   const [studyPickerOpen, setStudyPickerOpen] = useState(false)
   const [isReviewFolderSelected, setIsReviewFolderSelected] = useState(false)
   const [selectedReviewFolderId, setSelectedReviewFolderId] = useState<string | null>(null)
+  const [isStatsOpen, setIsStatsOpen] = useState(false)
 
   const isInsideFolder = Boolean(selectedFolderId) || isReviewFolderSelected
   const isGeneral = selectedFolderId === "__general__"
@@ -105,6 +107,9 @@ export function RegencyPage() {
     return () => window.removeEventListener("regencylab-folder-colors-updated", loadPreferences)
   }, [])
   useEffect(() => { setIsInsideFolder(isInsideFolder) }, [isInsideFolder, setIsInsideFolder])
+  useEffect(() => {
+    setOnShowStats(() => setIsStatsOpen(true))
+  }, [setOnShowStats])
   useEffect(() => {
     setGoBack(() => {
       setSelectedFolderId(null)
@@ -265,7 +270,7 @@ export function RegencyPage() {
   }
   const beginEdit = (card: RegencyCard) => { setInputMode("manual"); setEditingCard(card); setEditor({ ...card, exampleTranslation: card.exampleTranslation ?? "", meaningPt: card.meaningPt ?? "", contrastPt: card.contrastPt ?? "" }); setSuggestions([]); setSingleResult(null); setFormError(null); window.scrollTo({ top: 0, behavior: "smooth" }) }
 
-  if (studyKind) return <RegencyStudyMode cards={activeCards} folderName={currentFolderName} mode={studyKind} display={{ showCategory, showGrammaticalForm, showMeaning, showContrast, showExample, showTranslation }} onMarkForReview={isReviewFolderSelected ? undefined : addToReviewFolder} onMarkAsLearned={isReviewFolderSelected ? removeFromReviewFolder : undefined} onRecordResult={recordStudyResult} onExit={() => setStudyKind(null)} />
+  if (studyKind) return <RegencyStudyMode cards={activeCards} folderName={currentFolderName} folderId={isReviewFolderSelected ? selectedReviewFolderId : selectedFolderId === "__general__" ? null : selectedFolderId} mode={studyKind} display={{ showCategory, showGrammaticalForm, showMeaning, showContrast, showExample, showTranslation }} onMarkForReview={isReviewFolderSelected ? undefined : addToReviewFolder} onMarkAsLearned={isReviewFolderSelected ? removeFromReviewFolder : undefined} onRecordResult={recordStudyResult} onExit={() => setStudyKind(null)} />
 
   return (
     <div className="w-full">
@@ -411,6 +416,7 @@ export function RegencyPage() {
       </AlertDialog>
 
       <Dialog open={studyPickerOpen} onOpenChange={setStudyPickerOpen}><DialogContent className="max-w-sm"><DialogHeader><DialogTitle>Start study</DialogTitle><DialogDescription>Choose how you want to review this folder.</DialogDescription></DialogHeader><div className="grid gap-2"><Button variant="outline" disabled={!canUseRegencyMultipleChoice(activeCards)} className="h-auto justify-start p-4 text-left" onClick={() => { setStudyPickerOpen(false); setStudyKind("choice") }}><span><span className="block text-sm">Multiple choice</span><span className="mt-1 block text-xs font-normal text-muted-foreground">{canUseRegencyMultipleChoice(activeCards) ? "Choose the construction that completes each context." : "Requires at least 10 cards and 4 distinct answers."}</span></span></Button><Button variant="outline" className="h-auto justify-start p-4 text-left" onClick={() => { setStudyPickerOpen(false); setStudyKind("recall") }}><span><span className="block text-sm">Active recall</span><span className="mt-1 block text-xs font-normal text-muted-foreground">Try to remember the pattern before revealing it.</span></span></Button><Button variant="outline" className="h-auto justify-start p-4 text-left" onClick={() => { setStudyPickerOpen(false); setStudyKind("flip") }}><span><span className="block text-sm">Flip cards</span><span className="mt-1 block text-xs font-normal text-muted-foreground">Turn the card and mark whether you knew it.</span></span></Button></div></DialogContent></Dialog>
+      <StudyProgressSheet open={isStatsOpen} onOpenChange={setIsStatsOpen} cards={activeCards} folderName={currentFolderName} folderId={isReviewFolderSelected ? selectedReviewFolderId : selectedFolderId === "__general__" ? null : selectedFolderId} lab="regency" />
     </div>
   )
 }

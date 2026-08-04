@@ -21,6 +21,7 @@ import { VerbTypeBadge } from "@/components/verb-type-badge"
 interface WritingModeProps {
   flashcards: Flashcard[]
   folderName: string
+  folderId?: string | null
   onExit: () => void
   onMarkForReview?: (id: string) => Promise<boolean>
   onMarkAsLearned?: (id: string) => Promise<boolean>
@@ -46,7 +47,7 @@ function formatElapsedTime(totalSeconds: number) {
  * Active recall for the review queue. The answer field is deliberately optional:
  * learners can formulate it mentally, reveal the card, then rate their recall.
  */
-export function WritingMode({ flashcards, folderName, onExit, onMarkForReview, onMarkAsLearned, onRecordResult }: WritingModeProps) {
+export function WritingMode({ flashcards, folderName, folderId, onExit, onMarkForReview, onMarkAsLearned, onRecordResult }: WritingModeProps) {
   const { enabled: animationsEnabled } = useAnimations()
   const { saveStudySession } = useGrammarProgress()
   const { enabled: studyTimerEnabled } = useStudyTimer()
@@ -97,12 +98,13 @@ export function WritingMode({ flashcards, folderName, onExit, onMarkForReview, o
       mistakeCards: Object.keys(wrongCounts).length,
       totalMistakes: Object.values(wrongCounts).reduce((sum, count) => sum + count, 0),
       lab: "vocab",
+      folderId,
       mode: "writing",
       cardIds: flashcards.map((card) => card.id),
       durationSeconds: elapsedSeconds,
     })
     savedRef.current = true
-  }, [elapsedSeconds, finished, flashcards, folderName, saveStudySession, wrongCounts])
+  }, [elapsedSeconds, finished, flashcards, folderId, folderName, saveStudySession, wrongCounts])
 
   useEffect(() => {
     if (!studyTimerEnabled || finished) return

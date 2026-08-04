@@ -32,8 +32,16 @@ export interface StudySession {
   mode?: StudyMode
   /** Stable card IDs seen in the session, when available. */
   cardIds?: string[]
+  /** Stable folder ID for folder-scoped progress; older sessions use folderName. */
+  folderId?: string | null
   /** Elapsed seconds when the study timer was enabled. */
   durationSeconds?: number
+}
+
+export type StudyStatsFilter = {
+  lab?: StudyLab
+  folderName?: string
+  folderId?: string | null
 }
 
 const GRAMMAR_PROGRESS_KEY = "vocablab-grammar-progress"
@@ -171,8 +179,13 @@ export function useGrammarProgress() {
     }
   }, [grammarSessions])
 
-  const getStudyStats = useCallback(() => {
-    if (studySessions.length === 0) {
+  const getStudyStats = useCallback((filter: StudyStatsFilter = {}) => {
+    const scopedSessions = studySessions.filter((session) => {
+      if (filter.lab !== undefined && (session.lab ?? "vocab") !== filter.lab) return false
+      if (filter.folderId !== undefined && session.folderId !== undefined) return session.folderId === filter.folderId
+      return filter.folderName === undefined || session.folderName === filter.folderName
+    })
+    if (scopedSessions.length === 0) {
       return {
         totalSessions: 0,
         totalCards: 0,
@@ -193,33 +206,33 @@ export function useGrammarProgress() {
       }
     }
 
-    const totalCards = studySessions.reduce((sum, s) => sum + s.totalCards, 0)
-    const totalCorrectFirstTry = studySessions.reduce((sum, s) => sum + s.correctFirstTry, 0)
-    const totalMistakes = studySessions.reduce(
+    const totalCards = scopedSessions.reduce((sum, s) => sum + s.totalCards, 0)
+    const totalCorrectFirstTry = scopedSessions.reduce((sum, s) => sum + s.correctFirstTry, 0)
+    const totalMistakes = scopedSessions.reduce(
       (sum, session) => sum + (session.totalMistakes ?? Math.max(0, session.totalCards - session.correctFirstTry)),
       0,
     )
-    const mistakeCards = studySessions.reduce(
+    const mistakeCards = scopedSessions.reduce(
       (sum, session) => sum + (session.mistakeCards ?? (session.totalCards > session.correctFirstTry ? 1 : 0)),
       0,
     )
-    const uniqueCardIds = new Set(studySessions.flatMap((session) => session.cardIds ?? []))
-    const sessionsWithoutCardIds = studySessions.filter((session) => !session.cardIds?.length)
-    const accuracyValues = studySessions.map((session) => session.totalCards > 0
+    const uniqueCardIds = new Set(scopedSessions.flatMap((session) => session.cardIds ?? []))
+    const sessionsWithoutCardIds = scopedSessions.filter((session) => !session.cardIds?.length)
+    const accuracyValues = scopedSessions.map((session) => session.totalCards > 0
       ? Math.round((session.correctFirstTry / session.totalCards) * 100)
       : 0)
     const labBreakdown: Record<StudyLab, number> = { vocab: 0, regency: 0, rule: 0 }
     const modeBreakdown: Record<StudyMode, number> = { flip: 0, "multiple-choice": 0, "active-recall": 0, writing: 0 }
-    for (const session of studySessions) {
+    for (const session of scopedSessions) {
       labBreakdown[session.lab ?? "vocab"] += 1
       if (session.mode) modeBreakdown[session.mode] += 1
     }
     const today = Date.now()
     const sevenDaysAgo = today - 7 * 24 * 60 * 60 * 1000
-    const daysStudied = new Set(studySessions.map((session) => new Date(session.date).toISOString().slice(0, 10)))
+    const daysStudied = new Set(scopedSessions.map((session) => new Date(session.date).toISOString().slice(0, 10)))
 
     // Get unique words that need review from last 5 sessions
-    const recentWords = studySessions
+    const recentWords = scopedSessions
       .slice(0, 5)
       .flatMap((s) => s.wordsToReview)
     const wordsToReview = [...new Set(recentWords)].filter(
@@ -227,20 +240,20 @@ export function useGrammarProgress() {
     )
 
     return {
-      totalSessions: studySessions.length,
+      totalSessions: scopedSessions.length,
       totalCards,
       totalCorrectFirstTry,
       averageAccuracy: totalCards > 0 ? Math.round((totalCorrectFirstTry / totalCards) * 100) : 0,
-      lastSession: studySessions[0] || null,
+      lastSession: scopedSessions[0] || null,
       wordsToReview,
       totalMistakes,
       mistakeCards,
       uniqueCardsStudied: uniqueCardIds.size + sessionsWithoutCardIds.reduce((sum, session) => sum + session.totalCards, 0),
       bestAccuracy: Math.max(...accuracyValues),
-      averageSessionCards: studySessions.length > 0 ? Math.round(totalCards / studySessions.length) : 0,
-      totalStudyMinutes: Math.round(studySessions.reduce((sum, session) => sum + (session.durationSeconds ?? 0), 0) / 60),
+      averageSessionCards: scopedSessions.length > 0 ? Math.round(totalCards / scopedSessions.length) : 0,
+      totalStudyMinutes: Math.round(scopedSessions.reduce((sum, session) => sum + (session.durationSeconds ?? 0), 0) / 60),
       daysStudied: daysStudied.size,
-      sessionsLast7Days: studySessions.filter((session) => session.date >= sevenDaysAgo).length,
+      sessionsLast7Days: scopedSessions.filter((session) => session.date >= sevenDaysAgo).length,
       labBreakdown,
       modeBreakdown,
     }

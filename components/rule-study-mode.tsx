@@ -38,6 +38,7 @@ const shuffle = <T,>(items: T[]) => {
 interface RuleStudyModeProps {
   cards: RuleCard[]
   folderName: string
+  folderId?: string | null
   mode: RuleStudyKind
   onExit: () => void
   onMarkForReview?: (id: string) => Promise<boolean>
@@ -48,6 +49,7 @@ interface RuleStudyModeProps {
 export function RuleStudyMode({
   cards,
   folderName,
+  folderId,
   mode,
   onExit,
   onMarkForReview,
@@ -89,12 +91,13 @@ export function RuleStudyMode({
       mistakeCards: Object.keys(wrongCounts).length,
       totalMistakes: Object.values(wrongCounts).reduce((sum, count) => sum + count, 0),
       lab: "rule",
+      folderId,
       mode: mode === "recall" ? "active-recall" : "flip",
       cardIds: cards.map((card) => card.id),
       durationSeconds: studyTime.elapsedSeconds,
     })
     savedRef.current = true
-  }, [cards, finished, folderName, mode, saveStudySession, studyTime.elapsedSeconds, wrongCounts])
+  }, [cards, finished, folderId, folderName, mode, saveStudySession, studyTime.elapsedSeconds, wrongCounts])
 
   const advance = async (known: boolean) => {
     if (!current || exiting) return

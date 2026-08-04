@@ -78,6 +78,7 @@ function buildChoices(card: Flashcard, cards: Flashcard[], includeMultiple: bool
 interface VocabularyChoiceModeProps {
   flashcards: Flashcard[];
   folderName: string;
+  folderId?: string | null;
   onExit: () => void;
   onMarkForReview?: (id: string) => Promise<boolean>;
   onMarkAsLearned?: (id: string) => Promise<boolean>;
@@ -87,6 +88,7 @@ interface VocabularyChoiceModeProps {
 export function VocabularyChoiceMode({
   flashcards,
   folderName,
+  folderId,
   onExit,
   onMarkForReview,
   onMarkAsLearned,
@@ -135,12 +137,13 @@ export function VocabularyChoiceMode({
       mistakeCards,
       totalMistakes: Object.values(wrongCounts).reduce((sum, count) => sum + count, 0),
       lab: "vocab",
+      folderId,
       mode: "multiple-choice",
       cardIds: flashcards.map((card) => card.id),
       durationSeconds: studyTime.elapsedSeconds,
     });
     savedRef.current = true;
-  }, [finished, flashcards, folderName, saveStudySession, studyTime.elapsedSeconds, wrongCounts]);
+  }, [finished, flashcards, folderId, folderName, saveStudySession, studyTime.elapsedSeconds, wrongCounts]);
 
   const speak = async () => {
     if (!current) return;

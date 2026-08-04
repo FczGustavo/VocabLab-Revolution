@@ -41,6 +41,7 @@ import { useSyncCode } from "@/hooks/use-sync-code"
 import { useRegencyPreferences } from "@/hooks/use-regency-preferences"
 import { useCardShape } from "@/hooks/use-card-shape"
 import { useReadLabPreferences } from "@/hooks/use-readlab-preferences"
+import { useVocabHomePreferences } from "@/hooks/use-vocab-home-preferences"
 import { useSyncDevices } from "@/hooks/use-sync-devices"
 import {
   AUTO_SYNC_STATUS_EVENT,
@@ -69,6 +70,7 @@ export function SettingsDialog() {
   const { startCollapsed: studyHeaderCollapsed, setStartCollapsed: setStudyHeaderCollapsed } = useStudyHeaderPreference()
   const { threshold: reviewMistakeThreshold, setThreshold: setReviewMistakeThreshold } = useReviewMistakeThreshold()
   const { squareCards, setSquareCards } = useCardShape()
+  const { showEssentialsFolders, setShowEssentialsFolders } = useVocabHomePreferences()
   const {
     synonymsDisplayCount,
     setSynonymsDisplayCount,
@@ -472,6 +474,7 @@ export function SettingsDialog() {
                     <SettingRow label="Cronômetro" description="Mostra o tempo decorrido durante cada sessão."><Switch checked={studyTimerEnabled} onCheckedChange={setStudyTimerEnabled} /></SettingRow>
                     <SettingRow label="Dicas de atalhos" description="Mostra as setas de ajuda ao lado do primeiro card de cada sessão."><Switch checked={shortcutCoachEnabled} onCheckedChange={setShortcutCoachEnabled} /></SettingRow>
                     <SettingRow label="Cabeçalho recolhido" description="Inicia todas as novas sessões Study com o painel de progresso oculto."><Switch checked={studyHeaderCollapsed} onCheckedChange={setStudyHeaderCollapsed} /></SettingRow>
+                    <SettingRow label="Pastas Essentials" description="Mostra as pastas curadas e suas filas de Review na página inicial do VocabLab. Ocultar não apaga nenhum card."><Switch checked={showEssentialsFolders} onCheckedChange={setShowEssentialsFolders} /></SettingRow>
                     <SettingRow
                       label="Erros para enviar ao Review"
                       description="Quantidade de Again no mesmo card antes de adicioná-lo ao Review da pasta de origem."
@@ -1141,7 +1144,8 @@ function SettingsWiki({ reviewMistakeThreshold }: { reviewMistakeThreshold: numb
           "Use os controles do card para ouvir, traduzir, editar ou excluir. Áudio é produzido somente após clicar em reproduzir.",
           "Em Study, escolha Active Recall, Flip Cards ou Multiple Choice. A ordem dos cards e das alternativas é embaralhada.",
           `Cards que atingem ${reviewRule} entram no fluxo de Review. A pasta de revisão reúne o conteúdo que precisa de reforço.`,
-          "Phrasal Verbs Essentials e Idioms Essentials são catálogos iniciais curados; seus cards podem ser editados, movidos ou excluídos normalmente.",
+          "Phrasal Verbs Essentials, Idioms Essentials e False Cognates Essentials são catálogos iniciais curados; seus cards podem ser editados, movidos ou excluídos normalmente.",
+          "O toggle Pastas Essentials apenas oculta esses catálogos e suas filas de Review da página inicial; nenhum card é apagado.",
           "Ao excluir uma pasta, escolha transferir seus cards para outra pasta ou excluí-los junto com ela.",
         ]} /></AccordionContent>
       </AccordionItem>

@@ -15,6 +15,7 @@ import {
   vocabCatalogLegacyContentHash,
 } from "@/lib/vocab-default-catalog"
 import { VOCAB_IDIOMS_CATALOG, VOCAB_IDIOMS_CATALOG_VERSION, VOCAB_IDIOMS_FOLDER_COLOR, VOCAB_IDIOMS_FOLDER_NAME, validateVocabIdiomsCatalog, vocabIdiomsContentHash, vocabIdiomsLegacyContentHash } from "@/lib/vocab-idioms-catalog"
+import { VOCAB_FALSE_COGNATES_CATALOG, VOCAB_FALSE_COGNATES_CATALOG_VERSION, VOCAB_FALSE_COGNATES_FOLDER_COLOR, VOCAB_FALSE_COGNATES_FOLDER_NAME, validateVocabFalseCognatesCatalog, vocabFalseCognatesContentHash } from "@/lib/vocab-false-cognates-catalog"
 
 const DB_NAME = "vocab-lab-db"
 const DB_VERSION = 6
@@ -23,6 +24,7 @@ const FOLDERS_STORE = "folders"
 const META_STORE = "catalogMeta"
 const DEFAULT_CATALOG_META_KEY = "vocab-default-catalog"
 const IDIOMS_CATALOG_META_KEY = "vocab-idioms-catalog"
+const FALSE_COGNATES_CATALOG_META_KEY = "vocab-false-cognates-catalog"
 const FOLDER_COLORS_UPDATED_EVENT = "vocablab-folder-colors-updated"
 
 interface VocabCatalogMeta {
@@ -162,6 +164,15 @@ function migrateIdiomsFolderColor(folderId: string) {
   }
 }
 
+function markFolderAsEssential(store: IDBObjectStore, folders: Folder[], folderId: string | null) {
+  if (!folderId) return
+  const index = folders.findIndex((folder) => folder.id === folderId)
+  if (index < 0 || folders[index].isEssential) return
+  const updated = { ...folders[index], isEssential: true, updatedAt: Date.now() }
+  folders[index] = updated
+  store.put(updated)
+}
+
 async function ensureDefaultCatalog(db: IDBDatabase): Promise<void> {
   validateVocabDefaultCatalog()
   const transaction = db.transaction([FLASHCARDS_STORE, FOLDERS_STORE, META_STORE], "readwrite")
@@ -182,12 +193,14 @@ async function ensureDefaultCatalog(db: IDBDatabase): Promise<void> {
     if (existingFolder) {
       folderId = existingFolder.id
     } else {
-      const folder: Folder = { id: crypto.randomUUID(), name: VOCAB_DEFAULT_FOLDER_NAME, createdAt: Date.now() }
+      const folder: Folder = { id: crypto.randomUUID(), name: VOCAB_DEFAULT_FOLDER_NAME, createdAt: Date.now(), isEssential: true }
       foldersStore.add(folder)
       folders.push(folder)
       folderId = folder.id
     }
   }
+
+  markFolderAsEssential(foldersStore, folders, folderId)
 
   const destinationFolderId = folderId && folders.some((folder) => folder.id === folderId) ? folderId : null
   const seen = new Set(existingMeta?.seenCatalogIds ?? [])
@@ -270,7 +283,7 @@ async function ensureIdiomsCatalog(db: IDBDatabase): Promise<void> {
     const existingFolder = folders.find((folder) => folder.name === VOCAB_IDIOMS_FOLDER_NAME)
     if (existingFolder) folderId = existingFolder.id
     else {
-      const folder: Folder = { id: crypto.randomUUID(), name: VOCAB_IDIOMS_FOLDER_NAME, createdAt: Date.now() }
+      const folder: Folder = { id: crypto.randomUUID(), name: VOCAB_IDIOMS_FOLDER_NAME, createdAt: Date.now(), isEssential: true }
       foldersStore.add(folder)
       folders.push(folder)
       folderId = folder.id
@@ -287,6 +300,8 @@ async function ensureIdiomsCatalog(db: IDBDatabase): Promise<void> {
       if (index >= 0) folders[index] = renamed
     }
   }
+
+  markFolderAsEssential(foldersStore, folders, folderId)
 
   const destinationFolderId = folderId && folders.some((folder) => folder.id === folderId) ? folderId : null
   const seen = new Set(existingMeta?.seenCatalogIds ?? [])
@@ -318,6 +333,89 @@ async function ensureIdiomsCatalog(db: IDBDatabase): Promise<void> {
   await done
   if (firstInstallation && folderId) applyDefaultFolderColor(folderId, VOCAB_IDIOMS_FOLDER_COLOR)
   else if (needsIdentityMigration && folderId) migrateIdiomsFolderColor(folderId)
+}
+
+async function ensureFalseCognatesCatalog(db: IDBDatabase): Promise<void> {
+  validateVocabFalseCognatesCatalog()
+  const transaction = db.transaction([FLASHCARDS_STORE, FOLDERS_STORE, META_STORE], "readwrite")
+  const done = transactionComplete(transaction)
+  const cardsStore = transaction.objectStore(FLASHCARDS_STORE)
+  const foldersStore = transaction.objectStore(FOLDERS_STORE)
+  const metaStore = transaction.objectStore(META_STORE)
+  const [cards, folders, existingMeta] = await Promise.all([
+    requestResult(cardsStore.getAll()) as Promise<Flashcard[]>,
+    requestResult(foldersStore.getAll()) as Promise<Folder[]>,
+    requestResult(metaStore.get(FALSE_COGNATES_CATALOG_META_KEY)) as Promise<VocabCatalogMeta | undefined>,
+  ])
+
+  const firstInstallation = !existingMeta
+  let folderId = existingMeta?.folderId ?? null
+  if (firstInstallation) {
+    const existingFolder = folders.find((folder) => folder.name === VOCAB_FALSE_COGNATES_FOLDER_NAME)
+    if (existingFolder) folderId = existingFolder.id
+    else {
+      const idiomsFolder = folders.find((folder) => folder.name === VOCAB_IDIOMS_FOLDER_NAME)
+      const latestCreatedAt = folders.reduce((latest, folder) => Math.max(latest, folder.createdAt ?? 0), Date.now())
+      const folder: Folder = {
+        id: crypto.randomUUID(),
+        name: VOCAB_FALSE_COGNATES_FOLDER_NAME,
+        // Built-in folders are ordered by createdAt. Anchor this one immediately
+        // after Idioms without moving or renaming any personal folder.
+        createdAt: (idiomsFolder?.createdAt ?? latestCreatedAt) + 1,
+        isEssential: true,
+      }
+      foldersStore.add(folder)
+      folders.push(folder)
+      folderId = folder.id
+    }
+  }
+
+  markFolderAsEssential(foldersStore, folders, folderId)
+
+  const destinationFolderId = folderId && folders.some((folder) => folder.id === folderId) ? folderId : null
+  const seen = new Set(existingMeta?.seenCatalogIds ?? [])
+  const cardsByCatalogId = new Map(cards.filter((card) => card.catalogId).map((card) => [card.catalogId as string, card]))
+  const cardsByWordPos = new Map(cards.map((card) => [`${card.word.toLowerCase()}__${card.partOfSpeech}`, card]))
+  const now = Date.now()
+
+  VOCAB_FALSE_COGNATES_CATALOG.forEach((entry, index) => {
+    const canonicalHash = vocabFalseCognatesContentHash(entry)
+    const current = cardsByCatalogId.get(entry.catalogId as string)
+    if (current) {
+      seen.add(entry.catalogId as string)
+      const isUntouched = Boolean(current.catalogContentHash) && vocabFalseCognatesContentHash(current) === current.catalogContentHash
+      if (isUntouched && (current.catalogContentHash !== canonicalHash || current.catalogRevision !== entry.catalogRevision)) {
+        cardsStore.put({ ...current, ...entry, catalogContentHash: canonicalHash })
+      }
+      return
+    }
+    if (seen.has(entry.catalogId as string)) return
+    const wordKey = `${entry.word.toLowerCase()}__${entry.partOfSpeech}`
+    if (cardsByWordPos.has(wordKey)) {
+      // Never replace a personal card with a built-in false-cognate entry.
+      seen.add(entry.catalogId as string)
+      return
+    }
+    const card: Flashcard = {
+      ...entry,
+      id: crypto.randomUUID(),
+      catalogContentHash: canonicalHash,
+      folderId: destinationFolderId,
+      createdAt: now - index,
+    }
+    cardsStore.add(card)
+    cardsByWordPos.set(wordKey, card)
+    seen.add(entry.catalogId as string)
+  })
+
+  metaStore.put({
+    key: FALSE_COGNATES_CATALOG_META_KEY,
+    version: VOCAB_FALSE_COGNATES_CATALOG_VERSION,
+    folderId,
+    seenCatalogIds: [...seen],
+  } satisfies VocabCatalogMeta)
+  await done
+  if (firstInstallation && folderId) applyDefaultFolderColor(folderId, VOCAB_FALSE_COGNATES_FOLDER_COLOR)
 }
 
 export async function readAllFlashcardsFromDB(): Promise<Flashcard[]> {
@@ -367,6 +465,7 @@ export function useFlashcardsDB() {
       const db = await openDatabase()
       await ensureDefaultCatalog(db)
       await ensureIdiomsCatalog(db)
+      await ensureFalseCognatesCatalog(db)
       
       // Load folders
       const foldersTransaction = db.transaction(FOLDERS_STORE, "readonly")
@@ -412,7 +511,7 @@ export function useFlashcardsDB() {
   }, [loadData])
 
   // Folder operations
-  const addFolder = useCallback(async (name: string): Promise<Folder | null> => {
+  const addFolder = useCallback(async (name: string, isEssential = false): Promise<Folder | null> => {
     if (isSyncStudyOnly()) return null
     try {
       const db = await openDatabase()
@@ -424,6 +523,7 @@ export function useFlashcardsDB() {
         name: name.trim(),
         createdAt: Date.now(),
         updatedAt: Date.now(),
+        ...(isEssential ? { isEssential: true } : {}),
       }
 
       return new Promise((resolve) => {

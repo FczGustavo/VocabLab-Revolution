@@ -22,6 +22,8 @@ export interface Folder {
   id: string
   name: string
   createdAt: number
+  /** Groups the folder with VocabLab's curated Essentials on the home screen. */
+  isEssential?: boolean
   /** Last content change. Used by the cross-device conflict resolver. */
   updatedAt?: number
 }
@@ -52,6 +54,7 @@ export interface Flashcard {
   falseCognate?: {
     isFalseCognate: boolean
     warning: string // Ex: "Não significa 'pretender', significa 'fingir'"
+    warningEn?: string
   }
   aiEnriching?: boolean
   folderId: string | null
@@ -93,6 +96,7 @@ export interface FlashcardAIResponse {
   falseCognate?: {
     isFalseCognate: boolean
     warning: string
+    warningEn?: string
   }
   conjugations?: {
     simplePresent: string

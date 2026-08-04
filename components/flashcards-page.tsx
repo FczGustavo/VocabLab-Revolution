@@ -7,6 +7,7 @@ import { useGrammarProgress } from "@/hooks/use-grammar-progress"
 import { useGptModel } from "@/hooks/use-gpt-model"
 import { useAiPreferences } from "@/hooks/use-ai-preferences"
 import { useCardShape } from "@/hooks/use-card-shape"
+import { useVocabHomePreferences } from "@/hooks/use-vocab-home-preferences"
 import { partOfSpeechLabels } from "@/lib/constants"
 import { AddFlashcardForm } from "./add-flashcard-form"
 import { FlashcardCard } from "./flashcard-card"
@@ -62,12 +63,14 @@ import { normalizeGrammaticalForm } from "@/lib/grammatical-forms"
 import { reviewFolderTitle } from "@/lib/review-folder-title"
 import { VOCAB_DEFAULT_FOLDER_NAME } from "@/lib/vocab-default-catalog"
 import { VOCAB_IDIOMS_FOLDER_NAME } from "@/lib/vocab-idioms-catalog"
+import { VOCAB_FALSE_COGNATES_FOLDER_NAME } from "@/lib/vocab-false-cognates-catalog"
 import { toast } from "@/hooks/use-toast"
 import type { Flashcard, FlashcardAIResponse, PartOfSpeech } from "@/lib/types"
 
 const VOCAB_CURATED_FOLDER_NAMES = [
   VOCAB_DEFAULT_FOLDER_NAME,
   VOCAB_IDIOMS_FOLDER_NAME,
+  VOCAB_FALSE_COGNATES_FOLDER_NAME,
 ] as const
 
 const visibleChoiceTranslation = (value: string, includeMultipleTranslations: boolean) =>
@@ -206,6 +209,7 @@ export function FlashcardsPage() {
   
   const { getStudyStats, isLoaded: isProgressLoaded } = useGrammarProgress()
   const { model } = useGptModel()
+  const { showEssentialsFolders } = useVocabHomePreferences()
   const { setIsInsideFolder, setGoBack, layout, setLayout, setOnShowStats } = useFolder()
   const {
     includeSynonymsAntonyms,
@@ -219,6 +223,7 @@ export function FlashcardsPage() {
   } = useAiPreferences()
 
   const [newFolderName, setNewFolderName] = useState("")
+  const [newFolderIsEssential, setNewFolderIsEssential] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isCreatingFolder, setIsCreatingFolder] = useState(false)
   const [isStudying, setIsStudying] = useState(false)
@@ -349,9 +354,10 @@ export function FlashcardsPage() {
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) return
     setIsCreatingFolder(true)
-    await addFolder(newFolderName)
+    await addFolder(newFolderName, newFolderIsEssential)
     setNewFolderName("")
     setIsDialogOpen(false)
+    setNewFolderIsEssential(false)
     setIsCreatingFolder(false)
   }
 
@@ -545,6 +551,80 @@ export function FlashcardsPage() {
     }
     return grouped
   }, [flashcards])
+
+  const essentialFolderNameSet = useMemo(
+    () => new Set<string>(VOCAB_CURATED_FOLDER_NAMES.map((name) => name.toLocaleLowerCase("en-US"))),
+    [],
+  )
+  const isEssentialFolder = useCallback(
+    (folder: { name: string; isEssential?: boolean }) => Boolean(folder.isEssential) || essentialFolderNameSet.has(folder.name.trim().toLocaleLowerCase("en-US")),
+    [essentialFolderNameSet],
+  )
+  const userFolders = folders.filter((folder) => folder.name !== "Review" && !isEssentialFolder(folder))
+  const essentialFolders = folders.filter((folder) => folder.name !== "Review" && isEssentialFolder(folder))
+  const reviewFolderEntries = Object.entries(reviewFoldersByParent)
+  const userReviewFolderEntries = reviewFolderEntries.filter(([parentFolderId]) => {
+    if (parentFolderId === "__general__") return true
+    const parent = folders.find((folder) => folder.id === parentFolderId)
+    return !parent || !isEssentialFolder(parent)
+  })
+  const essentialReviewFolderEntries = reviewFolderEntries.filter(([parentFolderId]) => {
+    const parent = folders.find((folder) => folder.id === parentFolderId)
+    return Boolean(parent && isEssentialFolder(parent))
+  })
+
+  const renderHomeFolder = (folder: (typeof folders)[number], index: number) => {
+    const folderWords = flashcards.filter((card) => card.folderId === folder.id)
+    return (
+      <FolderCard
+        key={folder.id}
+        name={folder.name}
+        wordCount={folderWords.length}
+        subtitle={pipelineSubtitle(folder.id, folderWords.length)}
+        gradient={getFolderGradient(folder.id, index)}
+        isSelected={!isReviewFolderSelected && selectedFolderId === folder.id}
+        isAddDestination={addDestinationFolderId === folder.id}
+        onClick={() => { setSelectedFolderId(folder.id); setIsReviewFolderSelected(false); setSelectedReviewFolderId(null) }}
+        onContextMenu={(event) => { event.preventDefault(); selectAddDestination(folder.id, folder.name) }}
+        onSettings={(event) => {
+          event.stopPropagation()
+          setEditingFolderId(folder.id)
+          setEditingFolderName(folder.name)
+          setIsEditingReviewFolder(false)
+          setIsRenameDialogOpen(true)
+        }}
+      />
+    )
+  }
+
+  const renderHomeReviewFolder = ([parentFolderId, count]: [string, number]) => {
+    const parentFolderName = parentFolderId === "__general__"
+      ? generalFolderName
+      : folders.find((folder) => folder.id === parentFolderId)?.name || "Unknown"
+    return (
+      <FolderCard
+        key={`review-${parentFolderId}`}
+        name={reviewFolderTitle(parentFolderName, VOCAB_CURATED_FOLDER_NAMES)}
+        wordCount={count}
+        gradient="amber"
+        isReview
+        isSelected={isReviewFolderSelected && selectedReviewFolderId === parentFolderId}
+        onClick={() => {
+          setIsReviewFolderSelected(true)
+          setSelectedFolderId(null)
+          setSelectedReviewFolderId(parentFolderId)
+        }}
+        onSettings={(event) => {
+          event.stopPropagation()
+          setEditingFolderId(parentFolderId === "__general__" ? null : parentFolderId)
+          setEditingFolderName(parentFolderName)
+          setSelectedReviewFolderId(parentFolderId)
+          setIsEditingReviewFolder(true)
+          setIsRenameDialogOpen(true)
+        }}
+      />
+    )
+  }
 
   const studyFolderName = isReviewFolderSelected 
     ? (selectedReviewFolderId 
@@ -821,7 +901,10 @@ export function FlashcardsPage() {
           )
         : [],
     }
-    const ok = await addFlashcard(filteredFlashcard)
+    // Pass the destination explicitly. The DB hook intentionally ignores the
+    // card's metadata for routing and only accepts explicitFolderId here;
+    // without this argument a home-screen generation falls back to General.
+    const ok = await addFlashcard(filteredFlashcard, targetFolderId)
     if (ok && (meta?.closeAfterAdd ?? true)) setIsAddOpen(false)
 
     if (ok && includeAlternativeForms) {
@@ -1418,7 +1501,8 @@ export function FlashcardsPage() {
           </div>
 
           {/* ── Folders Grid ─────────────────────────────────────── */}
-          <div className="mb-8">
+          <div className="mb-8 space-y-6">
+            {/* Personal folders, including the virtual General folder. */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-4">
               {/* General is only shown when it contains unfiled cards. */}
               {flashcards.some((flashcard) => !flashcard.folderId) && <FolderCard
@@ -1439,73 +1523,46 @@ export function FlashcardsPage() {
                 }}
               />}
 
-              {/* User folders - filter out any old "Review" folders */}
-              {folders.filter(f => f.name !== "Review").map((folder, idx) => {
-                const folderWords = flashcards.filter((f) => f.folderId === folder.id)
-                return (
-                  <FolderCard
-                    key={folder.id}
-                    name={folder.name}
-                    wordCount={folderWords.length}
-                    subtitle={pipelineSubtitle(folder.id, folderWords.length)}
-                    gradient={getFolderGradient(folder.id, idx)}
-                    isSelected={!isReviewFolderSelected && selectedFolderId === folder.id}
-                    isAddDestination={addDestinationFolderId === folder.id}
-                    onClick={() => { setSelectedFolderId(folder.id); setIsReviewFolderSelected(false); setSelectedReviewFolderId(null) }}
-                    onContextMenu={(event) => { event.preventDefault(); selectAddDestination(folder.id, folder.name) }}
-                    onSettings={(e) => {
-                      e.stopPropagation()
-                      setEditingFolderId(folder.id)
-                      setEditingFolderName(folder.name)
-                      setIsEditingReviewFolder(false)
-                      setIsRenameDialogOpen(true)
-                    }}
-                  />
-                )
-              })}
+              {userFolders.map(renderHomeFolder)}
 
               {/* New folder button */}
               <NewFolderCard
-                onClick={() => { setNewFolderName(""); setIsDialogOpen(true) }}
+                onClick={() => { setNewFolderName(""); setNewFolderIsEssential(false); setIsDialogOpen(true) }}
                 onImport={openQuizletImport}
               />
             </div>
 
-            {/* Review folders - appears below with line break */}
-            {Object.keys(reviewFoldersByParent).length > 0 && (
-              <>
-                <div className="my-4 border-t border-border/30" />
+            {/* Personal Review queues only exist while they contain cards. */}
+            {userReviewFolderEntries.length > 0 && (
+              <section className="space-y-4">
+                <div className="border-t border-border/30" />
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                  {Object.entries(reviewFoldersByParent).map(([parentFolderId, count]) => {
-                    const parentFolderName = parentFolderId === "__general__" 
-                      ? generalFolderName 
-                      : folders.find(f => f.id === parentFolderId)?.name || "Unknown"
-                    return (
-                      <FolderCard
-                        key={`review-${parentFolderId}`}
-                        name={reviewFolderTitle(parentFolderName, VOCAB_CURATED_FOLDER_NAMES)}
-                        wordCount={count}
-                        gradient="amber"
-                        isReview={true}
-                        isSelected={isReviewFolderSelected && selectedReviewFolderId === parentFolderId}
-                        onClick={() => { 
-                          setIsReviewFolderSelected(true); 
-                          setSelectedFolderId(null)
-                          setSelectedReviewFolderId(parentFolderId)
-                        }}
-                        onSettings={(event) => {
-                          event.stopPropagation()
-                          setEditingFolderId(parentFolderId === "__general__" ? null : parentFolderId)
-                          setEditingFolderName(parentFolderName)
-                          setSelectedReviewFolderId(parentFolderId)
-                          setIsEditingReviewFolder(true)
-                          setIsRenameDialogOpen(true)
-                        }}
-                      />
-                    )
-                  })}
+                  {userReviewFolderEntries.map(renderHomeReviewFolder)}
                 </div>
-              </>
+              </section>
+            )}
+
+            {/* Built-in catalogs stay installed when this visual section is hidden. */}
+            {showEssentialsFolders && essentialFolders.length > 0 && (
+              <section className="space-y-4">
+                <div className="border-t border-border/30" />
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                  {essentialFolders.map((folder, index) => renderHomeFolder(folder, userFolders.length + index))}
+                  <NewFolderCard
+                    onClick={() => { setNewFolderName(""); setNewFolderIsEssential(true); setIsDialogOpen(true) }}
+                    onImport={openQuizletImport}
+                  />
+                </div>
+              </section>
+            )}
+
+            {showEssentialsFolders && essentialReviewFolderEntries.length > 0 && (
+              <section className="space-y-4">
+                <div className="border-t border-border/30" />
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                  {essentialReviewFolderEntries.map(renderHomeReviewFolder)}
+                </div>
+              </section>
             )}
           </div>
         </>
@@ -1891,11 +1948,11 @@ export function FlashcardsPage() {
       </Sheet>
 
       {/* ── New Folder Dialog ────────────────────────────────── */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) setNewFolderIsEssential(false) }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create New Folder</DialogTitle>
-            <DialogDescription>Organize your flashcards into folders by topic or level.</DialogDescription>
+            <DialogTitle>{newFolderIsEssential ? "Create Essential Folder" : "Create New Folder"}</DialogTitle>
+            <DialogDescription>{newFolderIsEssential ? "Create a custom folder in the Essentials section." : "Organize your flashcards into folders by topic or level."}</DialogDescription>
           </DialogHeader>
           <div className="flex gap-2 mt-4">
             <Input

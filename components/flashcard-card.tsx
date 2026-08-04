@@ -313,6 +313,14 @@ export function FlashcardCard({ flashcard, onDelete, onCreateFromAlternative, on
   const usageNoteEnText = flashcard.usageNoteEn || ""
   const contextPrimaryText = contextInPortuguese ? usageNoteText : usageNoteEnText
   const contextSecondaryText = contextInPortuguese ? usageNoteEnText : usageNoteText
+  const hasCuratedFalseCognateContrast = flashcard.catalogId?.startsWith("false-cognate-") === true
+    && flashcard.falseCognate?.isFalseCognate === true
+  const falseCognatePrimaryText = contextInPortuguese
+    ? flashcard.falseCognate?.warning ?? ""
+    : flashcard.falseCognate?.warningEn ?? ""
+  const falseCognateSecondaryText = contextInPortuguese
+    ? flashcard.falseCognate?.warningEn ?? ""
+    : flashcard.falseCognate?.warning ?? ""
   const ipaText = (flashcard.ipa ?? "").trim()
   const hasContext = showContext && (usageNoteText.length > 0 || usageNoteEnText.length > 0)
   const hasIpa = showIPA && ipaText.length > 0
@@ -518,6 +526,13 @@ export function FlashcardCard({ flashcard, onDelete, onCreateFromAlternative, on
                     </span>
                     {contextPrimaryText && <p className="mt-1 text-[11px] leading-relaxed text-foreground">{contextPrimaryText}</p>}
                     {hasContextTranslation && translationsVisible && <p className="mt-0.5 text-[9px] text-muted-foreground">{contextSecondaryText}</p>}
+                    {hasCuratedFalseCognateContrast && falseCognatePrimaryText && (
+                      <div className="mt-2 border-t border-border/50 pt-2">
+                        <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">False cognate</span>
+                        <p className="mt-1 text-[11px] leading-relaxed text-foreground">{falseCognatePrimaryText}</p>
+                        {translationsVisible && falseCognateSecondaryText && <p className="mt-0.5 text-[9px] text-muted-foreground">{falseCognateSecondaryText}</p>}
+                      </div>
+                    )}
                   </div>
                 )}
                 {includeConjugations && flashcard.conjugations && isVerbCard && (
@@ -748,7 +763,10 @@ export function FlashcardCard({ flashcard, onDelete, onCreateFromAlternative, on
               )}
             </div>
           </div>
-          <div className="no-scrollbar space-y-2.5 flex-1 overflow-y-auto pr-1 [scrollbar-gutter:stable]">
+          <div className={cn(
+            "no-scrollbar flex-1 space-y-2.5 overflow-y-auto pr-1 [scrollbar-gutter:stable]",
+            hasCuratedFalseCognateContrast && "sm:flex sm:flex-col",
+          )}>
             <div className="space-y-1.5">
               <p className="max-w-full break-words text-xl font-medium leading-snug text-foreground/80">{displayTranslation}</p>
               {hasIpa && (
@@ -771,7 +789,10 @@ export function FlashcardCard({ flashcard, onDelete, onCreateFromAlternative, on
               </div>
             )}
             {hasContext && (
-              <div className="context-bubble group/context rounded-xl bg-muted/30 p-3">
+              <div className={cn(
+                "context-bubble group/context rounded-xl bg-muted/30 p-3",
+                hasCuratedFalseCognateContrast && "scrollbar-hide sm:!mt-auto sm:flex sm:h-44 sm:flex-col sm:overflow-y-auto",
+              )}>
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                     {partOfSpeech === "acronym" ? "Acronym" : partOfSpeech === "idiom" ? "Idiom" : "Context"}
@@ -782,6 +803,13 @@ export function FlashcardCard({ flashcard, onDelete, onCreateFromAlternative, on
                 )}
                 {hasContextTranslation && translationsVisible && (
                   <p className="mt-1 text-[10px] leading-snug text-muted-foreground">{contextSecondaryText}</p>
+                )}
+                {hasCuratedFalseCognateContrast && falseCognatePrimaryText && (
+                  <div className={cn("mt-3 border-t border-border/50 pt-3", hasCuratedFalseCognateContrast && "sm:mt-auto")}>
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">False cognate</span>
+                    <p className="mt-1.5 text-xs leading-relaxed text-foreground">{falseCognatePrimaryText}</p>
+                    {translationsVisible && falseCognateSecondaryText && <p className="mt-1 text-[10px] leading-snug text-muted-foreground">{falseCognateSecondaryText}</p>}
+                  </div>
                 )}
               </div>
             )}

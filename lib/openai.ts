@@ -1109,7 +1109,7 @@ export async function reviseFlashcardByTranslation(
     alternativeForms?: { word: string; partOfSpeech: string; translation: string; example: string }[]
     conjugations?: Record<string, string> | null
     verbType?: "regular" | "irregular" | null
-    falseCognate?: { isFalseCognate: boolean; warning: string }
+    falseCognate?: { isFalseCognate: boolean; warning: string; warningEn?: string }
     synonymsLevel?: number
     includeSynonymsAntonyms?: boolean
     includeAlternativeForms?: boolean

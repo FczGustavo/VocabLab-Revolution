@@ -225,6 +225,9 @@ export function VocabularyChoiceMode({
   const contextSecondary = contextInPortuguese
     ? current.usageNoteEn
     : current.usageNote;
+  const falseCognatePrimary = contextInPortuguese ? current.falseCognate?.warning : current.falseCognate?.warningEn;
+  const falseCognateSecondary = contextInPortuguese ? current.falseCognate?.warningEn : current.falseCognate?.warning;
+  const showFalseCognateContrast = current.catalogId?.startsWith("false-cognate-") === true && current.falseCognate?.isFalseCognate === true;
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background">
@@ -312,11 +315,19 @@ export function VocabularyChoiceMode({
                   )}
                   {showContext && contextPrimary && (
                     <div className="mt-4 w-full rounded-xl bg-muted/30 p-3 text-left text-sm text-foreground/75">
-                      {contextPrimary}
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Context</p>
+                      <p className="mt-2">{contextPrimary}</p>
                       {showTranslations && contextSecondary && (
                         <p className="mt-2 text-muted-foreground">
                           {contextSecondary}
                         </p>
+                      )}
+                      {showFalseCognateContrast && falseCognatePrimary && (
+                        <div className="mt-3 border-t border-border/50 pt-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">False cognate</p>
+                          <p className="mt-2">{falseCognatePrimary}</p>
+                          {showTranslations && falseCognateSecondary && <p className="mt-2 text-muted-foreground">{falseCognateSecondary}</p>}
+                        </div>
                       )}
                     </div>
                   )}

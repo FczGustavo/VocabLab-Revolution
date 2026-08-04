@@ -73,6 +73,9 @@ export function WritingMode({ flashcards, folderName, folderId, onExit, onMarkFo
   const current = queue[0]
   const contextPrimary = contextInPortuguese ? current?.usageNote : current?.usageNoteEn
   const contextSecondary = contextInPortuguese ? current?.usageNoteEn : current?.usageNote
+  const falseCognatePrimary = contextInPortuguese ? current?.falseCognate?.warning : current?.falseCognate?.warningEn
+  const falseCognateSecondary = contextInPortuguese ? current?.falseCognate?.warningEn : current?.falseCognate?.warning
+  const showFalseCognateContrast = current?.catalogId?.startsWith("false-cognate-") === true && current?.falseCognate?.isFalseCognate === true
   const totalCards = flashcards.length
 
   useEffect(() => {
@@ -216,7 +219,7 @@ export function WritingMode({ flashcards, folderName, folderId, onExit, onMarkFo
                   {showIPA && current.ipa && <p className="-mt-2 text-sm font-medium tracking-wide text-muted-foreground/80">/{current.ipa}/</p>}
                   <div className="border-t border-border/40" />
                   <section><p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Example</p><p className="mt-2 text-base italic leading-relaxed text-foreground">&ldquo;{current.example}&rdquo;</p>{showTranslations && current.exampleTranslation && <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{current.exampleTranslation}</p>}</section>
-                  {showContext && (current.usageNote || current.usageNoteEn) && <section className="rounded-xl bg-muted/30 p-4"><p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Context</p>{contextPrimary && <p className="mt-2 text-sm leading-relaxed text-foreground">{contextPrimary}</p>}{showTranslations && contextSecondary && <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{contextSecondary}</p>}</section>}
+                  {showContext && (current.usageNote || current.usageNoteEn) && <section className="rounded-xl bg-muted/30 p-4"><p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Context</p>{contextPrimary && <p className="mt-2 text-sm leading-relaxed text-foreground">{contextPrimary}</p>}{showTranslations && contextSecondary && <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{contextSecondary}</p>}{showFalseCognateContrast && falseCognatePrimary && <div className="mt-4 border-t border-border/50 pt-4"><p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">False cognate</p><p className="mt-2 text-sm leading-relaxed text-foreground">{falseCognatePrimary}</p>{showTranslations && falseCognateSecondary && <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{falseCognateSecondary}</p>}</div>}</section>}
                 </div>
               </div>
             )}

@@ -265,7 +265,7 @@ export function RegencyPage() {
   }
   const beginEdit = (card: RegencyCard) => { setInputMode("manual"); setEditingCard(card); setEditor({ ...card, exampleTranslation: card.exampleTranslation ?? "", meaningPt: card.meaningPt ?? "", contrastPt: card.contrastPt ?? "" }); setSuggestions([]); setSingleResult(null); setFormError(null); window.scrollTo({ top: 0, behavior: "smooth" }) }
 
-  if (studyKind) return <RegencyStudyMode cards={activeCards} folderName={currentFolderName} mode={studyKind} display={{ showCategory, showGrammaticalForm, showMeaning, showContrast, showExample, showTranslation }} onMarkForReview={isReviewFolderSelected ? undefined : addToReviewFolder} onMarkAsLearned={removeFromReviewFolder} onRecordResult={recordStudyResult} onExit={() => setStudyKind(null)} />
+  if (studyKind) return <RegencyStudyMode cards={activeCards} folderName={currentFolderName} mode={studyKind} display={{ showCategory, showGrammaticalForm, showMeaning, showContrast, showExample, showTranslation }} onMarkForReview={isReviewFolderSelected ? undefined : addToReviewFolder} onMarkAsLearned={isReviewFolderSelected ? removeFromReviewFolder : undefined} onRecordResult={recordStudyResult} onExit={() => setStudyKind(null)} />
 
   return (
     <div className="w-full">

@@ -1137,7 +1137,7 @@ export function FlashcardsPage() {
         folderName={isReviewStudy ? "Review" : studyFolderName}
         onMarkForReview={isReviewStudy ? undefined : addToReviewFolder}
         onRecordResult={recordStudyResult}
-        onMarkAsLearned={removeFromReviewFolder}
+        onMarkAsLearned={isReviewStudy ? removeFromReviewFolder : undefined}
         onExit={() => {
           setIsWritingMode(false)
           setWritingModeCards([])
@@ -1154,7 +1154,7 @@ export function FlashcardsPage() {
         folderName={isReviewStudy ? "Review" : studyFolderName}
         onMarkForReview={isReviewStudy ? undefined : addToReviewFolder}
         onRecordResult={recordStudyResult}
-        onMarkAsLearned={removeFromReviewFolder}
+        onMarkAsLearned={isReviewStudy ? removeFromReviewFolder : undefined}
         onExit={() => {
           setIsStudying(false)
           setStudyCards(null)
@@ -1171,7 +1171,7 @@ export function FlashcardsPage() {
         folderName={isReviewStudy ? "Review" : studyFolderName}
         onMarkForReview={isReviewStudy ? undefined : addToReviewFolder}
         onRecordResult={recordStudyResult}
-        onMarkAsLearned={removeFromReviewFolder}
+        onMarkAsLearned={isReviewStudy ? removeFromReviewFolder : undefined}
         onExit={() => {
           setIsChoiceMode(false)
           setStudyCards(null)

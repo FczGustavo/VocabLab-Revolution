@@ -9,7 +9,6 @@ import {
   createSyncServerClient,
   getSyncLabTable,
   getSyncServerConfig,
-  getStoredSyncDeviceRole,
   hashSyncCode,
   normalizeSyncDeviceId,
   normalizeSyncDeviceKind,
@@ -59,14 +58,6 @@ export async function POST(request: Request) {
       label: normalizeSyncDeviceLabel(body.deviceLabel),
       kind: normalizeSyncDeviceKind(body.deviceKind),
     })
-    const deviceRole = await getStoredSyncDeviceRole(
-      supabase,
-      syncHash,
-      ownerToken,
-      config.pepper,
-      normalizeSyncDeviceId(body.deviceId),
-    )
-
     const { data, error } = await supabase
       .from(getSyncLabTable(lab.data))
       .select("payload, updated_at, revision, schema_version")
@@ -74,7 +65,7 @@ export async function POST(request: Request) {
       .maybeSingle()
 
     if (error) throw error
-    if (!data) return NextResponse.json({ payload: null, revision: 0, deviceRole })
+    if (!data) return NextResponse.json({ payload: null, revision: 0 })
     const payload = SyncLabPayloadSchema.safeParse(data.payload)
     if (!payload.success || payload.data.lab !== lab.data) {
       return NextResponse.json(
@@ -87,7 +78,6 @@ export async function POST(request: Request) {
       revision: data.revision,
       updatedAt: data.updated_at,
       schemaVersion: data.schema_version,
-      deviceRole,
     })
   } catch (error) {
     return safeApiError(error, "Não foi possível receber as atualizações.")

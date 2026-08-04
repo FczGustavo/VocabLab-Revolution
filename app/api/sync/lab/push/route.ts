@@ -9,7 +9,6 @@ import {
   createSyncServerClient,
   getSyncLabTable,
   getSyncServerConfig,
-  getStoredSyncDeviceRole,
   hashSyncCode,
   normalizeOwnerToken,
   normalizeSyncDeviceKind,
@@ -77,17 +76,6 @@ export async function POST(request: Request) {
       label: normalizeSyncDeviceLabel(body.deviceLabel),
       kind: normalizeSyncDeviceKind(body.deviceKind),
     })
-    const deviceRole = await getStoredSyncDeviceRole(supabase, syncHash, ownerToken, config.pepper, deviceId ?? "")
-    if (deviceRole === "study") {
-      return NextResponse.json(
-        { error: "Esta conexão está configurada como somente estudo e não pode enviar alterações.", code: "SYNC_DEVICE_READ_ONLY" },
-        { status: 403 },
-      )
-    }
-    if (deviceRole === "unknown") {
-      return NextResponse.json({ error: "Este dispositivo precisa ser registrado novamente.", code: "SYNC_DEVICE_NOT_REGISTERED" }, { status: 403 })
-    }
-
     const { data: existing, error: readError } = await supabase
       .from(table)
       .select("revision")

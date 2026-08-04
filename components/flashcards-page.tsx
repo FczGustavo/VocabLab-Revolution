@@ -1410,7 +1410,7 @@ export function FlashcardsPage() {
 
           {/* ── Folders Grid ─────────────────────────────────────── */}
           <div className="mb-8">
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-4">
               {/* General is only shown when it contains unfiled cards. */}
               {flashcards.some((flashcard) => !flashcard.folderId) && <FolderCard
                 name={generalFolderName}
@@ -1466,7 +1466,7 @@ export function FlashcardsPage() {
             {Object.keys(reviewFoldersByParent).length > 0 && (
               <>
                 <div className="my-4 border-t border-border/30" />
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                   {Object.entries(reviewFoldersByParent).map(([parentFolderId, count]) => {
                     const parentFolderName = parentFolderId === "__general__" 
                       ? generalFolderName 

@@ -47,6 +47,29 @@ export const SyncLabPayloadSchema = z.object({
 
 export type SyncLabPayload = z.infer<typeof SyncLabPayloadSchema>
 
+export const SyncOperationSchema = z.object({
+  operationId: z.string().min(12).max(180),
+  lab: SyncLabIdSchema,
+  kind: z.enum(["upsert", "delete", "preference-set", "preference-delete"]),
+  storeName: z.string().min(1).max(100).optional(),
+  entityId: z.string().min(1).max(300),
+  value: z.unknown().optional(),
+  occurredAt: z.number().int().nonnegative(),
+}).strict().superRefine((operation, context) => {
+  const isPreference = operation.kind.startsWith("preference-")
+  if (isPreference && operation.storeName !== undefined) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "Preferências não usam storeName." })
+  }
+  if (!isPreference && !operation.storeName) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "Operações de dados exigem storeName." })
+  }
+  if ((operation.kind === "upsert" || operation.kind === "preference-set") && operation.value === undefined) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "A operação exige value." })
+  }
+})
+
+export type SyncOperation = z.infer<typeof SyncOperationSchema>
+
 export function normalizeSyncWord(value: string) {
   return value
     .normalize("NFD")

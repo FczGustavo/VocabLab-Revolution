@@ -53,7 +53,7 @@ export function FolderCard({
       onClick={onClick}
       onContextMenu={onContextMenu}
       className={cn(
-        "dark-folder-card group relative flex min-h-40 w-full flex-col overflow-hidden rounded-2xl border transition-all duration-300",
+        "dark-folder-card group relative flex min-h-32 w-full flex-col overflow-hidden rounded-2xl border transition-all duration-300 sm:min-h-40",
         "bg-gradient-to-br",
         gradients[gradient],
         isSelected
@@ -70,14 +70,14 @@ export function FolderCard({
       </div>
 
       {/* Content */}
-      <div className="relative flex flex-1 flex-col justify-between p-5">
+      <div className="relative flex flex-1 flex-col justify-between p-4 sm:p-5">
         {isAddDestination && (
           <span className="absolute right-4 top-4 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
             Adding here
           </span>
         )}
         {/* Top section with decorative lines */}
-        <div className="mb-8 space-y-1.5 opacity-40">
+        <div className="mb-5 space-y-1.5 opacity-40 sm:mb-8">
           <div className="h-1 w-16 rounded-full bg-foreground/20" />
           <div className="h-1 w-12 rounded-full bg-foreground/15" />
           <div className="h-1 w-20 rounded-full bg-foreground/10" />
@@ -105,7 +105,7 @@ export function FolderCard({
               onClick={(e) => { e.stopPropagation(); onSettings(e) }}
               onContextMenu={(e) => e.stopPropagation()}
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onSettings(e as any) }}
-              className="absolute bottom-4 right-4 flex size-8 cursor-pointer items-center justify-center rounded-full bg-white/50 text-muted-foreground/60 opacity-0 backdrop-blur-sm transition-all hover:bg-white/80 hover:text-foreground group-hover:opacity-100 dark:bg-white/[0.06] dark:hover:bg-white/[0.1]"
+              className="absolute bottom-3 right-3 flex size-8 cursor-pointer items-center justify-center rounded-full bg-white/50 text-muted-foreground/60 opacity-0 backdrop-blur-sm transition-all hover:bg-white/80 hover:text-foreground group-hover:opacity-100 sm:bottom-4 sm:right-4 dark:bg-white/[0.06] dark:hover:bg-white/[0.1]"
               title="Folder settings"
             >
               <Settings className="size-4" />
@@ -129,7 +129,7 @@ export function NewFolderCard({ onClick, onImport }: NewFolderCardProps) {
   if (onImport) {
     return (
       <div
-        className="group relative min-h-40 w-full"
+        className="group relative min-h-32 w-full sm:min-h-40"
         onMouseEnter={() => setShowActions(true)}
         onMouseLeave={() => setShowActions(false)}
       >
@@ -137,7 +137,7 @@ export function NewFolderCard({ onClick, onImport }: NewFolderCardProps) {
           type="button"
           onClick={onClick}
           className={cn(
-            "flex h-full min-h-40 w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-border/50 bg-transparent p-8",
+            "flex h-full min-h-32 w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-border/50 bg-transparent p-5 sm:min-h-40 sm:p-8",
             "transition-all duration-300 hover:border-primary/30 hover:bg-primary/5"
           )}
         >
@@ -178,7 +178,7 @@ export function NewFolderCard({ onClick, onImport }: NewFolderCardProps) {
       type="button"
       onClick={onClick}
       className={cn(
-        "group flex min-h-40 w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-border/50 bg-transparent p-8",
+        "group flex min-h-32 w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-border/50 bg-transparent p-5 sm:min-h-40 sm:p-8",
         "transition-all duration-300",
         "hover:border-primary/30 hover:bg-primary/5"
       )}

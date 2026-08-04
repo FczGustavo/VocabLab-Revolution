@@ -81,8 +81,8 @@ export function Header() {
 
   return (
     <>
-      <header className="relative z-50 px-3 pt-3 sm:px-6 sm:pt-4">
-      <div className="mx-auto flex h-[50px] w-full max-w-[1150px] items-center justify-between sm:h-[52px]">
+      <header className="z-50 px-3 pt-3 sm:px-6 sm:pt-4">
+      <div className="relative mx-auto flex h-[50px] w-full max-w-[1150px] items-center justify-between sm:h-[52px]">
         {/* Logo or Back button */}
         {isInsideFolder ? (
           <button
@@ -105,8 +105,8 @@ export function Header() {
             </svg>
           </button>
         ) : (
-          <Link href="/" className="flex shrink-0 items-center">
-            <VocabLabIcon className="text-xl text-foreground/50" />
+          <Link href="/" className="flex size-10 shrink-0 items-center justify-center" aria-label="VocabLab">
+            <VocabLabIcon className="text-xl leading-none text-foreground/50" />
           </Link>
         )}
 

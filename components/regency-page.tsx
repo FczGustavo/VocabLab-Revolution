@@ -272,14 +272,14 @@ export function RegencyPage() {
       {!isInsideFolder && (
         <>
           <div className="mb-20 flex flex-col items-center gap-6 pt-4 sm:mb-16 sm:pt-6"><h1 className="lab-title select-none font-serif text-[clamp(3rem,14vw,5rem)] font-normal leading-none tracking-[-0.02em] text-foreground/15">RegencyLab</h1></div>
-          <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             <FolderCard name={generalFolderName} wordCount={cardsInFolder(null).length} subtitle={`${cardsInFolder(null).length} regency cards`} gradient={gradientFor("__general__", 0)} onClick={() => { setIsReviewFolderSelected(false); setSelectedReviewFolderId(null); setSelectedFolderId("__general__") }} onSettings={() => openFolderManager(null)} />
             {folders.map((folder, index) => <FolderCard key={folder.id} name={folder.name} wordCount={cardsInFolder(folder.id).length} subtitle={`${cardsInFolder(folder.id).length} regency cards`} gradient={gradientFor(folder.id, index + 1)} onClick={() => { setIsReviewFolderSelected(false); setSelectedReviewFolderId(null); setSelectedFolderId(folder.id) }} onSettings={() => openFolderManager(folder)} />)}
             <NewFolderCard onClick={() => { setNewFolderName(""); setFolderDialogOpen(true) }} />
           </div>
           {Object.keys(reviewFoldersByParent).length > 0 && <>
             <div className="my-5 border-t border-border/30" />
-            <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {Object.entries(reviewFoldersByParent).map(([parentFolderId, count]) => {
               const parentName = parentFolderId === "__general__" ? generalFolderName : folders.find((folder) => folder.id === parentFolderId)?.name ?? "Folder"
               return <FolderCard key={`review-${parentFolderId}`} name={reviewFolderTitle(parentName, [REGENCY_DEFAULT_FOLDER_NAME])} wordCount={count} subtitle={`${count} ${count === 1 ? "card" : "cards"} to review`} gradient="amber" isReview onClick={() => { setSelectedFolderId(null); setSelectedReviewFolderId(parentFolderId); setIsReviewFolderSelected(true) }} />

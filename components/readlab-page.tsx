@@ -454,7 +454,7 @@ export function ReadlabPage() {
 
           {/* Folders Grid */}
           <div className="mb-8">
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-4">
               {/* General folder */}
               {!generalFolderDeleted && <FolderCard
                 name={generalFolderName}
@@ -583,7 +583,7 @@ export function ReadlabPage() {
                 <Loader2 className="size-8 animate-spin text-muted-foreground" />
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                 {/* New text card */}
                 <button
                   type="button"

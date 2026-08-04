@@ -42,7 +42,6 @@ import { useRegencyPreferences } from "@/hooks/use-regency-preferences"
 import { useCardShape } from "@/hooks/use-card-shape"
 import { useReadLabPreferences } from "@/hooks/use-readlab-preferences"
 import { useSyncDevices } from "@/hooks/use-sync-devices"
-import { setSyncDeviceRole, type SyncDeviceRole } from "@/lib/sync-device"
 import {
   AUTO_SYNC_STATUS_EVENT,
   publishAutoSyncState,
@@ -146,7 +145,6 @@ export function SettingsDialog() {
   const [pairingInput, setPairingInput] = useState("")
   const [deviceToRevoke, setDeviceToRevoke] = useState<string | null>(null)
   const [deviceBusy, setDeviceBusy] = useState<string | null>(null)
-  const [roleBusy, setRoleBusy] = useState<string | null>(null)
   const [backupBusy, setBackupBusy] = useState<"export" | "import" | null>(null)
   const [backupMessage, setBackupMessage] = useState("")
   const [pendingBackup, setPendingBackup] = useState<{ snapshot: unknown; totalEntities: number } | null>(null)
@@ -154,7 +152,7 @@ export function SettingsDialog() {
   const [activeTab, setActiveTab] = useState<"general" | "sync" | "vocab" | "regency" | "read" | "rule" | "wiki">("general")
   const contentRef = useRef<HTMLDivElement>(null)
   const pairSyncCode = pairWord && /^\d{4}$/.test(pairPin) ? `${pairWord}-${pairPin}` : ""
-  const { devices, loading: devicesLoading, error: devicesError, refresh: refreshDevices, revoke: revokeDevice, setRole: setDeviceRole } = useSyncDevices(syncCode, isIdentityLocked)
+  const { devices, loading: devicesLoading, error: devicesError, refresh: refreshDevices, revoke: revokeDevice } = useSyncDevices(syncCode, isIdentityLocked)
   const isPairIdentityValid = /^[a-z0-9]{2,24}-\d{4}$/.test(pairSyncCode)
   const syncStatusTitle = !isSyncCodeValid || !isIdentityLocked
     ? "Aguardando confirmação"
@@ -290,7 +288,6 @@ export function SettingsDialog() {
     setIdentityError("")
     try {
       await completeSyncPairing(pairSyncCode, pairingInput)
-      setSyncDeviceRole("study")
       if (!activateIdentity(pairWord, pairPin)) {
         throw new Error("O dispositivo foi autorizado, mas não foi possível ativar a identificação local.")
       }
@@ -320,18 +317,6 @@ export function SettingsDialog() {
       setIdentityError(error instanceof Error ? error.message : "Não foi possível desconectar o dispositivo.")
     } finally {
       setDeviceBusy(null)
-    }
-  }
-
-  const handleSetDeviceRole = async (deviceId: string, role: SyncDeviceRole) => {
-    setRoleBusy(deviceId)
-    setIdentityError("")
-    try {
-      await setDeviceRole(deviceId, role)
-    } catch (error) {
-      setIdentityError(error instanceof Error ? error.message : "Não foi possível alterar o tipo de conexão.")
-    } finally {
-      setRoleBusy(null)
     }
   }
 
@@ -711,7 +696,7 @@ export function SettingsDialog() {
                         <div className="flex items-center justify-between gap-3">
                           <div>
                             <p className="flex items-center gap-2 text-xs font-medium"><Monitor className="size-3.5 text-primary" />Dispositivos pareados <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] text-primary">{devices.length}</span></p>
-                            <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">Escolha uma conexão primária para manter a fonte dos dados. As demais podem ficar em somente estudo e apenas receber atualizações.</p>
+                            <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">Todos os dispositivos pareados podem criar, editar e estudar. Cada alteração é sincronizada individualmente.</p>
                           </div>
                           <Button type="button" variant="ghost" size="icon" className="size-7 shrink-0" onClick={() => void refreshDevices()} disabled={devicesLoading} aria-label="Atualizar dispositivos">
                             <RefreshCcw className={cn("size-3.5", devicesLoading && "animate-spin")} />
@@ -739,15 +724,6 @@ export function SettingsDialog() {
                                 {device.current && (
                                   <span className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-1 text-[9px] font-medium text-emerald-600 dark:text-emerald-300">Este dispositivo</span>
                                 )}
-                                <Select value={device.role} onValueChange={(value) => void handleSetDeviceRole(device.id, value as SyncDeviceRole)} disabled={roleBusy !== null}>
-                                  <SelectTrigger className="h-7 w-[112px] shrink-0 text-[9px]">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="primary">Primária · envia</SelectItem>
-                                    <SelectItem value="study">Somente estudo</SelectItem>
-                                  </SelectContent>
-                                </Select>
                                 {!device.current && (
                                   <Button type="button" variant="ghost" size="icon" className="size-7 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => setDeviceToRevoke(device.id)} disabled={deviceBusy !== null} aria-label={`Desconectar ${device.label}`}>
                                     <Unplug className="size-3.5" />

@@ -3,11 +3,13 @@
 import { exportLabData, importLabData } from "./sync-client"
 import {
   SyncLabPayloadSchema,
+  SyncOperationSchema,
   type SyncLabId,
   type SyncLabPayload,
 } from "./sync-schema"
 import { getSyncOwnerToken } from "./sync-identity-client"
 import { getOrCreateSyncDeviceId, getSyncDeviceKind, getSyncDeviceLabel, getSyncDeviceRole, setSyncDeviceRole } from "./sync-device"
+import { applySyncOperationsState, diffLabPayload } from "./sync-operations"
 
 export { getOrCreateSyncDeviceId } from "./sync-device"
 
@@ -26,7 +28,12 @@ type Baseline = {
   revision: number
   payload: SyncLabPayload
   updatedAt: number
+  protocol?: number
+  cursor?: number
+  preferenceClocks?: Record<string, number>
 }
+
+const OPERATION_PROTOCOL = 3
 
 const BASELINE_DB = "vocablab-auto-sync-db"
 const BASELINE_STORE = "baselines"
@@ -406,7 +413,6 @@ async function pullLab(syncCode: string, lab: SyncLabId, ownerToken: string) {
   })
   const json = await response.json().catch(() => ({}))
   if (!response.ok) throw new Error(json?.error || "Falha ao receber atualizações.")
-  if (json.deviceRole === "primary" || json.deviceRole === "study") setSyncDeviceRole(json.deviceRole)
   return {
     payload: json.payload ? SyncLabPayloadSchema.parse(json.payload) : null,
     revision: Number(json.revision ?? 0),
@@ -442,6 +448,130 @@ async function pushLab(
   }
   if (!response.ok) throw new Error(json?.error || "Falha ao enviar atualizações.")
   return Number(json.revision)
+}
+
+async function pushOperations(
+  syncCode: string,
+  lab: SyncLabId,
+  ownerToken: string,
+  operations: import("./sync-schema").SyncOperation[],
+) {
+  const response = await fetch("/api/sync/lab/operations", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      action: "push",
+      syncCode,
+      lab,
+      ownerToken,
+      operations,
+      deviceId: getOrCreateSyncDeviceId(),
+      deviceLabel: getSyncDeviceLabel(),
+      deviceKind: getSyncDeviceKind(),
+    }),
+  })
+  const json = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(json?.error || "Falha ao enviar as alterações.")
+}
+
+async function pullOperations(
+  syncCode: string,
+  lab: SyncLabId,
+  ownerToken: string,
+  cursor: number,
+) {
+  const response = await fetch("/api/sync/lab/operations", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      action: "pull",
+      syncCode,
+      lab,
+      ownerToken,
+      cursor,
+      deviceId: getOrCreateSyncDeviceId(),
+      deviceLabel: getSyncDeviceLabel(),
+      deviceKind: getSyncDeviceKind(),
+    }),
+  })
+  const json = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(json?.error || "Falha ao receber as alterações.")
+  const operations = Array.isArray(json.operations)
+    ? json.operations.flatMap((entry: unknown) => {
+      if (!entry || typeof entry !== "object") return []
+      const value = entry as { operation?: unknown }
+      const parsed = SyncOperationSchema.safeParse(value.operation)
+      if (!parsed.success) return []
+      return parsed.data.lab === lab ? [parsed.data] : []
+    })
+    : []
+  return {
+    operations,
+    cursor: Number(json.cursor ?? cursor),
+    hasMore: json.hasMore === true,
+  }
+}
+
+async function synchronizeLabByOperations(syncCode: string, lab: SyncLabId) {
+  const ownerToken = getSyncOwnerToken(syncCode)
+  if (!ownerToken) throw new Error("Este navegador ainda não foi autorizado.")
+  const key = `${syncCode}:${lab}`
+  const stored = await getBaseline(key)
+  const baseline = stored?.protocol === OPERATION_PROTOCOL ? stored : undefined
+  const initialLocal = await exportLabData(lab)
+  let local = initialLocal
+
+  // Existing installations can still have their only copy in the old snapshot
+  // tables. Merge it once, then publish it as independent operations.
+  if (!baseline) {
+    const legacy = await pullLab(syncCode, lab, ownerToken)
+    if (legacy.payload) {
+      local = mergeLabPayloads(undefined, initialLocal, legacy.payload)
+      if (payloadFingerprint(local) !== payloadFingerprint(initialLocal)) {
+        if (!await importLabData(local, initialLocal)) return 0
+      }
+    }
+  }
+
+  const pending = diffLabPayload(baseline?.payload, local, getOrCreateSyncDeviceId())
+  const preferenceClocks = { ...(baseline?.preferenceClocks ?? {}) }
+  for (const operation of pending) {
+    if (operation.kind.startsWith("preference-")) {
+      preferenceClocks[operation.entityId] = Math.max(
+        preferenceClocks[operation.entityId] ?? 0,
+        operation.occurredAt,
+      )
+    }
+  }
+  for (let index = 0; index < pending.length; index += 250) {
+    await pushOperations(syncCode, lab, ownerToken, pending.slice(index, index + 250))
+  }
+
+  let cursor = baseline?.cursor ?? 0
+  const received: import("./sync-schema").SyncOperation[] = []
+  for (;;) {
+    const page = await pullOperations(syncCode, lab, ownerToken, cursor)
+    received.push(...page.operations)
+    cursor = page.cursor
+    if (!page.hasMore) break
+  }
+  const mergedState = applySyncOperationsState(local, received, preferenceClocks)
+  const merged = mergedState.payload
+  const current = await exportLabData(lab)
+  if (payloadFingerprint(current) !== payloadFingerprint(local)) return cursor
+  if (payloadFingerprint(merged) !== payloadFingerprint(current)) {
+    if (!await importLabData(merged, current)) return cursor
+  }
+  await putBaseline({
+    key,
+    revision: cursor,
+    cursor,
+    protocol: OPERATION_PROTOCOL,
+    payload: merged,
+    preferenceClocks: mergedState.preferenceClocks,
+    updatedAt: Date.now(),
+  })
+  return cursor
 }
 
 async function synchronizeLabUnlocked(syncCode: string, lab: SyncLabId) {
@@ -541,13 +671,13 @@ export async function synchronizeLab(syncCode: string, lab: SyncLabId) {
     const result = await lockManager.request(
       `vocablab-sync:${syncCode}:${lab}`,
       { ifAvailable: true },
-      async (lock) => lock ? synchronizeLabUnlocked(syncCode, lab) : null,
+      async (lock) => lock ? synchronizeLabByOperations(syncCode, lab) : null,
     )
     // Another tab is already synchronizing this Lab. It will publish the
     // result; skipping here avoids two writers racing on the same revision.
     return result ?? 0
   }
-  return synchronizeLabUnlocked(syncCode, lab)
+  return synchronizeLabByOperations(syncCode, lab)
 }
 
 export function publishAutoSyncState(state: AutoSyncState) {

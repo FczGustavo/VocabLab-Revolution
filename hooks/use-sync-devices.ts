@@ -2,9 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { SYNC_IDENTITY_UPDATED_EVENT } from "@/lib/auto-sync-client"
-import { getOrCreateSyncDeviceId, setSyncDeviceRole as setLocalSyncDeviceRole } from "@/lib/sync-device"
-import { listSyncDevices, revokeSyncDevice, setSyncDeviceRoleRemote, type SyncDevice } from "@/lib/sync-identity-client"
-import type { SyncDeviceRole } from "@/lib/sync-device"
+import { getOrCreateSyncDeviceId } from "@/lib/sync-device"
+import { listSyncDevices, revokeSyncDevice, type SyncDevice } from "@/lib/sync-identity-client"
 
 type SyncDeviceWithCurrent = SyncDevice & { current: boolean }
 
@@ -56,15 +55,5 @@ export function useSyncDevices(syncCode: string, enabled: boolean) {
     setDevices((current) => current.filter((device) => device.id !== deviceId))
   }, [syncCode])
 
-  const setRole = useCallback(async (deviceId: string, role: SyncDeviceRole) => {
-    if (!syncCode) return
-    await setSyncDeviceRoleRemote(syncCode, deviceId, role)
-    if (role === "primary" && deviceId !== currentId) setLocalSyncDeviceRole("study")
-    setDevices((current) => current.map((device) => ({
-      ...device,
-      role: device.id === deviceId ? role : role === "primary" ? "study" : device.role,
-    })))
-  }, [currentId, syncCode])
-
-  return { devices, loading, error, refresh, revoke, setRole }
+  return { devices, loading, error, refresh, revoke }
 }

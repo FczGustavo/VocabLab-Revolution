@@ -274,7 +274,7 @@ export function RulePage() {
               <Loader2 className="size-6 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-4">
               {folders.map((folder) => (
                 <FolderCard
                   key={folder.id}
@@ -298,7 +298,7 @@ export function RulePage() {
           {reviewCards.length > 0 && (
             <>
               <div className="my-5 border-t border-border/30" />
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                 {folders
                   .filter((folder) =>
                     reviewCards.some((card) => card.folderId === folder.id),

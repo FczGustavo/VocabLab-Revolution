@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { useSyncCode } from "@/hooks/use-sync-code"
 import {
   AI_PREFERENCES_UPDATED_EVENT,
@@ -14,12 +14,7 @@ import {
   RULELAB_CARDS_UPDATED_EVENT,
 } from "@/lib/constants"
 import { READLAB_PREFERENCES_UPDATED_EVENT } from "@/hooks/use-readlab-preferences"
-import {
-  publishAutoSyncState,
-  SYNC_IDENTITY_UPDATED_EVENT,
-  synchronizeLab,
-} from "@/lib/auto-sync-client"
-import { getSyncDeviceRole, SYNC_DEVICE_ROLE_UPDATED_EVENT } from "@/lib/sync-device"
+import { publishAutoSyncState, SYNC_IDENTITY_UPDATED_EVENT, synchronizeLab } from "@/lib/auto-sync-client"
 import { SYNC_LABS } from "@/lib/sync-client"
 import type { SyncLabId } from "@/lib/sync-schema"
 
@@ -45,20 +40,11 @@ function syncErrorMessage(error: unknown) {
     const message = String((error as { message?: unknown }).message ?? "").trim()
     if (message) return message
   }
-  if (typeof error === "string" && error.trim()) return error
   return "Falha de sincronização."
 }
 
 export function AutoSyncProvider() {
   const { syncCode, isValid, isIdentityLocked, isSyncEnabled, isLoaded } = useSyncCode()
-  const [studyOnly, setStudyOnly] = useState(() => getSyncDeviceRole() === "study")
-
-  useEffect(() => {
-    const updateRole = () => setStudyOnly(getSyncDeviceRole() === "study")
-    updateRole()
-    window.addEventListener(SYNC_DEVICE_ROLE_UPDATED_EVENT, updateRole)
-    return () => window.removeEventListener(SYNC_DEVICE_ROLE_UPDATED_EVENT, updateRole)
-  }, [])
 
   useEffect(() => {
     if (!isLoaded) return undefined
@@ -66,10 +52,10 @@ export function AutoSyncProvider() {
       publishAutoSyncState({
         state: "idle",
         message: !isSyncEnabled && isValid && isIdentityLocked
-          ? "A sincronização está desativada neste dispositivo."
+          ? "A sincronização está pausada neste dispositivo."
           : isValid
-          ? "Confirme a palavra e o PIN para ativar a sincronização automática."
-          : "Escolha uma palavra e confirme os dados para ativar a sincronização automática.",
+            ? "Confirme a palavra e o PIN para ativar a sincronização automática."
+            : "Escolha uma palavra e confirme os dados para ativar a sincronização automática.",
       })
       return undefined
     }
@@ -80,6 +66,12 @@ export function AutoSyncProvider() {
     const pending = new Set<SyncLabId>()
     const revisions: Partial<Record<SyncLabId, number>> = {}
 
+    const schedule = (delay = 900, labs: SyncLabId[] = SYNC_LABS) => {
+      for (const lab of labs) pending.add(lab)
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => void run(), delay)
+    }
+
     const run = async () => {
       if (disposed || running) return
       if (!navigator.onLine) {
@@ -89,40 +81,26 @@ export function AutoSyncProvider() {
       running = true
       const requested = pending.size ? [...pending] : [...SYNC_LABS]
       pending.clear()
-      publishAutoSyncState({ state: "connecting", message: getSyncDeviceRole() === "study" ? "Recebendo atualizações para estudo…" : "Enviando e recebendo atualizações…" })
+      publishAutoSyncState({ state: "connecting", message: "Enviando e recebendo alterações…" })
       try {
         for (const lab of requested) revisions[lab] = await synchronizeLab(syncCode, lab)
-        if (!disposed) {
-          publishAutoSyncState({
-            state: "synced",
-            message: "Todos os dados estão sincronizados.",
-            updatedAt: Date.now(),
-            labs: revisions,
-          })
-        }
+        if (!disposed) publishAutoSyncState({
+          state: "synced",
+          message: "Todos os dados estão sincronizados.",
+          updatedAt: Date.now(),
+          labs: revisions,
+        })
       } catch (error) {
-        if (!disposed) {
-          const message = syncErrorMessage(error)
-          publishAutoSyncState({
-            state: "error",
-            message,
-            updatedAt: Date.now(),
-            labs: revisions,
-          })
-          if (/atualizações simultâneas|conflito de sincronização/i.test(message)) {
-            schedule(3_000, requested)
-          }
-        }
+        if (!disposed) publishAutoSyncState({
+          state: "error",
+          message: syncErrorMessage(error),
+          updatedAt: Date.now(),
+          labs: revisions,
+        })
       } finally {
         running = false
         if (!disposed && pending.size) schedule(1_000, [])
       }
-    }
-
-    const schedule = (delay = 900, labs: SyncLabId[] = SYNC_LABS) => {
-      for (const lab of labs) pending.add(lab)
-      if (timer) clearTimeout(timer)
-      timer = setTimeout(() => void run(), delay)
     }
 
     schedule(350)
@@ -138,7 +116,6 @@ export function AutoSyncProvider() {
     })
     const identityListener = () => schedule(200)
     window.addEventListener(SYNC_IDENTITY_UPDATED_EVENT, identityListener)
-    window.addEventListener(SYNC_DEVICE_ROLE_UPDATED_EVENT, identityListener)
     return () => {
       disposed = true
       window.clearInterval(interval)
@@ -146,16 +123,9 @@ export function AutoSyncProvider() {
       window.removeEventListener("online", onOnline)
       for (const cleanup of cleanups) cleanup()
       window.removeEventListener(SYNC_IDENTITY_UPDATED_EVENT, identityListener)
-      window.removeEventListener(SYNC_DEVICE_ROLE_UPDATED_EVENT, identityListener)
       if (timer) clearTimeout(timer)
     }
   }, [isIdentityLocked, isLoaded, isSyncEnabled, isValid, syncCode])
 
-  return studyOnly ? (
-    <div className="pointer-events-none fixed inset-x-0 bottom-3 z-40 flex justify-center px-3">
-      <div className="rounded-full border border-sky-400/25 bg-sky-500/10 px-3 py-1.5 text-[10px] font-medium text-sky-700 shadow-sm backdrop-blur-md dark:text-sky-300">
-        Somente estudo · recebendo da conexão primária
-      </div>
-    </div>
-  ) : null
+  return null
 }

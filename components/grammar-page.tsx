@@ -822,7 +822,7 @@ export function GrammarPage() {
       </section>
 
       <section className="mt-8">
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           <FolderCard
             name={generalFolderName}
             wordCount={lists.filter((list) => !list.folderId).length}

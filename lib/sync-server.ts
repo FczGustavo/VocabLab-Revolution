@@ -6,6 +6,7 @@ import type { SyncLabId } from "@/lib/sync-schema"
 
 const DEFAULT_SYNC_TABLE = "vocablab_sync_state"
 const DEFAULT_SYNC_CLAIMS_TABLE = "vocablab_sync_claims"
+const DEFAULT_SYNC_OPERATIONS_TABLE = "vocablab_sync_operations"
 const SUPABASE_TIMEOUT_MS = 15_000
 const DEFAULT_LAB_TABLES: Record<SyncLabId, string> = {
   general: "vocablab_sync_general",
@@ -62,6 +63,14 @@ export function getSyncClaimsTable() {
   const table = process.env.SUPABASE_SYNC_CLAIMS_TABLE?.trim() || DEFAULT_SYNC_CLAIMS_TABLE
   if (!/^[a-zA-Z][a-zA-Z0-9_]{0,62}$/.test(table)) {
     throw new Error("SUPABASE_SYNC_CLAIMS_TABLE is invalid.")
+  }
+  return table
+}
+
+export function getSyncOperationsTable() {
+  const table = process.env.SUPABASE_SYNC_OPERATIONS_TABLE?.trim() || DEFAULT_SYNC_OPERATIONS_TABLE
+  if (!/^[a-zA-Z][a-zA-Z0-9_]{0,62}$/.test(table)) {
+    throw new Error("SUPABASE_SYNC_OPERATIONS_TABLE is invalid.")
   }
   return table
 }

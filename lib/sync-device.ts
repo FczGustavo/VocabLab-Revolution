@@ -52,7 +52,9 @@ export function getSyncDeviceRole(): SyncDeviceRole {
 }
 
 export function isSyncStudyOnly() {
-  return getSyncDeviceRole() === "study"
+  // Legacy roles are intentionally ignored by the multiwriter protocol.
+  // Every paired device may create, edit and record study results.
+  return false
 }
 
 export function setSyncDeviceRole(role: SyncDeviceRole) {

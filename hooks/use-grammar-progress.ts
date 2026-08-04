@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { PROGRESS_UPDATED_EVENT } from "@/lib/constants"
+import { FLASHCARDS_UPDATED_EVENT, PROGRESS_UPDATED_EVENT, REGENCYLAB_CARDS_UPDATED_EVENT, RULELAB_CARDS_UPDATED_EVENT } from "@/lib/constants"
 
 export interface GrammarSession {
   id: string
@@ -53,6 +53,43 @@ function notifyProgressUpdated() {
   window.setTimeout(() => {
     window.dispatchEvent(new Event(PROGRESS_UPDATED_EVENT))
   }, 0)
+}
+
+const STUDY_CARD_STORES = [
+  { database: "vocab-lab-db", store: "flashcards", event: FLASHCARDS_UPDATED_EVENT },
+  { database: "regencylab-db", store: "cards", event: REGENCYLAB_CARDS_UPDATED_EVENT },
+  { database: "rulelab-db", store: "cards", event: RULELAB_CARDS_UPDATED_EVENT },
+] as const
+
+function resetStudyStreaks(database: string, storeName: string) {
+  if (typeof indexedDB === "undefined") return Promise.resolve()
+  return new Promise<void>((resolve) => {
+    const request = indexedDB.open(database)
+    request.onerror = () => resolve()
+    request.onsuccess = () => {
+      const db = request.result
+      if (!db.objectStoreNames.contains(storeName)) {
+        db.close()
+        resolve()
+        return
+      }
+      const transaction = db.transaction(storeName, "readwrite")
+      const store = transaction.objectStore(storeName)
+      const read = store.getAll()
+      read.onsuccess = () => {
+        const now = Date.now()
+        for (const value of read.result) {
+          if (!value || typeof value !== "object") continue
+          const record = value as Record<string, unknown>
+          if (record.studyStreak === undefined || record.studyStreak === 0) continue
+          store.put({ ...record, studyStreak: 0, updatedAt: now })
+        }
+      }
+      transaction.oncomplete = () => { db.close(); resolve() }
+      transaction.onerror = () => { db.close(); resolve() }
+      transaction.onabort = () => { db.close(); resolve() }
+    }
+  })
 }
 
 export function useGrammarProgress() {
@@ -145,13 +182,17 @@ export function useGrammarProgress() {
   }, [])
 
   // Reset all statistics
-  const resetStats = useCallback(() => {
+  const resetStats = useCallback(async () => {
     setGrammarSessions([])
     setStudySessions([])
     setDismissedReviewWords([])
     localStorage.removeItem(GRAMMAR_PROGRESS_KEY)
     localStorage.removeItem(STUDY_PROGRESS_KEY)
     localStorage.removeItem(DISMISSED_REVIEW_WORDS_KEY)
+    await Promise.all(STUDY_CARD_STORES.map((entry) => resetStudyStreaks(entry.database, entry.store)))
+    for (const entry of STUDY_CARD_STORES) {
+      window.setTimeout(() => window.dispatchEvent(new Event(entry.event)), 0)
+    }
     notifyProgressUpdated()
   }, [])
 

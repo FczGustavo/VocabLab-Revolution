@@ -113,7 +113,18 @@ function stable(value: unknown): string {
 }
 
 export function payloadFingerprint(payload: SyncLabPayload) {
-  return stable({ stores: payload.stores, preferences: payload.preferences })
+  const stores = Object.fromEntries(
+    Object.entries(payload.stores).map(([storeName, values]) => [
+      storeName,
+      [...values].sort((left, right) => {
+        const leftKey = stable(left)
+        const rightKey = stable(right)
+        return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0
+      }),
+    ]),
+  )
+
+  return stable({ stores, preferences: payload.preferences })
 }
 
 function studyStatePreservingPayload(remote: SyncLabPayload, local: SyncLabPayload) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { mergeLabPayloads } from "./auto-sync-client"
+import { mergeLabPayloads, payloadFingerprint } from "./auto-sync-client"
 import type { SyncLabPayload } from "./sync-schema"
 
 function payload(stores: SyncLabPayload["stores"]): SyncLabPayload {
@@ -13,6 +13,23 @@ function payload(stores: SyncLabPayload["stores"]): SyncLabPayload {
 }
 
 describe("mergeLabPayloads", () => {
+  it("ignores IndexedDB record order when comparing sync payloads", () => {
+    const first = payload({
+      flashcards: [
+        { id: "card-a", word: "alpha" },
+        { id: "card-b", word: "beta" },
+      ],
+    })
+    const second = payload({
+      flashcards: [
+        { id: "card-b", word: "beta" },
+        { id: "card-a", word: "alpha" },
+      ],
+    })
+
+    expect(payloadFingerprint(first)).toBe(payloadFingerprint(second))
+  })
+
   it("preserves independent cards created concurrently", () => {
     const merged = mergeLabPayloads(
       payload({ flashcards: [] }),

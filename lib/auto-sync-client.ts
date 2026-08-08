@@ -33,7 +33,10 @@ type Baseline = {
   preferenceClocks?: Record<string, number>
 }
 
-const OPERATION_PROTOCOL = 3
+// Bump this whenever the operation identity/merge rules change. Existing
+// baselines are intentionally discarded so a device replays the shared log
+// from cursor 0 instead of trusting a cursor produced by the old resolver.
+const OPERATION_PROTOCOL = 4
 
 const BASELINE_DB = "vocablab-auto-sync-db"
 const BASELINE_STORE = "baselines"
@@ -516,7 +519,8 @@ async function synchronizeLabByOperations(syncCode: string, lab: SyncLabId) {
   const ownerToken = getSyncOwnerToken(syncCode)
   if (!ownerToken) throw new Error("Este navegador ainda não foi autorizado.")
   const key = `${syncCode}:${lab}`
-  const stored = await getBaseline(key)
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const stored = await getBaseline(key)
   const baseline = stored?.protocol === OPERATION_PROTOCOL ? stored : undefined
   const initialLocal = await exportLabData(lab)
   let local = initialLocal
@@ -528,7 +532,7 @@ async function synchronizeLabByOperations(syncCode: string, lab: SyncLabId) {
     if (legacy.payload) {
       local = mergeLabPayloads(undefined, initialLocal, legacy.payload)
       if (payloadFingerprint(local) !== payloadFingerprint(initialLocal)) {
-        if (!await importLabData(local, initialLocal)) return 0
+        if (!await importLabData(local, initialLocal)) continue
       }
     }
   }
@@ -558,20 +562,28 @@ async function synchronizeLabByOperations(syncCode: string, lab: SyncLabId) {
   const mergedState = applySyncOperationsState(local, received, preferenceClocks)
   const merged = mergedState.payload
   const current = await exportLabData(lab)
-  if (payloadFingerprint(current) !== payloadFingerprint(local)) return cursor
+  // A user action or catalog initialization raced this cycle. Do not advance
+  // the baseline or report success; retry from the new local state.
+  if (payloadFingerprint(current) !== payloadFingerprint(local)) continue
   if (payloadFingerprint(merged) !== payloadFingerprint(current)) {
-    if (!await importLabData(merged, current)) return cursor
+    if (!await importLabData(merged, current)) continue
   }
+  // Verify the actual IndexedDB/localStorage state after importing. This
+  // prevents a false green status when an import was rejected or raced.
+  const finalLocal = await exportLabData(lab)
+  if (payloadFingerprint(finalLocal) !== payloadFingerprint(merged)) continue
   await putBaseline({
     key,
     revision: cursor,
     cursor,
     protocol: OPERATION_PROTOCOL,
-    payload: merged,
+    payload: finalLocal,
     preferenceClocks: mergedState.preferenceClocks,
     updatedAt: Date.now(),
   })
-  return cursor
+    return cursor
+  }
+  throw new Error("A sincronizacao nao convergiu apos 3 tentativas. O estado nao foi marcado como sincronizado.")
 }
 
 async function synchronizeLabUnlocked(syncCode: string, lab: SyncLabId) {

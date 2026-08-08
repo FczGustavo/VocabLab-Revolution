@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vocalab.local/schemas/v8-study-session.json",
+  "title": "VocabLab V8 Study Session",
+  "type": "object",
+  "required": ["id", "date", "folderName", "totalCards", "correctFirstTry", "wordsToReview"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "date": { "type": "integer", "minimum": 0 },
+    "folderId": { "type": ["string", "null"] },
+    "folderName": { "type": "string" },
+    "totalCards": { "type": "integer", "minimum": 0 },
+    "correctFirstTry": { "type": "integer", "minimum": 0 },
+    "wordsToReview": { "type": "array", "items": { "type": "string" } },
+    "mistakeCards": { "type": "array", "items": { "type": "string" } },
+    "totalMistakes": { "type": "integer", "minimum": 0 },
+    "lab": { "enum": ["vocab", "regency", "rule"] },
+    "mode": { "enum": ["flip", "multiple-choice", "active-recall", "writing"] },
+    "cardIds": { "type": "array", "items": { "type": "string" } },
+    "durationSeconds": { "type": "integer", "minimum": 0 }
+  },
+  "additionalProperties": true
+}

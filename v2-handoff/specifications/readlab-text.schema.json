@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vocalab.local/schemas/v8-readlab-text.json",
+  "title": "ReadLab Text",
+  "type": "object",
+  "required": [
+    "id",
+    "title",
+    "content",
+    "sourceType",
+    "tags",
+    "highlights",
+    "translationMap",
+    "createdAt"
+  ],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "content": { "type": "string" },
+    "sourceType": { "enum": ["paste", "image", "pdf"] },
+    "folderId": { "type": ["string", "null"] },
+    "tags": {
+      "type": "array",
+      "items": { "enum": ["reading", "read", "pending"] }
+    },
+    "highlights": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "text", "color"],
+        "properties": {
+          "id": { "type": "string" },
+          "text": { "type": "string" },
+          "color": { "type": "string" }
+        }
+      }
+    },
+    "translationMap": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "contextualTranslationMap": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "createdAt": { "type": "integer", "minimum": 0 },
+    "updatedAt": { "type": "integer", "minimum": 0 }
+  },
+  "additionalProperties": true
+}

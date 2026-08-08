@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vocalab.local/schemas/v8-regency-card.json",
+  "title": "RegencyLab Card",
+  "type": "object",
+  "required": [
+    "id",
+    "term",
+    "category",
+    "pattern",
+    "complement",
+    "example",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "term": { "type": "string", "minLength": 1 },
+    "category": { "enum": ["verb", "adjective", "noun"] },
+    "grammaticalForm": {
+      "enum": [
+        "base-form",
+        "comparative",
+        "superlative",
+        "plural",
+        "past",
+        "past-participle",
+        "present-participle",
+        "third-person-singular"
+      ]
+    },
+    "pattern": { "type": "string", "minLength": 1 },
+    "complement": {
+      "enum": [
+        "infinitive",
+        "gerund",
+        "noun",
+        "clause",
+        "prepositional-phrase",
+        "other"
+      ]
+    },
+    "example": { "type": "string" },
+    "exampleTranslation": { "type": "string" },
+    "meaningPt": { "type": "string" },
+    "contrastPt": { "type": "string" },
+    "isReviewFolder": { "type": "boolean" },
+    "studyStreak": { "type": "integer", "minimum": 0 },
+    "catalogId": { "type": "string" },
+    "catalogRevision": { "type": "integer", "minimum": 0 },
+    "catalogContentHash": { "type": "string" },
+    "folderId": { "type": ["string", "null"] },
+    "createdAt": { "type": "integer", "minimum": 0 },
+    "updatedAt": { "type": "integer", "minimum": 0 }
+  },
+  "additionalProperties": true
+}

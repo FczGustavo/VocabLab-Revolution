@@ -174,6 +174,7 @@ export interface GrammarList {
 export interface RuleFolder {
   id: string
   name: string
+  kind: "cards" | "theory"
   createdAt: number
   updatedAt?: number
 }
@@ -186,6 +187,41 @@ export interface RuleCard {
   /** Virtual Review membership; the original folder remains unchanged. */
   isReviewFolder?: boolean
   studyStreak?: number
+  createdAt: number
+  updatedAt: number
+}
+
+export type RuleTheoryBlockType = "title" | "subtitle" | "paragraph" | "rule" | "example" | "exception" | "tip" | "bulleted-list" | "numbered-list" | "divider"
+export type RuleTheoryAlign = "left" | "center" | "right"
+export type RuleTheoryFontFamily = "sans" | "serif" | "mono"
+export type RuleTheoryFontSize = "small" | "normal" | "large"
+
+export interface RuleTheoryTextRun {
+  text: string
+  bold?: boolean
+  italic?: boolean
+  underline?: boolean
+  fontFamily?: RuleTheoryFontFamily
+  fontSize?: RuleTheoryFontSize
+  color?: "default" | "primary" | "muted" | "blue" | "amber" | "violet" | "rose"
+  highlight?: "none" | "yellow" | "blue" | "green" | "rose"
+}
+
+export interface RuleTheoryBlock {
+  id: string
+  type: RuleTheoryBlockType
+  segments?: RuleTheoryTextRun[]
+  items?: RuleTheoryTextRun[][]
+  align?: RuleTheoryAlign
+  fontFamily?: RuleTheoryFontFamily
+  fontSize?: RuleTheoryFontSize
+}
+
+export interface RuleTheoryDocument {
+  id: string
+  folderId: string
+  title: string
+  blocks: RuleTheoryBlock[]
   createdAt: number
   updatedAt: number
 }

@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vocalab.local/schemas/v8-flashcard.json",
+  "title": "VocabLab V8 Flashcard",
+  "type": "object",
+  "required": [
+    "id",
+    "word",
+    "partOfSpeech",
+    "translation",
+    "synonyms",
+    "antonyms",
+    "example",
+    "alternativeForms",
+    "createdAt"
+  ],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "word": { "type": "string", "minLength": 1 },
+    "partOfSpeech": {
+      "enum": [
+        "verb",
+        "phrasal-verb",
+        "noun",
+        "adjective",
+        "adverb",
+        "preposition",
+        "conjunction",
+        "interjection",
+        "acronym",
+        "idiom"
+      ]
+    },
+    "grammaticalForm": {
+      "enum": [
+        "base-form",
+        "comparative",
+        "superlative",
+        "plural",
+        "past",
+        "past-participle",
+        "present-participle",
+        "third-person-singular"
+      ]
+    },
+    "translation": { "type": "string" },
+    "ipa": { "type": "string" },
+    "usageNote": { "type": "string" },
+    "usageNoteEn": { "type": "string" },
+    "synonyms": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/classifiedWord" }
+    },
+    "antonyms": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/classifiedWord" }
+    },
+    "example": { "type": "string" },
+    "exampleTranslation": { "type": "string" },
+    "alternativeForms": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/alternativeForm" }
+    },
+    "conjugations": {
+      "type": "object",
+      "properties": {
+        "simplePresent": { "type": "string" },
+        "simplePast": { "type": "string" },
+        "presentContinuous": { "type": "string" },
+        "pastContinuous": { "type": "string" },
+        "presentPerfect": { "type": "string" },
+        "pastPerfect": { "type": "string" }
+      }
+    },
+    "verbType": { "enum": ["regular", "irregular"] },
+    "falseCognate": {
+      "type": "object",
+      "required": ["isFalseCognate", "warning"],
+      "properties": {
+        "isFalseCognate": { "type": "boolean" },
+        "warning": { "type": "string" },
+        "warningEn": { "type": "string" }
+      }
+    },
+    "aiEnriching": { "type": "boolean" },
+    "folderId": { "type": ["string", "null"] },
+    "isReviewFolder": { "type": "boolean" },
+    "studyStreak": { "type": "integer", "minimum": 0 },
+    "audioSrc": { "type": "string" },
+    "familyKey": { "type": "string" },
+    "usageStatus": { "enum": ["current", "rare", "archaic"] },
+    "catalogId": { "type": "string" },
+    "catalogRevision": { "type": "integer", "minimum": 0 },
+    "catalogContentHash": { "type": "string" },
+    "createdAt": { "type": "integer", "minimum": 0 },
+    "updatedAt": { "type": "integer", "minimum": 0 }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "classifiedWord": {
+      "type": "object",
+      "required": ["word", "type"],
+      "properties": {
+        "word": { "type": "string" },
+        "type": { "enum": ["literal", "figurative", "slang", "abstract"] }
+      }
+    },
+    "alternativeForm": {
+      "type": "object",
+      "required": ["word", "partOfSpeech", "translation", "example"],
+      "properties": {
+        "word": { "type": "string" },
+        "partOfSpeech": {
+          "enum": [
+            "verb",
+            "phrasal-verb",
+            "noun",
+            "adjective",
+            "adverb",
+            "preposition",
+            "conjunction",
+            "interjection",
+            "acronym",
+            "idiom"
+          ]
+        },
+        "grammaticalForm": {
+          "enum": [
+            "base-form",
+            "comparative",
+            "superlative",
+            "plural",
+            "past",
+            "past-participle",
+            "present-participle",
+            "third-person-singular"
+          ]
+        },
+        "translation": { "type": "string" },
+        "example": { "type": "string" },
+        "usageNote": { "type": "string" },
+        "usageNoteEn": { "type": "string" },
+        "ipa": { "type": "string" }
+      }
+    }
+  }
+}

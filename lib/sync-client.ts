@@ -88,7 +88,7 @@ const DATABASES: DatabaseDefinition[] = [
   },
   {
     name: "rulelab-db",
-    version: 2,
+    version: 3,
     stores: [
       {
         name: "cards",
@@ -104,6 +104,7 @@ const DATABASES: DatabaseDefinition[] = [
         indexes: [{ name: "createdAt", keyPath: "createdAt" }],
       },
       { name: "meta", keyPath: "key" },
+      { name: "theoryDocuments", keyPath: "id", indexes: [{ name: "folderId", keyPath: "folderId" }, { name: "updatedAt", keyPath: "updatedAt" }] },
     ],
   },
   {

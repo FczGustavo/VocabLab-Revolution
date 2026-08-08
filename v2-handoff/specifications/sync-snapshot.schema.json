@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vocalab.local/schemas/v8-sync-snapshot-v2.json",
+  "title": "VocabLab V8 Sync Snapshot",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "exportedAt", "databases", "preferences"],
+  "properties": {
+    "version": { "const": 2 },
+    "exportedAt": { "type": "integer", "minimum": 0 },
+    "databases": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "array",
+          "maxItems": 25000,
+          "items": true
+        }
+      }
+    },
+    "preferences": {
+      "type": "object",
+      "additionalProperties": { "type": "string", "maxLength": 100000 }
+    },
+    "syncTombstones": {
+      "type": "object",
+      "propertyNames": { "enum": ["vocab", "regency", "rule", "read", "question"] },
+      "additionalProperties": {
+        "type": "array",
+        "maxItems": 5000,
+        "items": { "$ref": "#/$defs/tombstone" }
+      }
+    }
+  },
+  "$defs": {
+    "tombstone": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "storeName", "entityId", "deletedAt"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "storeName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "entityId": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "deletedAt": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}
+

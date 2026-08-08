@@ -27,6 +27,7 @@ import {
   type RuleStudyKind,
 } from "@/components/rule-study-mode";
 import { StudyProgressSheet } from "@/components/study-progress-sheet";
+import { RuleTheoryWorkspace } from "@/components/rule-theory-workspace";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -65,18 +66,25 @@ export function RulePage() {
     allCards,
     cards,
     reviewCards,
+    theoryDocuments,
     folders,
     selectedFolderId,
     setSelectedFolderId,
     isLoading,
     addFolder,
     renameFolder,
+    changeFolderKind,
     deleteFolder,
     addCard,
     updateCard,
     deleteCard,
     deleteCardsInFolder,
     moveCards,
+    addTheoryDocument,
+    updateTheoryDocument,
+    deleteTheoryDocument,
+    deleteTheoryDocumentsInFolder,
+    moveTheoryDocuments,
     addToReviewFolder,
     removeFromReviewFolder,
     recordStudyResult,
@@ -90,6 +98,7 @@ export function RulePage() {
   const [colors, setColors] = useState<Record<string, FolderColor>>({});
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
   const [folderName, setFolderName] = useState("");
+  const [folderKind, setFolderKind] = useState<RuleFolder["kind"]>("cards");
   const [managerFolder, setManagerFolder] = useState<RuleFolder | null>(null);
   const [managerName, setManagerName] = useState("");
   const [transferOpen, setTransferOpen] = useState(false);
@@ -125,6 +134,8 @@ export function RulePage() {
     });
   };
   const inside = Boolean(selectedFolderId) || isReviewSelected;
+  const selectedFolder = folders.find((folder) => folder.id === selectedFolderId);
+  const isTheorySelected = Boolean(selectedFolder && selectedFolder.kind === "theory" && !isReviewSelected);
   useEffect(() => {
     setIsInsideFolder(inside);
     setGoBack(() => {
@@ -136,8 +147,10 @@ export function RulePage() {
     return () => setIsInsideFolder(false);
   }, [inside, setGoBack, setIsInsideFolder, setSelectedFolderId]);
   useEffect(() => {
-    setOnShowStats(() => setIsStatsOpen(true));
-  }, [setOnShowStats]);
+    setOnShowStats(() => {
+      if (!isTheorySelected) setIsStatsOpen(true);
+    });
+  }, [isTheorySelected, setOnShowStats]);
 
   const activeCards = isReviewSelected
     ? reviewCards.filter(
@@ -161,6 +174,8 @@ export function RulePage() {
       ),
     [activeCards, search],
   );
+  const cardFolders = folders.filter((folder) => folder.kind !== "theory");
+  const theoryFolders = folders.filter((folder) => folder.kind === "theory");
 
   const deleteDisplayedCard = async (id: string) => {
     if (isReviewSelected) return removeFromReviewFolder(id)
@@ -186,10 +201,11 @@ export function RulePage() {
     else setFormError(result.error ?? "Could not save this card.");
   };
   const createFolder = async () => {
-    const folder = await addFolder(folderName);
+    const folder = await addFolder(folderName, folderKind);
     if (folder) {
       setFolderDialogOpen(false);
       setFolderName("");
+      setFolderKind("cards");
     }
   };
   const saveFolder = async () => {
@@ -198,15 +214,20 @@ export function RulePage() {
   };
   const performFolderDelete = async () => {
     if (!managerFolder) return;
-    const cardsHandled =
-      deleteMode === "transfer" && transferTarget
+    const handled = managerFolder.kind === "theory"
+      ? deleteMode === "transfer" && transferTarget
+        ? await moveTheoryDocuments(managerFolder.id, transferTarget)
+        : deleteMode === "delete"
+          ? await deleteTheoryDocumentsInFolder(managerFolder.id)
+          : false
+      : deleteMode === "transfer" && transferTarget
         ? await moveCards(managerFolder.id, transferTarget)
         : deleteMode === "delete"
           ? await deleteCardsInFolder(managerFolder.id)
           : false;
-    if (!cardsHandled) {
+    if (!handled) {
       setFormError(
-        "The cards could not be moved or deleted. The folder was preserved.",
+        "The contents could not be moved or deleted. The folder was preserved.",
       );
       return;
     }
@@ -221,7 +242,10 @@ export function RulePage() {
   };
   const transferFolderCards = async (targetFolderId: string) => {
     if (!managerFolder) return;
-    if (!(await moveCards(managerFolder.id, targetFolderId))) {
+    const moved = managerFolder.kind === "theory"
+      ? await moveTheoryDocuments(managerFolder.id, targetFolderId)
+      : await moveCards(managerFolder.id, targetFolderId);
+    if (!moved) {
       setFormError("The cards could not be transferred.");
       return;
     }
@@ -231,6 +255,11 @@ export function RulePage() {
     ids: string[],
     targetFolderId: string,
   ) => {
+    if (managerFolder?.kind === "theory") {
+      const docs = theoryDocuments.filter((item) => ids.includes(item.id));
+      const results = await Promise.all(docs.map((document) => updateTheoryDocument({ ...document, folderId: targetFolderId })));
+      return results.length === ids.length && results.every(Boolean);
+    }
     const results = await Promise.all(
       ids.map((id) => {
         const card = allCards.find((item) => item.id === id);
@@ -246,13 +275,14 @@ export function RulePage() {
     setIsReviewSelected(false);
     setSelectedReviewFolderId(null);
     setSearch("");
+    setStudyKind(null);
   };
   const startStudy = (kind: RuleStudyKind) => {
     setStudyPickerOpen(false);
     setStudyKind(kind);
   };
 
-  if (studyKind)
+  if (studyKind && !isTheorySelected)
     return (
       <RuleStudyMode
         cards={activeCards}
@@ -280,33 +310,33 @@ export function RulePage() {
               <Loader2 className="size-6 animate-spin text-muted-foreground" />
             </div>
           ) : (
+            <>
             <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-              {folders.map((folder) => (
+              {cardFolders.map((folder) => (
                 <FolderCard
                   key={folder.id}
                   name={folder.name}
-                  wordCount={
-                    allCards.filter((card) => card.folderId === folder.id)
-                      .length
-                  }
+                  wordCount={allCards.filter((card) => card.folderId === folder.id).length}
                   gradient={colors[folder.id] ?? "default"}
                   subtitle={`${allCards.filter((card) => card.folderId === folder.id).length} rule cards`}
                   onClick={() => openFolder(folder.id)}
                   onSettings={() => {
                     setManagerFolder(folder);
                     setManagerName(folder.name);
+                    setFormError(null);
                   }}
                 />
               ))}
               <NewFolderCard onClick={() => setFolderDialogOpen(true)} />
             </div>
+            </>
           )}
-          {reviewCards.length > 0 && (
+          {reviewCards.length > 0 && folders.some((folder) => folder.kind === "cards" && reviewCards.some((card) => card.folderId === folder.id)) && (
             <>
               <div className="my-5 border-t border-border/30" />
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                 {folders
-                  .filter((folder) =>
+                  .filter((folder) => folder.kind === "cards" &&
                     reviewCards.some((card) => card.folderId === folder.id),
                   )
                   .map((folder) => {
@@ -333,12 +363,52 @@ export function RulePage() {
               </div>
             </>
           )}
+          {theoryFolders.length > 0 && (
+            <>
+              <div className="my-5 border-t border-border/30" />
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                {theoryFolders.map((folder) => (
+                  <FolderCard
+                    key={folder.id}
+                    name={folder.name}
+                    wordCount={theoryDocuments.filter((document) => document.folderId === folder.id).length}
+                    gradient={colors[folder.id] ?? "default"}
+                    subtitle={`${theoryDocuments.filter((document) => document.folderId === folder.id).length} theory notes`}
+                    onClick={() => openFolder(folder.id)}
+                    onSettings={() => {
+                      setManagerFolder(folder);
+                      setManagerName(folder.name);
+                      setFormError(null);
+                    }}
+                  />
+                ))}
+              </div>
+            </>
+          )}
           {!isLoading && folders.length === 0 && (
             <p className="mt-6 text-center text-sm text-muted-foreground">
               Create a folder to start organizing your rules.
             </p>
           )}
         </>
+      ) : isTheorySelected ? (
+        <RuleTheoryWorkspace
+          folderId={selectedFolder!.id}
+          folderName={selectedFolder!.name}
+          documents={theoryDocuments.filter((document) => document.folderId === selectedFolder!.id)}
+          moveTargets={folders.filter((folder) => folder.kind === "theory" && folder.id !== selectedFolder!.id).map((folder) => ({ id: folder.id, name: folder.name }))}
+          onBack={() => {
+            setSelectedFolderId(null);
+            setSearch("");
+          }}
+          onAdd={(title, blocks) => addTheoryDocument(selectedFolder!.id, title, blocks)}
+          onUpdate={updateTheoryDocument}
+          onDelete={deleteTheoryDocument}
+          onMove={async (id, targetFolderId) => {
+            const document = theoryDocuments.find((item) => item.id === id)
+            return document ? updateTheoryDocument({ ...document, folderId: targetFolderId }) : false
+          }}
+        />
       ) : (
         <>
           <div className="mb-8 flex flex-col items-center gap-6 pt-4 sm:mb-10 sm:pt-6">
@@ -428,6 +498,26 @@ export function RulePage() {
             onKeyDown={(event) => event.key === "Enter" && void createFolder()}
             placeholder="e.g. Irregular plurals"
           />
+          <div className="grid grid-cols-2 gap-2">
+            {(["cards", "theory"] as const).map((kind) => (
+              <button
+                key={kind}
+                type="button"
+                onClick={() => setFolderKind(kind)}
+                className={cn(
+                  "rounded-xl border px-3 py-3 text-left transition-colors",
+                  folderKind === kind
+                    ? "border-primary bg-primary/10"
+                    : "border-border/50 hover:bg-muted/40",
+                )}
+              >
+                <span className="block text-sm font-medium">{kind === "cards" ? "Cards" : "Theory"}</span>
+                <span className="mt-1 block text-xs text-muted-foreground">
+                  {kind === "cards" ? "Cards, Study and Review" : "Reference notes, no Study"}
+                </span>
+              </button>
+            ))}
+          </div>
           <DialogFooter>
             <Button
               onClick={() => void createFolder()}
@@ -523,15 +613,21 @@ export function RulePage() {
             name={managerName}
             onNameChange={setManagerName}
             onRename={() => void saveFolder()}
+            kind={managerFolder.kind}
+            onKindChange={(kind) => { void changeFolderKind(managerFolder.id, kind).then((ok) => { if (ok) { setManagerFolder((current) => current ? { ...current, kind } : current); setFormError(null) } else setFormError("A folder type can only change while the folder is empty.") }) }}
             colors={colorOptions.map((color) => ({ id: color, className: colorClass[color], label: ({ default: "Azul", violet: "Violeta", emerald: "Verde", amber: "Amarelo", rose: "Rosa" } as Record<FolderColor, string>)[color] }))}
             activeColor={colors[managerFolder.id] ?? "default"}
             onColorChange={(color) => setColor(managerFolder.id, color as FolderColor)}
-            cardCount={allCards.filter((card) => card.folderId === managerFolder.id && !card.isReviewFolder).length}
-            groupCount={allCards.filter((card) => card.folderId === managerFolder.id && (card.studyStreak ?? 0) > 0).length}
-            groupLabel="com sequência"
+            cardCount={managerFolder.kind === "theory" ? theoryDocuments.filter((document) => document.folderId === managerFolder.id).length : allCards.filter((card) => card.folderId === managerFolder.id && !card.isReviewFolder).length}
+            groupCount={managerFolder.kind === "theory" ? 0 : allCards.filter((card) => card.folderId === managerFolder.id && (card.studyStreak ?? 0) > 0).length}
+            groupLabel={managerFolder.kind === "theory" ? "theory notes" : "with streak"}
+            itemLabel={managerFolder.kind === "theory" ? "theory notes" : "cards"}
+            transferHint={managerFolder.kind === "theory" ? "Select and move notes" : "Filter and move"}
+            showGroup={managerFolder.kind !== "theory"}
             onTransfer={() => setTransferOpen(true)}
             onDelete={() => { setDeleteMode("transfer"); setTransferTarget(""); setDeleteOpen(true) }}
           />}
+          {formError && managerFolder && <p className="mt-3 text-sm text-destructive">{formError}</p>}
           <div className="hidden">
             <div className="space-y-2">
               <label className="text-[12px] font-medium text-muted-foreground">
@@ -615,29 +711,26 @@ export function RulePage() {
         sourceName={managerFolder?.name ?? ""}
         items={
           managerFolder
-            ? allCards
-                .filter(
-                  (card) =>
-                    card.folderId === managerFolder.id && !card.isReviewFolder,
-                )
-                .map((card) => ({
-                  id: card.id,
-                  label: card.front,
-                  detail: card.back,
-                  streak: card.studyStreak ?? 0,
-                }))
+            ? managerFolder.kind === "theory"
+              ? theoryDocuments.filter((document) => document.folderId === managerFolder.id).map((document) => ({ id: document.id, label: document.title, detail: `${document.blocks.length} blocks` }))
+              : allCards.filter((card) => card.folderId === managerFolder.id && !card.isReviewFolder).map((card) => ({ id: card.id, label: card.front, detail: card.back, streak: card.studyStreak ?? 0 }))
             : []
         }
         folders={folders
-          .filter((folder) => folder.id !== managerFolder?.id)
+          .filter((folder) => folder.id !== managerFolder?.id && folder.kind === (managerFolder?.kind ?? "cards"))
           .map((folder) => ({
             id: folder.id,
             name: folder.name,
-            count: allCards.filter((card) => card.folderId === folder.id)
-              .length,
+            count: folder.kind === "theory"
+              ? theoryDocuments.filter((document) => document.folderId === folder.id).length
+              : allCards.filter((card) => card.folderId === folder.id).length,
           }))}
-        onCreateFolder={async (name) => await addFolder(name)}
+        onCreateFolder={async (name) => await addFolder(name, managerFolder?.kind ?? "cards")}
         onTransfer={transferSelectedCards}
+        itemNounSingular={managerFolder?.kind === "theory" ? "note" : "card"}
+        itemNounPlural={managerFolder?.kind === "theory" ? "notes" : "cards"}
+        showStreakFilter={managerFolder?.kind !== "theory"}
+        filterModeLabel={managerFolder?.kind === "theory" ? "All notes" : "Use filters"}
       />
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent className="max-w-[92vw] sm:max-w-sm">
@@ -645,12 +738,12 @@ export function RulePage() {
             <AlertDialogTitle>Delete folder?</AlertDialogTitle>
             <AlertDialogDescription>
               Delete “{managerFolder?.name}”? Choose whether to move or
-              permanently delete its cards.
+              permanently delete its {managerFolder?.kind === "theory" ? "theory notes" : "cards"}.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <FolderDeleteOptions label="What should happen to its cards?">
+          <FolderDeleteOptions label={`What should happen to its ${managerFolder?.kind === "theory" ? "theory notes" : "cards"}?`}>
             {folders
-              .filter((folder) => folder.id !== managerFolder?.id)
+              .filter((folder) => folder.id !== managerFolder?.id && folder.kind === (managerFolder?.kind ?? "cards"))
               .map((folder) => (
                 <FolderDeleteChoice
                   key={folder.id}
@@ -670,7 +763,7 @@ export function RulePage() {
               selected={deleteMode === "delete"}
               danger
             >
-              Delete cards
+              Delete {managerFolder?.kind === "theory" ? "theory notes" : "cards"}
             </FolderDeleteChoice>
           </FolderDeleteOptions>
           <AlertDialogFooter>
@@ -692,7 +785,7 @@ export function RulePage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <StudyProgressSheet open={isStatsOpen} onOpenChange={setIsStatsOpen} cards={activeCards} folderName={currentName} folderId={isReviewSelected ? selectedReviewFolderId : selectedFolderId === "__general__" ? null : selectedFolderId} lab="rule" />
+      <StudyProgressSheet open={isStatsOpen && !isTheorySelected} onOpenChange={setIsStatsOpen} cards={activeCards} folderName={currentName} folderId={isReviewSelected ? selectedReviewFolderId : selectedFolderId === "__general__" ? null : selectedFolderId} lab="rule" />
     </div>
   );
 }

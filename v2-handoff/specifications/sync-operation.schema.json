@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vocalab.local/schemas/v8-sync-operation.json",
+  "title": "VocabLab V8 Sync Operation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["operationId", "lab", "kind", "entityId", "occurredAt"],
+  "properties": {
+    "operationId": { "type": "string", "minLength": 12, "maxLength": 180 },
+    "lab": { "enum": ["general", "vocab", "regency", "rule", "read", "question"] },
+    "kind": { "enum": ["upsert", "delete", "preference-set", "preference-delete"] },
+    "storeName": { "type": "string", "minLength": 1, "maxLength": 100 },
+    "entityId": { "type": "string", "minLength": 1, "maxLength": 300 },
+    "value": true,
+    "occurredAt": { "type": "integer", "minimum": 0 }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "kind": { "enum": ["upsert", "delete"] } } },
+      "then": { "required": ["storeName"] }
+    },
+    {
+      "if": { "properties": { "kind": { "enum": ["upsert", "preference-set"] } } },
+      "then": { "required": ["value"] }
+    },
+    {
+      "if": { "properties": { "kind": { "enum": ["preference-set", "preference-delete"] } } },
+      "then": { "not": { "required": ["storeName"] } }
+    }
+  ]
+}
+

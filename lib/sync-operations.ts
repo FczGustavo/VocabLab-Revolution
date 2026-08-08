@@ -25,7 +25,9 @@ function hash(value: string) {
 export function syncEntityId(value: unknown, fallback: number) {
   if (value && typeof value === "object") {
     const record = value as Record<string, unknown>
-    for (const key of ["id", "key", "questionId", "catalogId"]) {
+    // Catalog entries are installed independently on every device and receive
+    // a random local `id`. The catalog id is the stable cross-device identity.
+    for (const key of ["catalogId", "id", "key", "questionId"]) {
       if (typeof record[key] === "string" || typeof record[key] === "number") {
         return `${key}:${String(record[key])}`
       }
@@ -150,6 +152,169 @@ function applyTombstones(stores: Record<string, unknown[]>) {
   }
 }
 
+const FOLDER_STORE_NAMES = new Set(["folders", "grammarFolders"])
+
+function normalizedFolderName(value: unknown) {
+  return typeof value === "string" ? value.trim().toLocaleLowerCase() : ""
+}
+
+function remapFolderReferences(
+  stores: Record<string, unknown[]>,
+  aliases: Map<string, string>,
+) {
+  if (aliases.size === 0) return
+
+  for (const [storeName, values] of Object.entries(stores)) {
+    stores[storeName] = values.map((value) => {
+      if (!value || typeof value !== "object") return value
+      const record = value as Record<string, unknown>
+      if (typeof record.folderId !== "string") return value
+      const canonicalId = aliases.get(record.folderId)
+      return canonicalId && canonicalId !== record.folderId
+        ? { ...record, folderId: canonicalId }
+        : value
+    })
+  }
+
+  // A deletion operation may have created a tombstone for the duplicate
+  // folder id. Keep that tombstone attached to the surviving local folder.
+  if (stores.syncTombstones) {
+    stores.syncTombstones = stores.syncTombstones.map((value) => {
+      if (!value || typeof value !== "object") return value
+      const tombstone = value as Record<string, unknown>
+      if (
+        typeof tombstone.storeName !== "string"
+        || !FOLDER_STORE_NAMES.has(tombstone.storeName)
+        || typeof tombstone.entityId !== "string"
+      ) return value
+      const canonicalId = aliases.get(tombstone.entityId)
+      return canonicalId ? { ...tombstone, entityId: canonicalId } : value
+    })
+  }
+}
+
+function remapFolderColorPreferences(
+  preferences: Record<string, string>,
+  aliases: Map<string, string>,
+) {
+  if (aliases.size === 0) return
+  for (const [key, value] of Object.entries(preferences)) {
+    if (!key.endsWith("_folder_colors")) continue
+    try {
+      const parsed = JSON.parse(value) as Record<string, unknown>
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) continue
+      const remapped: Record<string, unknown> = {}
+      for (const [folderId, color] of Object.entries(parsed)) {
+        remapped[aliases.get(folderId) ?? folderId] = color
+      }
+      preferences[key] = JSON.stringify(remapped)
+    } catch {
+      // A malformed visual preference must not prevent card synchronization.
+    }
+  }
+}
+
+/**
+ * New browsers create built-in folders/cards before the first remote pull.
+ * Those records have device-local ids and can collide with the same built-in
+ * records created on another device. Normalize them before IndexedDB import.
+ */
+function normalizeOperationState(
+  stores: Record<string, unknown[]>,
+  preferences: Record<string, string>,
+) {
+  const folderAliases = new Map<string, string>()
+  for (const storeName of FOLDER_STORE_NAMES) {
+    const values = stores[storeName]
+    if (!values) continue
+    const canonicalByName = new Map<string, string>()
+    const deduped: unknown[] = []
+    for (const value of values) {
+      if (!value || typeof value !== "object") {
+        deduped.push(value)
+        continue
+      }
+      const folder = value as Record<string, unknown>
+      const id = typeof folder.id === "string" ? folder.id : ""
+      const name = normalizedFolderName(folder.name)
+      if (!id || !name) {
+        deduped.push(value)
+        continue
+      }
+      const canonicalId = canonicalByName.get(name)
+      if (!canonicalId) {
+        canonicalByName.set(name, id)
+        deduped.push(value)
+        continue
+      }
+      if (canonicalId !== id) folderAliases.set(id, canonicalId)
+    }
+    stores[storeName] = deduped
+  }
+
+  remapFolderReferences(stores, folderAliases)
+  remapFolderColorPreferences(preferences, folderAliases)
+
+  // VocabLab has a unique IndexedDB index for word + part of speech. Keep the
+  // newest record when old operation rows or simultaneous device creation
+  // produce two records for that key.
+  const flashcards = stores.flashcards
+  if (flashcards) {
+    const byWordAndPartOfSpeech = new Map<string, { index: number; value: unknown }>()
+    const deduped: unknown[] = []
+    for (const value of flashcards) {
+      if (!value || typeof value !== "object") {
+        deduped.push(value)
+        continue
+      }
+      const record = value as Record<string, unknown>
+      const word = typeof record.word === "string" ? record.word.trim().toLocaleLowerCase("en-US") : ""
+      const partOfSpeech = typeof record.partOfSpeech === "string" ? record.partOfSpeech : ""
+      if (!word || !partOfSpeech) {
+        deduped.push(value)
+        continue
+      }
+      const uniqueKey = `${word}\u0000${partOfSpeech}`
+      const existing = byWordAndPartOfSpeech.get(uniqueKey)
+      if (!existing) {
+        byWordAndPartOfSpeech.set(uniqueKey, { index: deduped.length, value })
+        deduped.push(value)
+        continue
+      }
+      if (syncRecordTimestamp(value, 0) >= syncRecordTimestamp(existing.value, 0)) {
+        deduped[existing.index] = value
+        existing.value = value
+      }
+    }
+    stores.flashcards = deduped
+  }
+
+  applyTombstones(stores)
+}
+
+function findOperationEntityIndex(
+  values: unknown[],
+  operation: SyncOperation,
+) {
+  const exactIndex = values.findIndex((value, itemIndex) => syncEntityId(value, itemIndex) === operation.entityId)
+  if (exactIndex >= 0) return exactIndex
+
+  // Operations written by protocol v3 before catalogId became the preferred
+  // identity used `id:<random-device-id>`. Match those legacy rows by their
+  // stable catalog id so an upgrade cannot create duplicate built-in cards.
+  if (operation.kind === "upsert" && operation.value && typeof operation.value === "object") {
+    const catalogId = (operation.value as Record<string, unknown>).catalogId
+    if (typeof catalogId === "string" || typeof catalogId === "number") {
+      return values.findIndex((value) => (
+        Boolean(value)
+        && typeof value === "object"
+        && String((value as Record<string, unknown>).catalogId ?? "") === String(catalogId)
+      ))
+    }
+  }
+  return -1
+}
+
 export type SyncOperationState = {
   payload: SyncLabPayload
   preferenceClocks: Record<string, number>
@@ -183,7 +348,7 @@ export function applySyncOperationsState(
     }
     if (!operation.storeName) continue
     const values = stores[operation.storeName] ?? []
-    const index = values.findIndex((value, itemIndex) => syncEntityId(value, itemIndex) === operation.entityId)
+    const index = findOperationEntityIndex(values, operation)
     if (operation.kind === "upsert") {
       const current = index >= 0 ? values[index] : undefined
       if (current !== undefined && syncRecordTimestamp(current, 0) > operation.occurredAt) continue
@@ -209,7 +374,7 @@ export function applySyncOperationsState(
     }
   }
 
-  applyTombstones(stores)
+  normalizeOperationState(stores, preferences)
   return {
     payload: { ...local, exportedAt: Date.now(), stores, preferences },
     preferenceClocks,

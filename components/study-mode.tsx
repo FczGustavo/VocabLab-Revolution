@@ -111,14 +111,29 @@ export function StudyMode({ flashcards, folderName, folderId, onExit, onMarkForR
     }
   }
 
-  const advance = useCallback(async (knewIt: boolean) => {
+  const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+  const [isFlinging, setIsFlinging] = useState(false)
+  const [cardKeyIndex, setCardKeyIndex] = useState(0)
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null)
+  const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
+  const swipedRef = useRef(false)
+
+  const advance = useCallback(async (knewIt: boolean, fromSwipe?: boolean) => {
     if (!current || exiting) return
     setShowShortcutCoach(false)
     setLastRating(knewIt ? "known" : "again")
-    if (animationsEnabled) {
+
+    if (fromSwipe) {
+      // The card is already smoothly flying out via isFlinging CSS transition.
+      // Wait for fling transition to finish before switching to next card.
+      await new Promise((resolve) => window.setTimeout(resolve, 200))
+    } else if (animationsEnabled) {
+      // Button click or keyboard shortcut: animate card exit via keyframes
       setExiting(knewIt ? "known" : "again")
       await new Promise((resolve) => window.setTimeout(resolve, 260))
     }
+
     if (knewIt) {
       setKnownIds((ids) => new Set([...ids, current.id]))
       await onRecordResult?.(current.id, true)
@@ -131,23 +146,24 @@ export function StudyMode({ flashcards, folderName, folderId, onExit, onMarkForR
         await onMarkForReview?.(current.id)
       }
     }
+
     setQueue((items) => {
       const [head, ...rest] = items
       const next = knewIt ? rest : [...rest, head]
       if (knewIt && next.length === 0) setFinished(true)
       return next
     })
+
+    setFlipped(false)
+    setShowTranslations(false)
     setExiting(null)
+    setIsFlinging(false)
+    setDragOffset({ x: 0, y: 0 })
+    setCardKeyIndex((i) => i + 1)
   }, [animationsEnabled, current, exiting, onMarkAsLearned, onMarkForReview, onRecordResult, reviewMistakeThreshold, wrongCount])
 
-  const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
-  const [isDragging, setIsDragging] = useState(false)
-  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null)
-  const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
-  const swipedRef = useRef(false)
-
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (exiting || e.touches.length !== 1) return
+    if (exiting || isFlinging || e.touches.length !== 1) return
     const touch = e.touches[0]
     touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() }
     dragOffsetRef.current = { x: 0, y: 0 }
@@ -157,48 +173,37 @@ export function StudyMode({ flashcards, folderName, folderId, onExit, onMarkForR
   }
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (!touchStartRef.current || exiting || e.touches.length !== 1) return
+    if (!touchStartRef.current || exiting || isFlinging || e.touches.length !== 1) return
     const touch = e.touches[0]
     const dx = touch.clientX - touchStartRef.current.x
-    const dy = touch.clientY - touchStartRef.current.y
-    dragOffsetRef.current = { x: dx, y: dy }
-    setDragOffset({ x: dx, y: dy })
+    // Pure horizontal swipe — zero vertical drag prevents conflicts with page scrolling
+    dragOffsetRef.current = { x: dx, y: 0 }
+    setDragOffset({ x: dx, y: 0 })
   }
 
   const handleTouchEnd = () => {
-    if (!touchStartRef.current || exiting) return
-    const { x: deltaX, y: deltaY } = dragOffsetRef.current
+    if (!touchStartRef.current || exiting || isFlinging) return
+    const { x: deltaX } = dragOffsetRef.current
     const elapsed = Date.now() - touchStartRef.current.time
     touchStartRef.current = null
     setIsDragging(false)
 
     const absX = Math.abs(deltaX)
-    const absY = Math.abs(deltaY)
-    const minDistance = elapsed < 320 ? 40 : 70
+    const minDistance = elapsed < 320 ? 45 : 75
 
-    if (absX >= minDistance || absY >= minDistance) {
+    if (absX >= minDistance) {
       swipedRef.current = true
       setTimeout(() => { swipedRef.current = false }, 350)
-      setDragOffset({ x: 0, y: 0 })
-      if (absX > absY) {
-        // Horizontal swipe: Right = Known, Left = Again
-        if (deltaX > 0) {
-          void advance(true)
-        } else {
-          void advance(false)
-        }
-      } else {
-        // Vertical swipe: Up = Flip (reveal back), Down = Return to front
-        if (deltaY < 0) {
-          setFlipped(true)
-        } else {
-          setFlipped(false)
-        }
-      }
+      setIsFlinging(true)
+      const targetX = deltaX > 0
+        ? (typeof window !== "undefined" ? window.innerWidth + 120 : 500)
+        : (typeof window !== "undefined" ? -window.innerWidth - 120 : -500)
+      setDragOffset({ x: targetX, y: 0 })
+      void advance(deltaX > 0, true)
     } else {
-      // Return to center
+      // Snap back to center
       setDragOffset({ x: 0, y: 0 })
-      if (absX < 8 && absY < 8) {
+      if (absX < 8) {
         swipedRef.current = true
         setTimeout(() => { swipedRef.current = false }, 350)
         setFlipped((value) => !value)
@@ -209,6 +214,7 @@ export function StudyMode({ flashcards, folderName, folderId, onExit, onMarkForR
   const handleTouchCancel = () => {
     touchStartRef.current = null
     setIsDragging(false)
+    setIsFlinging(false)
     setDragOffset({ x: 0, y: 0 })
   }
 
@@ -228,29 +234,35 @@ export function StudyMode({ flashcards, folderName, folderId, onExit, onMarkForR
       <main className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto bg-background p-3 sm:p-8 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)]">
         <div className="my-auto flex w-full max-w-[min(100%,350px)] flex-col justify-center sm:max-w-xl">
           <div
+            key={`${current.id}-${cardKeyIndex}`}
             className={cn(
               "surface-card surface-card-elevated relative flex w-full aspect-square max-h-[calc(100dvh-205px)] sm:aspect-auto sm:max-h-none sm:h-[430px] cursor-pointer flex-col rounded-[22px] sm:rounded-[26px] bg-card p-5 sm:p-7 text-left select-none",
-              exiting === "known" && "study-card-exit-known",
-              exiting === "again" && "study-card-exit-again"
+              !isFlinging && exiting === "known" && "study-card-exit-known",
+              !isFlinging && exiting === "again" && "study-card-exit-again"
             )}
             style={{
-              transform: isDragging
-                ? `translate3d(${dragOffset.x}px, ${dragOffset.y * 0.4}px, 0) rotate(${dragOffset.x * 0.08}deg)`
+              transform: isDragging || isFlinging
+                ? `translate3d(${dragOffset.x}px, 0, 0) rotate(${dragOffset.x * 0.08}deg)`
                 : undefined,
-              transition: isDragging ? "none" : "transform 0.26s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease",
+              opacity: isFlinging ? 0 : undefined,
+              transition: isFlinging
+                ? "transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease-in"
+                : isDragging
+                ? "none"
+                : "transform 0.26s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease",
               boxShadow: isDragging && dragOffset.x > 25
                 ? `0 0 0 2px rgba(34,197,94,${Math.min(0.8, dragOffset.x / 100)}), 0 10px 25px -5px rgba(34,197,94,0.3)`
                 : isDragging && dragOffset.x < -25
                 ? `0 0 0 2px rgba(239,68,68,${Math.min(0.8, -dragOffset.x / 100)}), 0 10px 25px -5px rgba(239,68,68,0.3)`
                 : undefined,
-              touchAction: "none",
+              touchAction: "pan-y",
             }}
             onClick={() => {
               if (swipedRef.current) {
                 swipedRef.current = false
                 return
               }
-              if (!exiting) setFlipped((value) => !value)
+              if (!exiting && !isFlinging) setFlipped((value) => !value)
             }}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
@@ -258,7 +270,7 @@ export function StudyMode({ flashcards, folderName, folderId, onExit, onMarkForR
             onTouchCancel={handleTouchCancel}
             role="button"
             tabIndex={0}
-            onKeyDown={(event) => event.key === "Enter" && !exiting && setFlipped((value) => !value)}
+            onKeyDown={(event) => event.key === "Enter" && !exiting && !isFlinging && setFlipped((value) => !value)}
           >
             {isDragging && dragOffset.x > 35 && (
               <div

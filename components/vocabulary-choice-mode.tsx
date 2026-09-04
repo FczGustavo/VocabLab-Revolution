@@ -171,21 +171,21 @@ export function VocabularyChoiceMode({
   const continueStudy = async (forcedKnew?: boolean) => {
     if (!current || !selectedId || exiting) return;
     const knew = forcedKnew ?? selectedId === current.id;
-    if (animationsEnabled) {
-      setExiting(knew ? "known" : "again");
-      await new Promise((resolve) => window.setTimeout(resolve, 260));
-    }
     if (knew) {
-      await onRecordResult?.(current.id, true);
       setKnownIds((ids) => new Set([...ids, current.id]));
-      await onMarkAsLearned?.(current.id);
+      void onRecordResult?.(current.id, true);
+      void onMarkAsLearned?.(current.id);
     } else {
-      await onRecordResult?.(current.id, false);
+      void onRecordResult?.(current.id, false);
       const nextWrongCount = (wrongCounts[current.id] ?? 0) + 1;
       setWrongCounts((counts) => ({ ...counts, [current.id]: nextWrongCount }));
       if (isReviewMistakeThresholdReached(nextWrongCount, reviewMistakeThreshold)) {
-        await onMarkForReview?.(current.id);
+        void onMarkForReview?.(current.id);
       }
+    }
+    if (animationsEnabled) {
+      setExiting(knew ? "known" : "again");
+      await new Promise((resolve) => window.setTimeout(resolve, 240));
     }
     setQueue((items) => {
       const [head, ...rest] = items;
@@ -231,7 +231,7 @@ export function VocabularyChoiceMode({
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background">
-      <StudyHeader folderName={folderName} subtitle={`Multiple choice · ${queue.length} remaining`} progress={progress} current={knownIds.size} total={flashcards.length} collapsed={headerCollapsed} onCollapsedChange={setHeaderCollapsed} onExit={onExit} trailing={studyTime.enabled ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground sm:text-sm"><Clock3 className="size-3.5" />{studyTime.formatted}</span> : undefined} />
+      <StudyHeader folderName={folderName} subtitle={`Multiple choice · ${queue.length} remaining`} progress={progress} current={knownIds.size} total={flashcards.length} collapsed={headerCollapsed} onCollapsedChange={setHeaderCollapsed} onExit={onExit} trailing={studyTime.enabled ? <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold tabular-nums text-muted-foreground sm:text-sm"><Clock3 className="size-3.5 shrink-0" />{studyTime.formatted}</span> : undefined} />
       <main className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto p-3 sm:px-8 sm:py-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)]">
         <div className="my-auto flex w-full max-w-[min(100%,340px)] flex-col justify-center sm:max-w-xl">
           <div

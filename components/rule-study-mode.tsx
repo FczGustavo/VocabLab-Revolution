@@ -112,30 +112,34 @@ export function RuleStudyMode({
     setShowCoach(false)
     setLastRating(known ? "known" : "again")
 
-    if (!fromSwipe && animationsEnabled) {
-      setExiting(known ? "known" : "again")
-      await new Promise((resolve) => window.setTimeout(resolve, 260))
-    }
-
     if (known) {
-      await onRecordResult?.(current.id, true)
       setKnownIds((ids) => new Set(ids).add(current.id))
-      await onMarkAsLearned?.(current.id)
-      setQueue((items) => {
-        const next = items.slice(1)
-        if (!next.length) setFinished(true)
-        return next
-      })
+      void onRecordResult?.(current.id, true)
+      void onMarkAsLearned?.(current.id)
     } else {
-      await onRecordResult?.(current.id, false)
+      void onRecordResult?.(current.id, false)
       const nextWrongCount = (wrongCounts[current.id] ?? 0) + 1
       setWrongCounts((items) => ({
         ...items,
         [current.id]: nextWrongCount,
       }))
       if (isReviewMistakeThresholdReached(nextWrongCount, reviewMistakeThreshold)) {
-        await onMarkForReview?.(current.id)
+        void onMarkForReview?.(current.id)
       }
+    }
+
+    if (!fromSwipe && animationsEnabled) {
+      setExiting(known ? "known" : "again")
+      await new Promise((resolve) => window.setTimeout(resolve, 240))
+    }
+
+    if (known) {
+      setQueue((items) => {
+        const next = items.slice(1)
+        if (!next.length) setFinished(true)
+        return next
+      })
+    } else {
       setQueue((items) =>
         items.length <= 1 ? items : [...items.slice(1), current],
       )
@@ -244,7 +248,7 @@ export function RuleStudyMode({
   }
 
   useStudyKeyboardShortcuts({
-    enabled: !finished && Boolean(current) && !exiting,
+    enabled: !finished && Boolean(current),
     onKnown: mode === "flip" ? () => void advance(true) : undefined,
     onAgain: mode === "flip" ? () => void advance(false) : undefined,
     onReveal:
@@ -336,8 +340,8 @@ export function RuleStudyMode({
         onExit={onExit}
         trailing={
           studyTime.enabled ? (
-            <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground sm:text-sm">
-              <Clock3 className="size-3.5" />
+            <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold tabular-nums text-muted-foreground sm:text-sm">
+              <Clock3 className="size-3.5 shrink-0" />
               {studyTime.formatted}
             </span>
           ) : undefined

@@ -127,25 +127,25 @@ export function WritingMode({ flashcards, folderName, folderId, onExit, onMarkFo
 
   const advance = useCallback(async (knew: boolean) => {
     if (!current || !revealed || exiting) return
-    if (animationsEnabled) {
-      setExiting(knew ? "known" : "again")
-      await new Promise((resolve) => window.setTimeout(resolve, 260))
-    }
+    setLastRating(knew ? "known" : "again")
     if (knew) {
       setCorrect((value) => value + 1)
       setRemovedIds((ids) => new Set([...ids, current.id]))
-      await onRecordResult?.(current.id, true)
-      await onMarkAsLearned?.(current.id)
+      void onRecordResult?.(current.id, true)
+      void onMarkAsLearned?.(current.id)
     } else {
       setWrong((value) => value + 1)
-      await onRecordResult?.(current.id, false)
+      void onRecordResult?.(current.id, false)
       const nextWrongCount = (wrongCounts[current.id] ?? 0) + 1
       setWrongCounts((counts) => ({ ...counts, [current.id]: nextWrongCount }))
       if (isReviewMistakeThresholdReached(nextWrongCount, reviewMistakeThreshold)) {
-        await onMarkForReview?.(current.id)
+        void onMarkForReview?.(current.id)
       }
     }
-    setLastRating(knew ? "known" : "again")
+    if (animationsEnabled) {
+      setExiting(knew ? "known" : "again")
+      await new Promise((resolve) => window.setTimeout(resolve, 240))
+    }
 
     setQueue((items) => {
       const [head, ...rest] = items
@@ -202,7 +202,7 @@ export function WritingMode({ flashcards, folderName, folderId, onExit, onMarkFo
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background">
-      <StudyHeader folderName={folderName} subtitle={`Active recall · ${queue.length} remaining`} progress={progress} current={correct} total={totalCards} rating={lastRating} collapsed={headerCollapsed} onCollapsedChange={setHeaderCollapsed} onExit={onExit} trailing={studyTimerEnabled ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground sm:text-sm"><Clock3 className="size-3.5" />{formatElapsedTime(elapsedSeconds)}</span> : undefined} />
+      <StudyHeader folderName={folderName} subtitle={`Active recall · ${queue.length} remaining`} progress={progress} current={correct} total={totalCards} rating={lastRating} collapsed={headerCollapsed} onCollapsedChange={setHeaderCollapsed} onExit={onExit} trailing={studyTimerEnabled ? <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold tabular-nums text-muted-foreground sm:text-sm"><Clock3 className="size-3.5 shrink-0" />{formatElapsedTime(elapsedSeconds)}</span> : undefined} />
       <main className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto bg-background p-3 sm:p-8 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)]">
         <div className="my-auto flex w-full max-w-[min(100%,350px)] flex-col justify-center sm:max-w-xl">
           <div className="relative w-full aspect-square max-h-[calc(100dvh-220px)] sm:aspect-auto sm:max-h-none sm:h-[430px] select-none">

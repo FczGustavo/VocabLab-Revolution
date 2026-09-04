@@ -234,29 +234,30 @@ export function RegencyStudyMode({
     setShowShortcutCoach(false);
     setLastRating(correct ? "known" : "again");
 
-    if (!fromSwipe && animationsEnabled) {
-      setExiting(correct ? "known" : "again");
-      await new Promise((resolve) => window.setTimeout(resolve, 260));
-    }
-
     if (correct) {
-      await onRecordResult?.(current.id, true);
-      await onMarkAsLearned?.(current.id);
+      setKnown((value) => value + 1);
+      void onRecordResult?.(current.id, true);
+      void onMarkAsLearned?.(current.id);
     } else {
-      await onRecordResult?.(current.id, false);
+      void onRecordResult?.(current.id, false);
       const nextWrongCount = (wrongCounts[current.id] ?? 0) + 1;
       setWrongCounts((counts) => ({ ...counts, [current.id]: nextWrongCount }));
       if (isReviewMistakeThresholdReached(nextWrongCount, reviewMistakeThreshold)) {
-        await onMarkForReview?.(current.id);
+        void onMarkForReview?.(current.id);
       }
     }
+
+    if (!fromSwipe && animationsEnabled) {
+      setExiting(correct ? "known" : "again");
+      await new Promise((resolve) => window.setTimeout(resolve, 240));
+    }
+
     setQueue((items) => {
       const [, ...rest] = items;
       const next = correct ? rest : [...rest, current];
       if (!next.length) setFinished(true);
       return next;
     });
-    if (correct) setKnown((value) => value + 1);
     setRevealed(false);
     setFlipped(false);
     setTranslationVisible(false);
@@ -403,7 +404,7 @@ export function RegencyStudyMode({
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background">
-      <StudyHeader folderName={folderName} subtitle={`${title} · ${queue.length} remaining`} progress={progress} current={known} total={cards.length} rating={lastRating} collapsed={headerCollapsed} onCollapsedChange={setHeaderCollapsed} onExit={onExit} trailing={studyTime.enabled ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground sm:text-sm"><Clock3 className="size-3.5" />{studyTime.formatted}</span> : undefined} />
+      <StudyHeader folderName={folderName} subtitle={`${title} · ${queue.length} remaining`} progress={progress} current={known} total={cards.length} rating={lastRating} collapsed={headerCollapsed} onCollapsedChange={setHeaderCollapsed} onExit={onExit} trailing={studyTime.enabled ? <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold tabular-nums text-muted-foreground sm:text-sm"><Clock3 className="size-3.5 shrink-0" />{studyTime.formatted}</span> : undefined} />
       <StudyShortcutCoach visible={showShortcutCoach && mode === "flip"} animated={animationsEnabled} />
 
       {current && (

@@ -124,23 +124,23 @@ export function StudyMode({ flashcards, folderName, folderId, onExit, onMarkForR
     setShowShortcutCoach(false)
     setLastRating(knewIt ? "known" : "again")
 
-    if (!fromSwipe && animationsEnabled) {
-      // Button click or keyboard shortcut: animate card exit via keyframes
-      setExiting(knewIt ? "known" : "again")
-      await new Promise((resolve) => window.setTimeout(resolve, 260))
-    }
-
     if (knewIt) {
       setKnownIds((ids) => new Set([...ids, current.id]))
-      await onRecordResult?.(current.id, true)
-      await onMarkAsLearned?.(current.id)
+      void onRecordResult?.(current.id, true)
+      void onMarkAsLearned?.(current.id)
     } else {
-      await onRecordResult?.(current.id, false)
+      void onRecordResult?.(current.id, false)
       const nextWrongCount = (wrongCount[current.id] ?? 0) + 1
       setWrongCount((counts) => ({ ...counts, [current.id]: nextWrongCount }))
       if (isReviewMistakeThresholdReached(nextWrongCount, reviewMistakeThreshold)) {
-        await onMarkForReview?.(current.id)
+        void onMarkForReview?.(current.id)
       }
+    }
+
+    if (!fromSwipe && animationsEnabled) {
+      // Button click or keyboard shortcut: animate card exit via keyframes
+      setExiting(knewIt ? "known" : "again")
+      await new Promise((resolve) => window.setTimeout(resolve, 240))
     }
 
     setQueue((items) => {
@@ -251,7 +251,7 @@ export function StudyMode({ flashcards, folderName, folderId, onExit, onMarkForR
     }
   }
 
-  useStudyKeyboardShortcuts({ enabled: !finished && Boolean(current) && !exiting, onKnown: () => void advance(true), onAgain: () => void advance(false), onReveal: () => setFlipped(true), onHide: () => setFlipped(false) })
+  useStudyKeyboardShortcuts({ enabled: !finished && Boolean(current), onKnown: () => void advance(true), onAgain: () => void advance(false), onReveal: () => setFlipped(true), onHide: () => setFlipped(false) })
 
   if (finished) {
     return <div className="fixed inset-0 z-50 flex items-center justify-center bg-background p-4"><div className="w-full max-w-md rounded-3xl border border-border/40 bg-card p-8 text-center shadow-xl"><div className="mx-auto flex size-16 items-center justify-center rounded-full border border-primary/20 bg-primary/10"><Trophy className="size-8 text-primary" /></div><h2 className="mt-5 text-2xl font-semibold text-foreground/85">Session complete</h2><p className="mt-2 text-sm text-muted-foreground">You reviewed all {flashcards.length} cards from &ldquo;{folderName}&rdquo;.</p><div className="mt-6 grid grid-cols-2 gap-3"><SessionStat label="I knew it" value={known} tone="text-success" /><SessionStat label="Again" value={Object.values(wrongCount).reduce((sum, value) => sum + value, 0)} tone="text-destructive" /></div><Button className="mt-6 w-full" onClick={onExit}>Back to folder</Button></div></div>
@@ -261,7 +261,7 @@ export function StudyMode({ flashcards, folderName, folderId, onExit, onMarkForR
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background">
-      <StudyHeader folderName={folderName} subtitle={title} progress={progress} current={known} total={flashcards.length} rating={lastRating} collapsed={headerCollapsed} onCollapsedChange={setHeaderCollapsed} onExit={onExit} trailing={studyTime.enabled ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground sm:text-sm"><Clock3 className="size-3.5" />{studyTime.formatted}</span> : undefined} />
+      <StudyHeader folderName={folderName} subtitle={title} progress={progress} current={known} total={flashcards.length} rating={lastRating} collapsed={headerCollapsed} onCollapsedChange={setHeaderCollapsed} onExit={onExit} trailing={studyTime.enabled ? <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold tabular-nums text-muted-foreground sm:text-sm"><Clock3 className="size-3.5 shrink-0" />{studyTime.formatted}</span> : undefined} />
       <StudyShortcutCoach visible={showShortcutCoach} animated={animationsEnabled} />
 
       <main className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto bg-background p-3 sm:p-8 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)]">

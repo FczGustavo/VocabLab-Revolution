@@ -114,6 +114,7 @@ export function RulePage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [studyPickerOpen, setStudyPickerOpen] = useState(false);
   const [studyKind, setStudyKind] = useState<RuleStudyKind | null>(null);
+  const [studyCards, setStudyCards] = useState<RuleCard[] | null>(null);
   const [search, setSearch] = useState("");
   const [isStatsOpen, setIsStatsOpen] = useState(false);
 
@@ -276,20 +277,25 @@ export function RulePage() {
     setSelectedReviewFolderId(null);
     setSearch("");
     setStudyKind(null);
+    setStudyCards(null);
   };
   const startStudy = (kind: RuleStudyKind) => {
     setStudyPickerOpen(false);
+    setStudyCards([...activeCards]);
     setStudyKind(kind);
   };
 
   if (studyKind && !isTheorySelected)
     return (
       <RuleStudyMode
-        cards={activeCards}
+        cards={studyCards ?? activeCards}
         folderName={currentName}
         folderId={isReviewSelected ? selectedReviewFolderId : selectedFolderId === "__general__" ? null : selectedFolderId}
         mode={studyKind}
-        onExit={() => setStudyKind(null)}
+        onExit={() => {
+          setStudyKind(null);
+          setStudyCards(null);
+        }}
         onMarkForReview={isReviewSelected ? undefined : addToReviewFolder}
         onMarkAsLearned={isReviewSelected ? removeFromReviewFolder : undefined}
         onRecordResult={recordStudyResult}

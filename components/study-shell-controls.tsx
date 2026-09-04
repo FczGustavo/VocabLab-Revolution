@@ -10,10 +10,18 @@ export function StudyHeader({ folderName, subtitle, progress, current, total, ra
   return (
     <div className={cn("relative z-50 shrink-0 transition-[height] duration-300 ease-in-out", collapsed ? "h-0" : "h-[65px]")}>
       <header className={cn("absolute inset-x-0 top-0 flex h-[65px] items-center gap-3 border-b border-border/40 bg-background px-4 py-3 transition-transform duration-300 ease-in-out sm:px-6", collapsed && "-translate-y-full")}>
-        <Button variant="ghost" size="icon" onClick={onExit} className="text-muted-foreground" aria-label="Exit study"><X className="size-5" /></Button>
-        <div className="min-w-0 max-w-[42%] sm:max-w-none"><p className="line-clamp-2 break-words text-sm font-medium leading-snug text-foreground/85 [overflow-wrap:anywhere]">{folderName}</p><p className="mt-0.5 line-clamp-2 break-words text-xs leading-snug text-muted-foreground [overflow-wrap:anywhere]">{subtitle}</p></div>
-        <div className="mx-3 h-1.5 flex-1 overflow-hidden rounded-full bg-muted"><div className={cn("h-full rounded-full transition-all duration-300", rating === "known" ? "bg-success" : rating === "again" ? "bg-destructive/40" : "bg-primary")} style={{ width: `${progress}%` }} /></div>
-        <span className="text-xs font-medium text-muted-foreground">{current}/{total}</span>
+        <Button variant="ghost" size="icon" onClick={onExit} className="text-muted-foreground shrink-0" aria-label="Exit study"><X className="size-5" /></Button>
+        <div className="min-w-0 max-w-[38%] sm:max-w-[260px] shrink-0">
+          <p className="line-clamp-1 truncate text-sm font-medium leading-snug text-foreground/85">{folderName}</p>
+          <p className="mt-0.5 line-clamp-1 truncate text-xs leading-snug text-muted-foreground">{subtitle}</p>
+        </div>
+        <div className="mx-2 sm:mx-4 h-2 flex-1 overflow-hidden rounded-full bg-muted/60">
+          <div
+            className="h-full rounded-full bg-primary transition-[width] duration-400 ease-[cubic-bezier(0.16,1,0.3,1)]"
+            style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+          />
+        </div>
+        <span className="text-xs font-medium tabular-nums text-muted-foreground shrink-0 select-none">{current}/{total}</span>
         {trailing}
       </header>
       <button type="button" onClick={() => onCollapsedChange(!collapsed)} aria-expanded={!collapsed} aria-label={collapsed ? "Show study progress" : "Hide study progress"} title={collapsed ? "Show progress" : "Hide progress"} className={cn("fixed left-1/2 z-[60] flex size-7 -translate-x-1/2 items-center justify-center rounded-full border border-border/50 bg-background/95 text-muted-foreground shadow-sm backdrop-blur transition-[top,background-color,color] duration-300 hover:bg-muted hover:text-foreground", collapsed ? "top-2" : "top-[51px]")}>

@@ -254,28 +254,16 @@ export function VocabularyChoiceMode({
                 {showGrammaticalForm && <GrammaticalFormBadge form={current.grammaticalForm} />}
                 <VerbTypeBadge verbType={current.verbType} />
               </div>
-              <div
-                className="flex shrink-0 gap-1"
-                data-interactive="true"
-                onClick={(e) => e.stopPropagation()}
-                onTouchStart={(e) => e.stopPropagation()}
-                onTouchEnd={(e) => e.stopPropagation()}
-              >
+              <div className="flex shrink-0 gap-1">
                 {selectedId && current.exampleTranslation && (
                   <Button
                     variant="ghost"
                     size="icon"
                     className={cn(
-                      "size-8 rounded-lg",
+                      "size-7",
                       showTranslations && "bg-primary/10 text-primary",
                     )}
-                    title={showTranslations ? "Ocultar tradução" : "Traduzir"}
-                    aria-label={showTranslations ? "Ocultar tradução" : "Traduzir"}
-                    data-interactive="true"
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      setShowTranslations((value) => !value)
-                    }}
+                    onClick={() => setShowTranslations((value) => !value)}
                   >
                     <Languages className="size-4" />
                   </Button>
@@ -283,14 +271,8 @@ export function VocabularyChoiceMode({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-8 rounded-lg"
-                  title="Ouvir pronúncia"
-                  aria-label="Ouvir pronúncia"
-                  data-interactive="true"
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    void speak()
-                  }}
+                  className="size-7"
+                  onClick={() => void speak()}
                 >
                   {resultFor(current.word, pronunciationVoice).status ===
                   "loading" ? (

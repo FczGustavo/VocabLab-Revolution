@@ -241,61 +241,7 @@ export function WritingMode({ flashcards, folderName, folderId, onExit, onMarkFo
 
 function CardHeader({ card, onSpeak, onToggleTranslations, translationsShown }: { card: Flashcard; onSpeak: () => void; onToggleTranslations?: () => void; translationsShown?: boolean }) {
   const { showGrammaticalForm } = useAiPreferences()
-  return (
-    <div
-      className="mb-4 flex items-center justify-between gap-3"
-      data-interactive="true"
-      onClick={(e) => e.stopPropagation()}
-      onTouchStart={(e) => e.stopPropagation()}
-      onTouchEnd={(e) => e.stopPropagation()}
-    >
-      <div className="flex min-w-0 flex-nowrap items-center gap-1.5 overflow-x-auto whitespace-nowrap scrollbar-hide">
-        <Badge className={cn("h-5 border-0 px-2 text-[10px] font-medium leading-none", partOfSpeechStudyColors[card.partOfSpeech || "noun"])}>
-          {partOfSpeechLabels[card.partOfSpeech || "noun"]}
-        </Badge>
-        {showGrammaticalForm && <GrammaticalFormBadge form={card.grammaticalForm} />}
-        <VerbTypeBadge verbType={card.verbType} />
-      </div>
-      <div
-        className="flex shrink-0 items-center gap-1"
-        data-interactive="true"
-        onClick={(e) => e.stopPropagation()}
-        onTouchStart={(e) => e.stopPropagation()}
-        onTouchEnd={(e) => e.stopPropagation()}
-      >
-        {onToggleTranslations && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn("size-8 rounded-lg", translationsShown ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-primary")}
-            title={translationsShown ? "Ocultar tradução" : "Traduzir"}
-            aria-label={translationsShown ? "Ocultar tradução" : "Traduzir"}
-            data-interactive="true"
-            onClick={(event) => {
-              event.stopPropagation()
-              onToggleTranslations()
-            }}
-          >
-            <Languages className="size-4" />
-          </Button>
-        )}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-8 rounded-lg text-muted-foreground hover:text-primary"
-          title="Ouvir pronúncia"
-          aria-label="Ouvir pronúncia"
-          data-interactive="true"
-          onClick={(event) => {
-            event.stopPropagation()
-            onSpeak()
-          }}
-        >
-          <Volume2 className="size-4" />
-        </Button>
-      </div>
-    </div>
-  )
+  return <div className="mb-4 flex items-center justify-between gap-3"><div className="flex min-w-0 flex-nowrap items-center gap-1.5 overflow-x-auto whitespace-nowrap scrollbar-hide"><Badge className={cn("h-5 border-0 px-2 text-[10px] font-medium leading-none", partOfSpeechStudyColors[card.partOfSpeech || "noun"])}>{partOfSpeechLabels[card.partOfSpeech || "noun"]}</Badge>{showGrammaticalForm && <GrammaticalFormBadge form={card.grammaticalForm} />}<VerbTypeBadge verbType={card.verbType} /></div><div className="flex shrink-0 items-center gap-1">{onToggleTranslations && <Button variant="ghost" size="icon" className={cn("size-7 rounded-lg", translationsShown ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-primary")} onClick={onToggleTranslations}><Languages className="size-4" /></Button>}<Button variant="ghost" size="icon" className="size-7 rounded-lg text-muted-foreground hover:text-primary" onClick={onSpeak}><Volume2 className="size-4" /></Button></div></div>
 }
 
 function Stat({ label, value, tone }: { label: string; value: string | number; tone: string }) {

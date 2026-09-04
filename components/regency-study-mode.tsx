@@ -267,16 +267,8 @@ export function RegencyStudyMode({
     setCardKeyIndex((i) => i + 1);
   };
 
-  const isInteractiveTarget = (target: EventTarget | null) => {
-    return Boolean((target as HTMLElement | null)?.closest("button, [role='button'], a, input, select, textarea, [data-interactive='true']"));
-  };
-
   const handleTouchStart = (e: React.TouchEvent) => {
     if (mode !== "flip" || exiting || isFlingingRef.current || e.touches.length !== 1) return;
-    if (isInteractiveTarget(e.target)) {
-      touchStartRef.current = null;
-      return;
-    }
     const touch = e.touches[0];
     touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
     dragOffsetRef.current.x = 0;
@@ -288,10 +280,6 @@ export function RegencyStudyMode({
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (mode !== "flip" || !touchStartRef.current || exiting || isFlingingRef.current || e.touches.length !== 1) return;
-    if (isInteractiveTarget(e.target)) {
-      touchStartRef.current = null;
-      return;
-    }
     const touch = e.touches[0];
     const dx = touch.clientX - touchStartRef.current.x;
     dragOffsetRef.current.x = dx;
@@ -314,12 +302,8 @@ export function RegencyStudyMode({
     }
   };
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
+  const handleTouchEnd = () => {
     if (mode !== "flip" || !touchStartRef.current || exiting || isFlingingRef.current) return;
-    if (isInteractiveTarget(e.target)) {
-      touchStartRef.current = null;
-      return;
-    }
     if (rafIdRef.current !== null) {
       cancelAnimationFrame(rafIdRef.current);
       rafIdRef.current = null;
@@ -438,12 +422,11 @@ export function RegencyStudyMode({
                 exiting === "known" && "study-card-exit-known",
                 exiting === "again" && "study-card-exit-again",
               )}
-              onClick={(event) => {
+              onClick={() => {
                 if (swipedRef.current) {
                   swipedRef.current = false;
                   return;
                 }
-                if (isInteractiveTarget(event.target)) return;
                 if (mode === "flip" && !exiting && !isFlingingRef.current) setFlipped((value) => !value);
               }}
               onTouchStart={handleTouchStart}
@@ -452,36 +435,24 @@ export function RegencyStudyMode({
               onTouchCancel={handleTouchCancel}
               role={mode === "flip" ? "button" : undefined}
               tabIndex={mode === "flip" ? 0 : undefined}
-              onKeyDown={(event) => {
-                if (isInteractiveTarget(event.target)) return;
-                if (
-                  event.key === "Enter" &&
-                  mode === "flip" &&
-                  !exiting &&
-                  !isFlingingRef.current
-                ) {
-                  setFlipped((value) => !value);
-                }
-              }}
+              onKeyDown={(event) =>
+                event.key === "Enter" &&
+                mode === "flip" &&
+                !exiting &&
+                !isFlingingRef.current &&
+                setFlipped((value) => !value)
+              }
             >
-              <div 
-                className="absolute right-7 top-7 z-10 flex items-center gap-1"
-                data-interactive="true"
-                onClick={(event) => event.stopPropagation()}
-                onTouchStart={(event) => event.stopPropagation()}
-                onTouchEnd={(event) => event.stopPropagation()}
-              >
+              <div className="absolute right-7 top-7 z-10 flex items-center gap-1">
                 {display.showTranslation && current.exampleTranslation && (
                   <Button
                     variant="ghost"
                     size="icon"
                     className={cn(
-                      "size-8 rounded-lg text-muted-foreground hover:text-primary",
+                      "size-7 rounded-lg text-muted-foreground hover:text-primary",
                       translationVisible && "bg-primary/10 text-primary",
                     )}
-                    title="Alternar tradução do exemplo"
-                    aria-label="Alternar tradução do exemplo"
-                    data-interactive="true"
+                    title="Toggle example translation"
                     onClick={(event) => {
                       event.stopPropagation();
                       setTranslationVisible((value) => !value);
@@ -494,20 +465,14 @@ export function RegencyStudyMode({
                   disabled={audioStatus === "loading"}
                   variant="ghost"
                   size="icon"
-                  className={cn(
-                    "size-8 rounded-lg text-muted-foreground hover:text-primary",
-                    audioStatus === "loading" && "pointer-events-auto cursor-wait opacity-50",
-                  )}
+                  className="size-7 rounded-lg text-muted-foreground hover:text-primary"
                   title={
                     answerVisible
                       ? "Play full example with AI audio"
                       : "Play term with AI audio"
                   }
-                  aria-label="Ouvir áudio"
-                  data-interactive="true"
                   onClick={(event) => {
                     event.stopPropagation();
-                    if (audioStatus === "loading") return;
                     void speak(audioText);
                   }}
                 >

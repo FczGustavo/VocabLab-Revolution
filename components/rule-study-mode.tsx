@@ -153,16 +153,8 @@ export function RuleStudyMode({
     setCardKeyIndex((i) => i + 1)
   }
 
-  const isInteractiveTarget = (target: EventTarget | null) => {
-    return Boolean((target as HTMLElement | null)?.closest("button, [role='button'], a, input, select, textarea, [data-interactive='true']"))
-  }
-
   const handleTouchStart = (e: React.TouchEvent) => {
     if (mode !== "flip" || exiting || isFlingingRef.current || e.touches.length !== 1) return
-    if (isInteractiveTarget(e.target)) {
-      touchStartRef.current = null
-      return
-    }
     const touch = e.touches[0]
     touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() }
     dragOffsetRef.current.x = 0
@@ -174,10 +166,6 @@ export function RuleStudyMode({
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (mode !== "flip" || !touchStartRef.current || exiting || isFlingingRef.current || e.touches.length !== 1) return
-    if (isInteractiveTarget(e.target)) {
-      touchStartRef.current = null
-      return
-    }
     const touch = e.touches[0]
     const dx = touch.clientX - touchStartRef.current.x
     dragOffsetRef.current.x = dx
@@ -200,12 +188,8 @@ export function RuleStudyMode({
     }
   }
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
+  const handleTouchEnd = () => {
     if (mode !== "flip" || !touchStartRef.current || exiting || isFlingingRef.current) return
-    if (isInteractiveTarget(e.target)) {
-      touchStartRef.current = null
-      return
-    }
     if (rafIdRef.current !== null) {
       cancelAnimationFrame(rafIdRef.current)
       rafIdRef.current = null
@@ -264,21 +248,17 @@ export function RuleStudyMode({
   }
 
   useStudyKeyboardShortcuts({
-    enabled: Boolean(current) && !finished && !exiting,
-    onKnown: () => (mode === "flip" || revealed ? void advance(true) : undefined),
-    onAgain: () => (mode === "flip" || revealed ? void advance(false) : undefined),
-    onReveal: () =>
+    enabled: !finished && Boolean(current),
+    onKnown: mode === "flip" ? () => void advance(true) : undefined,
+    onAgain: mode === "flip" ? () => void advance(false) : undefined,
+    onReveal:
       mode === "flip"
-        ? setFlipped(true)
-        : mode === "recall"
-          ? setRevealed(true)
-          : undefined,
-    onHide: () =>
+        ? () => setFlipped(true)
+        : () => setRevealed(true),
+    onHide:
       mode === "flip"
-        ? setFlipped(false)
-        : mode === "recall"
-          ? setRevealed(false)
-          : undefined,
+        ? () => setFlipped(false)
+        : () => setRevealed(false),
   })
 
   const progress = cards.length ? (knownIds.size / cards.length) * 100 : 0
@@ -383,12 +363,11 @@ export function RuleStudyMode({
               exiting === "known" && "study-card-exit-known",
               exiting === "again" && "study-card-exit-again",
             )}
-            onClick={(event) => {
+            onClick={() => {
               if (swipedRef.current) {
                 swipedRef.current = false
                 return
               }
-              if (isInteractiveTarget(event.target)) return
               if (mode === "flip" && !exiting && !isFlingingRef.current) setFlipped((value) => !value)
             }}
             onTouchStart={handleTouchStart}
@@ -396,7 +375,6 @@ export function RuleStudyMode({
             onTouchEnd={handleTouchEnd}
             onTouchCancel={handleTouchCancel}
             onKeyDown={(event) => {
-              if (isInteractiveTarget(event.target)) return
               if (mode === "flip" && event.key === "Enter" && !exiting && !isFlingingRef.current) {
                 setFlipped((value) => !value)
               }

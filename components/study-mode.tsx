@@ -157,16 +157,8 @@ export function StudyMode({ flashcards, folderName, folderId, onExit, onMarkForR
     setCardKeyIndex((i) => i + 1)
   }, [animationsEnabled, current, exiting, onMarkAsLearned, onMarkForReview, onRecordResult, reviewMistakeThreshold, wrongCount])
 
-  const isInteractiveTarget = (target: EventTarget | null) => {
-    return Boolean((target as HTMLElement | null)?.closest("button, [role='button'], a, input, select, textarea, [data-interactive='true']"))
-  }
-
   const handleTouchStart = (e: React.TouchEvent) => {
     if (exiting || isFlingingRef.current || e.touches.length !== 1) return
-    if (isInteractiveTarget(e.target)) {
-      touchStartRef.current = null
-      return
-    }
     const touch = e.touches[0]
     touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() }
     dragOffsetRef.current.x = 0
@@ -178,10 +170,6 @@ export function StudyMode({ flashcards, folderName, folderId, onExit, onMarkForR
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!touchStartRef.current || exiting || isFlingingRef.current || e.touches.length !== 1) return
-    if (isInteractiveTarget(e.target)) {
-      touchStartRef.current = null
-      return
-    }
     const touch = e.touches[0]
     const dx = touch.clientX - touchStartRef.current.x
     dragOffsetRef.current.x = dx
@@ -204,12 +192,8 @@ export function StudyMode({ flashcards, folderName, folderId, onExit, onMarkForR
     }
   }
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
+  const handleTouchEnd = () => {
     if (!touchStartRef.current || exiting || isFlingingRef.current) return
-    if (isInteractiveTarget(e.target)) {
-      touchStartRef.current = null
-      return
-    }
     if (rafIdRef.current !== null) {
       cancelAnimationFrame(rafIdRef.current)
       rafIdRef.current = null
@@ -290,12 +274,11 @@ export function StudyMode({ flashcards, folderName, folderId, onExit, onMarkForR
               exiting === "known" && "study-card-exit-known",
               exiting === "again" && "study-card-exit-again"
             )}
-            onClick={(event) => {
+            onClick={() => {
               if (swipedRef.current) {
                 swipedRef.current = false
                 return
               }
-              if (isInteractiveTarget(event.target)) return
               if (!exiting && !isFlingingRef.current) setFlipped((value) => !value)
             }}
             onTouchStart={handleTouchStart}
@@ -304,12 +287,7 @@ export function StudyMode({ flashcards, folderName, folderId, onExit, onMarkForR
             onTouchCancel={handleTouchCancel}
             role="button"
             tabIndex={0}
-            onKeyDown={(event) => {
-              if (isInteractiveTarget(event.target)) return
-              if (event.key === "Enter" && !exiting && !isFlingingRef.current) {
-                setFlipped((value) => !value)
-              }
-            }}
+            onKeyDown={(event) => event.key === "Enter" && !exiting && !isFlingingRef.current && setFlipped((value) => !value)}
           >
             {flipped ? <VocabularyBack card={current} showContext={showContext} contextInPortuguese={contextInPortuguese} showIPA={showIPA} includeMultipleTranslations={includeMultipleTranslations} translationsShown={showTranslations} onToggleTranslations={() => setShowTranslations((value) => !value)} onSpeak={() => void speak(current.word)} /> : <VocabularyFront card={current} onSpeak={() => void speak(current.word)} />}
           </div>
@@ -324,38 +302,7 @@ export function StudyMode({ flashcards, folderName, folderId, onExit, onMarkForR
 }
 
 function VocabularyFront({ card, onSpeak }: { card: Flashcard; onSpeak: () => void }) {
-  return (
-    <>
-      <div
-        className="flex items-center justify-between"
-        data-interactive="true"
-        onClick={(event) => event.stopPropagation()}
-        onTouchStart={(event) => event.stopPropagation()}
-        onTouchEnd={(event) => event.stopPropagation()}
-      >
-        <CardBadges card={card} />
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-8 rounded-lg text-muted-foreground hover:text-primary"
-          title="Ouvir pronúncia"
-          aria-label="Ouvir pronúncia"
-          data-interactive="true"
-          onClick={(event) => {
-            event.stopPropagation()
-            onSpeak()
-          }}
-        >
-          <Volume2 className="size-4" />
-        </Button>
-      </div>
-      <div className="flex flex-1 flex-col items-center justify-center text-center">
-        <h2 className="text-4xl xs:text-5xl font-medium tracking-tight text-foreground/80 sm:text-6xl break-words px-2">
-          {card.word}
-        </h2>
-      </div>
-    </>
-  )
+  return <><div className="flex items-center justify-between"><CardBadges card={card} /><Button variant="ghost" size="icon" className="size-7 rounded-lg text-muted-foreground hover:text-primary" onClick={(event) => { event.stopPropagation(); onSpeak() }}><Volume2 className="size-4" /></Button></div><div className="flex flex-1 flex-col items-center justify-center text-center"><h2 className="text-4xl xs:text-5xl font-medium tracking-tight text-foreground/80 sm:text-6xl break-words px-2">{card.word}</h2></div></>
 }
 
 function VocabularyBack({ card, showContext, contextInPortuguese, showIPA, includeMultipleTranslations, translationsShown, onToggleTranslations, onSpeak }: { card: Flashcard; showContext: boolean; contextInPortuguese: boolean; showIPA: boolean; includeMultipleTranslations: boolean; translationsShown: boolean; onToggleTranslations: () => void; onSpeak: () => void }) {
@@ -365,82 +312,7 @@ function VocabularyBack({ card, showContext, contextInPortuguese, showIPA, inclu
   const falseCognateSecondary = contextInPortuguese ? card.falseCognate?.warningEn : card.falseCognate?.warning
   const showFalseCognateContrast = card.catalogId?.startsWith("false-cognate-") === true && card.falseCognate?.isFalseCognate === true
   const translation = includeMultipleTranslations ? card.translation : card.translation.split("/")[0]?.trim()
-  return (
-    <div className="animate-in fade-in duration-200 flex h-full min-h-0 flex-col">
-      <div
-        className="flex items-center justify-between"
-        data-interactive="true"
-        onClick={(event) => event.stopPropagation()}
-        onTouchStart={(event) => event.stopPropagation()}
-        onTouchEnd={(event) => event.stopPropagation()}
-      >
-        <CardBadges card={card} />
-        <div
-          className="flex items-center gap-1"
-          data-interactive="true"
-          onClick={(event) => event.stopPropagation()}
-          onTouchStart={(event) => event.stopPropagation()}
-          onTouchEnd={(event) => event.stopPropagation()}
-        >
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              "size-8 rounded-lg",
-              translationsShown ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-primary"
-            )}
-            title={translationsShown ? "Ocultar tradução" : "Traduzir"}
-            aria-label={translationsShown ? "Ocultar tradução" : "Traduzir"}
-            data-interactive="true"
-            onClick={(event) => {
-              event.stopPropagation()
-              onToggleTranslations()
-            }}
-          >
-            <Languages className="size-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-8 rounded-lg text-muted-foreground hover:text-primary"
-            title="Ouvir pronúncia"
-            aria-label="Ouvir pronúncia"
-            data-interactive="true"
-            onClick={(event) => {
-              event.stopPropagation()
-              onSpeak()
-            }}
-          >
-            <Volume2 className="size-4" />
-          </Button>
-        </div>
-      </div>
-      <div className="flex-1 min-h-0 space-y-3 sm:space-y-4 overflow-y-auto pt-3 sm:pt-5 pr-1 scrollbar-hide">
-        <p className="text-xl sm:text-2xl font-medium text-foreground/80 sm:text-4xl">{translation}</p>
-        {showIPA && card.ipa && <p className="-mt-2 text-sm text-muted-foreground">/{card.ipa}/</p>}
-        <div className="border-t border-border/40" />
-        <section>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Example</p>
-          <p className="mt-2 sm:mt-3 text-base sm:text-lg italic leading-relaxed text-foreground/80">&ldquo;{card.example}&rdquo;</p>
-          {translationsShown && card.exampleTranslation && <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-muted-foreground">{card.exampleTranslation}</p>}
-        </section>
-        {showContext && (card.usageNote || card.usageNoteEn) && (
-          <section className="rounded-xl bg-muted/30 p-3 sm:p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Context</p>
-            {contextPrimary && <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm text-foreground/80">{contextPrimary}</p>}
-            {translationsShown && contextSecondary && <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm text-muted-foreground">{contextSecondary}</p>}
-            {showFalseCognateContrast && falseCognatePrimary && (
-              <div className="mt-3 sm:mt-4 border-t border-border/50 pt-3 sm:pt-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">False cognate</p>
-                <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm text-foreground/80">{falseCognatePrimary}</p>
-                {translationsShown && falseCognateSecondary && <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm text-muted-foreground">{falseCognateSecondary}</p>}
-              </div>
-            )}
-          </section>
-        )}
-      </div>
-    </div>
-  )
+  return <div className="animate-in fade-in duration-200 flex h-full min-h-0 flex-col"><div className="flex items-center justify-between"><CardBadges card={card} /><div className="flex gap-1"><Button variant="ghost" size="icon" className={cn("size-7 rounded-lg", translationsShown ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-primary")} onClick={(event) => { event.stopPropagation(); onToggleTranslations() }}><Languages className="size-4" /></Button><Button variant="ghost" size="icon" className="size-7 rounded-lg text-muted-foreground hover:text-primary" onClick={(event) => { event.stopPropagation(); onSpeak() }}><Volume2 className="size-4" /></Button></div></div><div className="flex-1 min-h-0 space-y-3 sm:space-y-4 overflow-y-auto pt-3 sm:pt-5 pr-1 scrollbar-hide"><p className="text-xl sm:text-2xl font-medium text-foreground/80 sm:text-4xl">{translation}</p>{showIPA && card.ipa && <p className="-mt-2 text-sm text-muted-foreground">/{card.ipa}/</p>}<div className="border-t border-border/40" /><section><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Example</p><p className="mt-2 sm:mt-3 text-base sm:text-lg italic leading-relaxed text-foreground/80">&ldquo;{card.example}&rdquo;</p>{translationsShown && card.exampleTranslation && <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-muted-foreground">{card.exampleTranslation}</p>}</section>{showContext && (card.usageNote || card.usageNoteEn) && <section className="rounded-xl bg-muted/30 p-3 sm:p-4"><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Context</p>{contextPrimary && <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm text-foreground/80">{contextPrimary}</p>}{translationsShown && contextSecondary && <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm text-muted-foreground">{contextSecondary}</p>}{showFalseCognateContrast && falseCognatePrimary && <div className="mt-3 sm:mt-4 border-t border-border/50 pt-3 sm:pt-4"><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">False cognate</p><p className="mt-1.5 sm:mt-2 text-xs sm:text-sm text-foreground/80">{falseCognatePrimary}</p>{translationsShown && falseCognateSecondary && <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm text-muted-foreground">{falseCognateSecondary}</p>}</div>}</section>}</div></div>
 }
 
 function CardBadges({ card }: { card: Flashcard }) {
@@ -451,4 +323,3 @@ function CardBadges({ card }: { card: Flashcard }) {
 function SessionStat({ label, value, tone }: { label: string; value: number; tone: string }) {
   return <div className="rounded-xl border border-border/40 bg-muted/30 p-3 text-left"><p className={cn("text-2xl font-semibold", tone)}>{value}</p><p className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p></div>
 }
-

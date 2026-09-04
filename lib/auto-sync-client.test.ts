@@ -177,4 +177,17 @@ describe("mergeLabPayloads", () => {
       expect.objectContaining({ storeName: "flashcards", entityId: "1" }),
     ])
   })
+
+  it("does not resurrect a catalog card covered by a deletion tombstone with catalogId and prefix", () => {
+    const merged = mergeLabPayloads(
+      payload({ flashcards: [{ id: "random-pc-id", catalogId: "catalog-work", word: "work out", updatedAt: 1 }] }),
+      payload({
+        flashcards: [],
+        syncTombstones: [{ id: "flashcards:catalog-work", storeName: "flashcards", entityId: "catalogId:catalog-work", deletedAt: 10 }],
+      }),
+      payload({ flashcards: [{ id: "random-pc-id", catalogId: "catalog-work", word: "work out", updatedAt: 5 }] }),
+    )
+
+    expect(merged.stores.flashcards).toEqual([])
+  })
 })

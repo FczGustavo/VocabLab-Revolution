@@ -160,4 +160,23 @@ describe("multiwriter sync operations", () => {
 
     expect(merged.preferences.theme).toBe("newer")
   })
+
+  it("deletes a catalog card when receiving a legacy delete operation with id: prefix matching record.id", () => {
+    const local = payload([{ id: "random-pc-id", catalogId: "catalog-work", word: "work out", updatedAt: 100 }])
+    const merged = applySyncOperations(local, [{
+      operationId: "phone-device-vocab-delete-1",
+      lab: "vocab",
+      kind: "delete",
+      storeName: "flashcards",
+      entityId: "id:random-pc-id",
+      occurredAt: 200,
+    }])
+
+    expect(merged.stores.flashcards).toEqual([])
+    expect(merged.stores.syncTombstones).toContainEqual(expect.objectContaining({
+      storeName: "flashcards",
+      entityId: "random-pc-id",
+      deletedAt: 200,
+    }))
+  })
 })

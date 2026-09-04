@@ -35,12 +35,18 @@ const EVENT_LABS: Record<string, SyncLabId[]> = {
 }
 
 function syncErrorMessage(error: unknown) {
-  if (error instanceof Error && error.message) return error.message
-  if (error && typeof error === "object" && "message" in error) {
-    const message = String((error as { message?: unknown }).message ?? "").trim()
-    if (message) return message
+  let message = "Falha de sincronização."
+  if (error instanceof Error && error.message) {
+    message = error.message
+  } else if (error && typeof error === "object" && "message" in error) {
+    const raw = String((error as { message?: unknown }).message ?? "").trim()
+    if (raw) message = raw
   }
-  return "Falha de sincronização."
+
+  if (message.includes("autorizado") || message.includes("autorização")) {
+    return "Dispositivo não autorizado. Confirme o PIN ou conecte novamente com a Palavra-Chave."
+  }
+  return message
 }
 
 export function AutoSyncProvider() {
@@ -49,13 +55,15 @@ export function AutoSyncProvider() {
   useEffect(() => {
     if (!isLoaded) return undefined
     if (!isValid || !isIdentityLocked || !isSyncEnabled) {
+      let message = "Escolha uma palavra e confirme os dados para ativar a sincronização automática."
+      if (isValid && isIdentityLocked && !isSyncEnabled) {
+        message = "A sincronização está pausada neste dispositivo."
+      } else if (isValid && !isIdentityLocked) {
+        message = "Confirme a palavra e o PIN para ativar a sincronização automática."
+      }
       publishAutoSyncState({
         state: "idle",
-        message: !isSyncEnabled && isValid && isIdentityLocked
-          ? "A sincronização está pausada neste dispositivo."
-          : isValid
-            ? "Confirme a palavra e o PIN para ativar a sincronização automática."
-            : "Escolha uma palavra e confirme os dados para ativar a sincronização automática.",
+        message,
       })
       return undefined
     }

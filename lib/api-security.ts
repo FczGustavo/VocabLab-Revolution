@@ -72,7 +72,11 @@ export function guardApiRequest(
   } else if (current.count >= limit) {
     const retryAfter = Math.max(1, Math.ceil((current.resetAt - now) / 1000))
     return NextResponse.json(
-      { error: "Muitas solicitações. Tente novamente em instantes." },
+      {
+        error: "Muitas solicitações. Tente novamente em instantes.",
+        code: "RATE_LIMIT_EXCEEDED",
+        retryAfter,
+      },
       { status: 429, headers: { "Retry-After": String(retryAfter) } },
     )
   } else {

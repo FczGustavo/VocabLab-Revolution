@@ -312,6 +312,21 @@ function findOperationEntityIndex(
       ))
     }
   }
+
+  // Delete operations from protocol v3 carry an entityId like `id:<random>`
+  // but the local record now uses `catalogId:<stable>` as its identity. Try
+  // matching by the raw id value stripped of its prefix so deletions of
+  // legacy catalog cards can still locate the correct record.
+  if (operation.kind === "delete" && operation.entityId.includes(":")) {
+    const rawId = operation.entityId.replace(/^(id|key|questionId|catalogId):/, "")
+    if (rawId) {
+      return values.findIndex((value) => {
+        if (!value || typeof value !== "object") return false
+        const record = value as Record<string, unknown>
+        return String(record.id ?? "") === rawId || String(record.catalogId ?? "") === rawId
+      })
+    }
+  }
   return -1
 }
 
@@ -360,18 +375,28 @@ export function applySyncOperationsState(
     }
     const current = index >= 0 ? values[index] : undefined
     if (current !== undefined && syncRecordTimestamp(current, 0) > operation.occurredAt) continue
-    const next = values.filter((value, itemIndex) => syncEntityId(value, itemIndex) !== operation.entityId)
+    const next = values.filter((value, itemIndex) => (
+      itemIndex !== index && syncEntityId(value, itemIndex) !== operation.entityId
+    ))
     stores[operation.storeName] = next
-    const tombstones = stores.syncTombstones ?? []
-    const tombstone = makeTombstone(operation.storeName, operation.entityId, operation.occurredAt)
-    const existingIndex = tombstones.findIndex((value) => tombstoneKey(value) === `${tombstone.storeName}:${tombstone.entityId}`)
-    if (existingIndex >= 0) {
-      const existing = tombstones[existingIndex] as { deletedAt?: number }
-      if ((existing.deletedAt ?? 0) >= tombstone.deletedAt) continue
-      stores.syncTombstones = tombstones.map((value, itemIndex) => itemIndex === existingIndex ? tombstone : value)
-    } else {
-      stores.syncTombstones = [...tombstones, tombstone]
+    const tombstones = [...(stores.syncTombstones ?? [])]
+    const targetEntityIds = new Set([
+      operation.entityId,
+      ...(current !== undefined ? [syncEntityId(current, index)] : []),
+    ])
+    for (const entId of targetEntityIds) {
+      const tombstone = makeTombstone(operation.storeName, entId, operation.occurredAt)
+      const existingIndex = tombstones.findIndex((value) => tombstoneKey(value) === `${tombstone.storeName}:${tombstone.entityId}`)
+      if (existingIndex >= 0) {
+        const existing = tombstones[existingIndex] as { deletedAt?: number }
+        if ((existing.deletedAt ?? 0) < tombstone.deletedAt) {
+          tombstones[existingIndex] = tombstone
+        }
+      } else {
+        tombstones.push(tombstone)
+      }
     }
+    stores.syncTombstones = tombstones
   }
 
   normalizeOperationState(stores, preferences)

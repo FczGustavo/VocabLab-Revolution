@@ -8,7 +8,7 @@ import {
   type SyncLabPayload,
 } from "./sync-schema"
 import { getSyncOwnerToken } from "./sync-identity-client"
-import { getOrCreateSyncDeviceId, getSyncDeviceKind, getSyncDeviceLabel, getSyncDeviceRole, setSyncDeviceRole } from "./sync-device"
+import { getOrCreateSyncDeviceId, getSyncDeviceKind, getSyncDeviceLabel, setSyncDeviceRole } from "./sync-device"
 import { applySyncOperationsState, diffLabPayload } from "./sync-operations"
 
 export { getOrCreateSyncDeviceId } from "./sync-device"
@@ -187,12 +187,15 @@ function timestamp(value: unknown) {
 function tombstoneEntityId(storeName: string, value: unknown) {
   if (!value || typeof value !== "object") return ""
   const record = value as Record<string, unknown>
-  for (const key of ["id", "key", "questionId"]) {
+  // Match the priority used by syncEntityId in sync-operations.ts: catalogId
+  // first, then id/key/questionId. Strip the prefix so tombstones produced by
+  // the operation protocol (which also strip) are compared consistently.
+  for (const key of ["catalogId", "id", "key", "questionId"]) {
     if (typeof record[key] === "string" || typeof record[key] === "number") {
-      return String(record[key])
+      return String(record[key]).replace(/^(id|key|questionId|catalogId):/, "")
     }
   }
-  return recordKey(storeName, value, 0)
+  return recordKey(storeName, value, 0).replace(/^(id|key|questionId|catalogId|name):/, "")
 }
 
 function applyTombstones(stores: Record<string, unknown[]>) {
@@ -208,7 +211,8 @@ function applyTombstones(stores: Record<string, unknown[]>) {
   if (tombstones.length === 0) return stores
   const newest = new Map<string, number>()
   for (const tombstone of tombstones) {
-    const key = `${tombstone.storeName}:${tombstone.entityId}`
+    const cleanEntityId = tombstone.entityId.replace(/^(id|key|questionId|catalogId):/, "")
+    const key = `${tombstone.storeName}:${cleanEntityId}`
     newest.set(key, Math.max(newest.get(key) ?? 0, tombstone.deletedAt))
   }
   for (const [storeName, values] of Object.entries(stores)) {
@@ -412,18 +416,41 @@ export function mergeLabPayloads(
   } satisfies SyncLabPayload
 }
 
-async function pullLab(syncCode: string, lab: SyncLabId, ownerToken: string) {
-  const response = await fetch("/api/sync/lab/pull", {
+const SYNC_FETCH_TIMEOUT_MS = 30_000
+
+async function syncFetch(url: string, body: unknown): Promise<Response> {
+  const init: RequestInit = {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      syncCode,
-      lab,
-      ownerToken,
-      deviceId: getOrCreateSyncDeviceId(),
-      deviceLabel: getSyncDeviceLabel(),
-      deviceKind: getSyncDeviceKind(),
-    }),
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(SYNC_FETCH_TIMEOUT_MS),
+  }
+  let response = await fetch(url, init)
+  if (response.status === 429) {
+    let retryAfter = Number(response.headers.get("Retry-After") ?? 0)
+    if (!Number.isFinite(retryAfter) || retryAfter <= 0) {
+      try {
+        const json = await response.clone().json()
+        if (typeof json?.retryAfter === "number") retryAfter = json.retryAfter
+      } catch {
+        // ignore json parse error
+      }
+    }
+    const delayMs = Math.min((Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : 5) * 1000, 30_000)
+    await new Promise((resolve) => setTimeout(resolve, delayMs))
+    response = await fetch(url, { ...init, signal: AbortSignal.timeout(SYNC_FETCH_TIMEOUT_MS) })
+  }
+  return response
+}
+
+async function pullLab(syncCode: string, lab: SyncLabId, ownerToken: string) {
+  const response = await syncFetch("/api/sync/lab/pull", {
+    syncCode,
+    lab,
+    ownerToken,
+    deviceId: getOrCreateSyncDeviceId(),
+    deviceLabel: getSyncDeviceLabel(),
+    deviceKind: getSyncDeviceKind(),
   })
   const json = await response.json().catch(() => ({}))
   if (!response.ok) throw new Error(json?.error || "Falha ao receber atualizações.")
@@ -440,19 +467,15 @@ async function pushLab(
   expectedRevision: number,
   ownerToken: string,
 ) {
-  const response = await fetch("/api/sync/lab/push", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      syncCode,
-      lab,
-      payload,
-      expectedRevision,
-      deviceId: getOrCreateSyncDeviceId(),
-      deviceLabel: getSyncDeviceLabel(),
-      deviceKind: getSyncDeviceKind(),
-      ownerToken,
-    }),
+  const response = await syncFetch("/api/sync/lab/push", {
+    syncCode,
+    lab,
+    payload,
+    expectedRevision,
+    deviceId: getOrCreateSyncDeviceId(),
+    deviceLabel: getSyncDeviceLabel(),
+    deviceKind: getSyncDeviceKind(),
+    ownerToken,
   })
   const json = await response.json().catch(() => ({}))
   if (response.status === 409) return null
@@ -470,19 +493,15 @@ async function pushOperations(
   ownerToken: string,
   operations: import("./sync-schema").SyncOperation[],
 ) {
-  const response = await fetch("/api/sync/lab/operations", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      action: "push",
-      syncCode,
-      lab,
-      ownerToken,
-      operations,
-      deviceId: getOrCreateSyncDeviceId(),
-      deviceLabel: getSyncDeviceLabel(),
-      deviceKind: getSyncDeviceKind(),
-    }),
+  const response = await syncFetch("/api/sync/lab/operations", {
+    action: "push",
+    syncCode,
+    lab,
+    ownerToken,
+    operations,
+    deviceId: getOrCreateSyncDeviceId(),
+    deviceLabel: getSyncDeviceLabel(),
+    deviceKind: getSyncDeviceKind(),
   })
   const json = await response.json().catch(() => ({}))
   if (!response.ok) throw new Error(json?.error || "Falha ao enviar as alterações.")
@@ -494,19 +513,15 @@ async function pullOperations(
   ownerToken: string,
   cursor: number,
 ) {
-  const response = await fetch("/api/sync/lab/operations", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      action: "pull",
-      syncCode,
-      lab,
-      ownerToken,
-      cursor,
-      deviceId: getOrCreateSyncDeviceId(),
-      deviceLabel: getSyncDeviceLabel(),
-      deviceKind: getSyncDeviceKind(),
-    }),
+  const response = await syncFetch("/api/sync/lab/operations", {
+    action: "pull",
+    syncCode,
+    lab,
+    ownerToken,
+    cursor,
+    deviceId: getOrCreateSyncDeviceId(),
+    deviceLabel: getSyncDeviceLabel(),
+    deviceKind: getSyncDeviceKind(),
   })
   const json = await response.json().catch(() => ({}))
   if (!response.ok) throw new Error(json?.error || "Falha ao receber as alterações.")
@@ -530,162 +545,84 @@ async function synchronizeLabByOperations(syncCode: string, lab: SyncLabId) {
   const ownerToken = getSyncOwnerToken(syncCode)
   if (!ownerToken) throw new Error("Este navegador ainda não foi autorizado.")
   const key = `${syncCode}:${lab}`
-  for (let attempt = 0; attempt < 3; attempt++) {
+  let lastLocalFingerprint = ""
+  for (let attempt = 0; attempt < 5; attempt++) {
     const stored = await getBaseline(key)
-  const baseline = stored?.protocol === OPERATION_PROTOCOL ? stored : undefined
-  const initialLocal = await exportLabData(lab)
-  let local = initialLocal
+    const baseline = stored?.protocol === OPERATION_PROTOCOL ? stored : undefined
+    const initialLocal = await exportLabData(lab)
+    let local = initialLocal
 
-  // Existing installations can still have their only copy in the old snapshot
-  // tables. Merge it once, then publish it as independent operations.
-  if (!baseline) {
-    const legacy = await pullLab(syncCode, lab, ownerToken)
-    if (legacy.payload) {
-      local = mergeLabPayloads(undefined, initialLocal, legacy.payload)
-      if (payloadFingerprint(local) !== payloadFingerprint(initialLocal)) {
-        if (!await importLabData(local, initialLocal)) continue
+    // Detect loops that make no progress: if the local state is identical to
+    // the previous attempt there is nothing new to try — bail out immediately.
+    const currentFingerprint = payloadFingerprint(initialLocal)
+    if (attempt > 0 && currentFingerprint === lastLocalFingerprint) {
+      throw new Error("A sincronização não convergiu: o estado local não mudou entre tentativas.")
+    }
+    lastLocalFingerprint = currentFingerprint
+
+    // Existing installations can still have their only copy in the old snapshot
+    // tables. Merge it once, then publish it as independent operations.
+    if (!baseline) {
+      const legacy = await pullLab(syncCode, lab, ownerToken)
+      if (legacy.payload) {
+        local = mergeLabPayloads(undefined, initialLocal, legacy.payload)
+        if (payloadFingerprint(local) !== payloadFingerprint(initialLocal)) {
+          if (!await importLabData(local, initialLocal)) continue
+        }
       }
     }
-  }
 
-  const pending = diffLabPayload(baseline?.payload, local, getOrCreateSyncDeviceId())
-  const preferenceClocks = { ...(baseline?.preferenceClocks ?? {}) }
-  for (const operation of pending) {
-    if (operation.kind.startsWith("preference-")) {
-      preferenceClocks[operation.entityId] = Math.max(
-        preferenceClocks[operation.entityId] ?? 0,
-        operation.occurredAt,
-      )
-    }
-  }
-  for (let index = 0; index < pending.length; index += 250) {
-    await pushOperations(syncCode, lab, ownerToken, pending.slice(index, index + 250))
-  }
-
-  let cursor = baseline?.cursor ?? 0
-  const received: import("./sync-schema").SyncOperation[] = []
-  for (;;) {
-    const page = await pullOperations(syncCode, lab, ownerToken, cursor)
-    received.push(...page.operations)
-    cursor = page.cursor
-    if (!page.hasMore) break
-  }
-  const mergedState = applySyncOperationsState(local, received, preferenceClocks)
-  const merged = mergedState.payload
-  const current = await exportLabData(lab)
-  // A user action or catalog initialization raced this cycle. Do not advance
-  // the baseline or report success; retry from the new local state.
-  if (payloadFingerprint(current) !== payloadFingerprint(local)) continue
-  if (payloadFingerprint(merged) !== payloadFingerprint(current)) {
-    if (!await importLabData(merged, current)) continue
-  }
-  // Verify the actual IndexedDB/localStorage state after importing. This
-  // prevents a false green status when an import was rejected or raced.
-  const finalLocal = await exportLabData(lab)
-  if (payloadFingerprint(finalLocal) !== payloadFingerprint(merged)) continue
-  await putBaseline({
-    key,
-    revision: cursor,
-    cursor,
-    protocol: OPERATION_PROTOCOL,
-    payload: finalLocal,
-    preferenceClocks: mergedState.preferenceClocks,
-    updatedAt: Date.now(),
-  })
-    return cursor
-  }
-  throw new Error("A sincronizacao nao convergiu apos 3 tentativas. O estado nao foi marcado como sincronizado.")
-}
-
-async function synchronizeLabUnlocked(syncCode: string, lab: SyncLabId) {
-  const ownerToken = getSyncOwnerToken(syncCode)
-  if (!ownerToken) throw new Error("Este navegador ainda não foi autorizado.")
-  const key = `${syncCode}:${lab}`
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const studyOnly = getSyncDeviceRole() === "study"
-    const [baseline, local, remoteState] = await Promise.all([
-      getBaseline(key),
-      exportLabData(lab),
-      pullLab(syncCode, lab, ownerToken),
-    ])
-
-    if (!remoteState.payload) {
-      if (studyOnly) return 0
-      const revision = await pushLab(syncCode, lab, local, 0, ownerToken)
-      if (revision === null) continue
-      await putBaseline({ key, revision, payload: local, updatedAt: Date.now() })
-      return revision
-    }
-
-    // Pulling the remote data is asynchronous. Re-read immediately before an
-    // import so a folder/card created during the request cannot be overwritten
-    // by the old local snapshot captured above.
-    const currentLocal = await exportLabData(lab)
-    if (payloadFingerprint(currentLocal) !== payloadFingerprint(local)) continue
-
-    const merged = mergeLabPayloads(baseline?.payload, currentLocal, remoteState.payload)
-    if (studyOnly) {
-      const studyPayload = studyStatePreservingPayload(remoteState.payload, currentLocal)
-      if (payloadFingerprint(studyPayload) !== payloadFingerprint(currentLocal)) {
-        const imported = await importLabData(studyPayload, currentLocal)
-        if (!imported) continue
+    const pending = diffLabPayload(baseline?.payload, local, getOrCreateSyncDeviceId())
+    const preferenceClocks = { ...(baseline?.preferenceClocks ?? {}) }
+    for (const operation of pending) {
+      if (operation.kind.startsWith("preference-")) {
+        preferenceClocks[operation.entityId] = Math.max(
+          preferenceClocks[operation.entityId] ?? 0,
+          operation.occurredAt,
+        )
       }
-      await putBaseline({
-        key,
-        revision: remoteState.revision,
-        payload: studyPayload,
-        updatedAt: Date.now(),
-      })
-      return remoteState.revision
     }
-    if (payloadFingerprint(merged) !== payloadFingerprint(currentLocal)) {
-      const imported = await importLabData(merged, currentLocal)
-      if (!imported) continue
+    for (let index = 0; index < pending.length; index += 250) {
+      await pushOperations(syncCode, lab, ownerToken, pending.slice(index, index + 250))
     }
 
-    if (payloadFingerprint(merged) !== payloadFingerprint(remoteState.payload)) {
-      const revision = await pushLab(
-        syncCode,
-        lab,
-        merged,
-        remoteState.revision,
-        ownerToken,
-      )
-      if (revision === null) continue
-      await putBaseline({ key, revision, payload: merged, updatedAt: Date.now() })
-      return revision
+    let cursor = baseline?.cursor ?? 0
+    const received: import("./sync-schema").SyncOperation[] = []
+    for (;;) {
+      const page = await pullOperations(syncCode, lab, ownerToken, cursor)
+      received.push(...page.operations)
+      cursor = page.cursor
+      if (!page.hasMore) break
     }
 
+    // Re-read the local state right before merging. If user activity changed
+    // it during the network round-trip, apply remote operations on top of the
+    // *current* state instead of discarding the entire attempt.
+    const current = await exportLabData(lab)
+    const localRaced = payloadFingerprint(current) !== payloadFingerprint(local)
+    const mergeBase = localRaced ? current : local
+    const mergedState = applySyncOperationsState(mergeBase, received, preferenceClocks)
+    const merged = mergedState.payload
+
+    if (payloadFingerprint(merged) !== payloadFingerprint(current)) {
+      if (!await importLabData(merged, current)) continue
+    }
+    // Verify the actual IndexedDB/localStorage state after importing. This
+    // prevents a false green status when an import was rejected or raced.
+    const finalLocal = await exportLabData(lab)
+    if (payloadFingerprint(finalLocal) !== payloadFingerprint(merged)) continue
     await putBaseline({
       key,
-      revision: remoteState.revision,
-      payload: remoteState.payload,
+      revision: cursor,
+      cursor,
+      protocol: OPERATION_PROTOCOL,
+      payload: finalLocal,
+      preferenceClocks: mergedState.preferenceClocks,
       updatedAt: Date.now(),
     })
-    return remoteState.revision
+    return cursor
   }
-  // A second tab or a background request can still win the revision between
-  // the final pull and push. Adopt the newest remote state and let the next
-  // scheduled cycle publish any remaining local change instead of surfacing a
-  // persistent error for a recoverable race.
-  try {
-    const latest = await pullLab(syncCode, lab, ownerToken)
-    if (latest.payload) {
-      const latestLocal = await exportLabData(lab)
-      const latestBaseline = await getBaseline(key)
-      const latestMerged = getSyncDeviceRole() === "study"
-        ? studyStatePreservingPayload(latest.payload, latestLocal)
-        : mergeLabPayloads(latestBaseline?.payload, latestLocal, latest.payload)
-      if (payloadFingerprint(latestMerged) !== payloadFingerprint(latestLocal)) {
-        await importLabData(latestMerged, latestLocal)
-      }
-      await putBaseline({ key, revision: latest.revision, payload: latestMerged, updatedAt: Date.now() })
-      return latest.revision
-    }
-  } catch {
-    // Preserve the original error only when the recovery pull also fails.
-  }
-  throw new Error("Houve atualizações simultâneas demais. A sincronização tentará novamente.")
+  throw new Error("A sincronização não convergiu após 5 tentativas. O estado não foi marcado como sincronizado.")
 }
 
 export async function synchronizeLab(syncCode: string, lab: SyncLabId) {

@@ -1677,10 +1677,10 @@ export function FlashcardsPage() {
                           <DialogTitle>Start study</DialogTitle>
                           <DialogDescription>Choose how you want to review this folder.</DialogDescription>
                         </DialogHeader>
-                        <div className="grid gap-2">
+                        <div className="grid gap-2 w-full min-w-0">
                           <Button
                             variant="outline"
-                            className="h-auto justify-start p-3 sm:p-4 text-left"
+                            className="h-auto w-full min-w-0 justify-start p-3 sm:p-4 text-left whitespace-normal"
                             disabled={!canUseVocabularyMultipleChoice(studyFlashcards, includeMultipleTranslations)}
                             onClick={() => {
                               setShowReviewStudySelector(false)
@@ -1690,11 +1690,11 @@ export function FlashcardsPage() {
                               setIsChoiceMode(true)
                             }}
                           >
-                            <span><span className="block text-sm">Multiple choice</span><span className="mt-1 block text-xs font-normal text-muted-foreground">{canUseVocabularyMultipleChoice(studyFlashcards, includeMultipleTranslations) ? "Choose the correct meaning among related word-family alternatives." : "Requires at least 10 cards and 4 distinct answers."}</span></span>
+                            <span className="w-full min-w-0"><span className="block text-sm">Multiple choice</span><span className="mt-1 block text-xs font-normal text-muted-foreground whitespace-normal break-words">{canUseVocabularyMultipleChoice(studyFlashcards, includeMultipleTranslations) ? "Choose the correct meaning among related word-family alternatives." : "Requires at least 10 cards and 4 distinct answers."}</span></span>
                           </Button>
                           <Button
                             variant="outline"
-                            className="h-auto justify-start p-3 sm:p-4 text-left"
+                            className="h-auto w-full min-w-0 justify-start p-3 sm:p-4 text-left whitespace-normal"
                             onClick={() => {
                               setShowReviewStudySelector(false)
                               // Study only the cards from this specific review folder
@@ -1704,11 +1704,11 @@ export function FlashcardsPage() {
                               setIsWritingMode(true)
                             }}
                           >
-                            <span><span className="block text-sm">Active recall</span><span className="mt-1 block text-xs font-normal text-muted-foreground">Try to remember the meaning before revealing it.</span></span>
+                            <span className="w-full min-w-0"><span className="block text-sm">Active recall</span><span className="mt-1 block text-xs font-normal text-muted-foreground whitespace-normal break-words">Try to remember the meaning before revealing it.</span></span>
                           </Button>
                           <Button
                             variant="outline"
-                            className="h-auto justify-start p-3 sm:p-4 text-left"
+                            className="h-auto w-full min-w-0 justify-start p-3 sm:p-4 text-left whitespace-normal"
                             onClick={() => {
                               setShowReviewStudySelector(false)
                               setIsReviewStudy(true)
@@ -1718,7 +1718,7 @@ export function FlashcardsPage() {
                               setIsStudying(true)
                             }}
                           >
-                            <span><span className="block text-sm">Flip cards</span><span className="mt-1 block text-xs font-normal text-muted-foreground">Turn the card and mark whether you knew it.</span></span>
+                            <span className="w-full min-w-0"><span className="block text-sm">Flip cards</span><span className="mt-1 block text-xs font-normal text-muted-foreground whitespace-normal break-words">Turn the card and mark whether you knew it.</span></span>
                           </Button>
                         </div>
                       </DialogContent>
@@ -1736,15 +1736,15 @@ export function FlashcardsPage() {
                           <DialogTitle>Start study</DialogTitle>
                           <DialogDescription>Choose how you want to review this folder.</DialogDescription>
                         </DialogHeader>
-                        <div className="grid gap-2">
-                          <Button variant="outline" disabled={!canUseVocabularyMultipleChoice(studyFlashcards, includeMultipleTranslations)} className="h-auto justify-start p-3 sm:p-4 text-left" onClick={() => { setShowStudySelector(false); setIsReviewStudy(false); setStudyCards(studyFlashcards); setIsChoiceMode(true) }}>
-                            <span><span className="block text-sm">Multiple choice</span><span className="mt-1 block text-xs font-normal text-muted-foreground">{canUseVocabularyMultipleChoice(studyFlashcards, includeMultipleTranslations) ? "Choose the correct meaning among related word-family alternatives." : "Requires at least 10 cards and 4 distinct answers."}</span></span>
+                        <div className="grid gap-2 w-full min-w-0">
+                          <Button variant="outline" disabled={!canUseVocabularyMultipleChoice(studyFlashcards, includeMultipleTranslations)} className="h-auto w-full min-w-0 justify-start p-3 sm:p-4 text-left whitespace-normal" onClick={() => { setShowStudySelector(false); setIsReviewStudy(false); setStudyCards(studyFlashcards); setIsChoiceMode(true) }}>
+                            <span className="w-full min-w-0"><span className="block text-sm">Multiple choice</span><span className="mt-1 block text-xs font-normal text-muted-foreground whitespace-normal break-words">{canUseVocabularyMultipleChoice(studyFlashcards, includeMultipleTranslations) ? "Choose the correct meaning among related word-family alternatives." : "Requires at least 10 cards and 4 distinct answers."}</span></span>
                           </Button>
-                          <Button variant="outline" className="h-auto justify-start p-3 sm:p-4 text-left" onClick={() => { setShowStudySelector(false); setIsReviewStudy(false); setWritingModeCards([...studyFlashcards]); setIsWritingMode(true) }}>
-                            <span><span className="block text-sm">Active recall</span><span className="mt-1 block text-xs font-normal text-muted-foreground">Try to remember the meaning before revealing it.</span></span>
+                          <Button variant="outline" className="h-auto w-full min-w-0 justify-start p-3 sm:p-4 text-left whitespace-normal" onClick={() => { setShowStudySelector(false); setIsReviewStudy(false); setWritingModeCards([...studyFlashcards]); setIsWritingMode(true) }}>
+                            <span className="w-full min-w-0"><span className="block text-sm">Active recall</span><span className="mt-1 block text-xs font-normal text-muted-foreground whitespace-normal break-words">Try to remember the meaning before revealing it.</span></span>
                           </Button>
-                          <Button variant="outline" className="h-auto justify-start p-3 sm:p-4 text-left" onClick={() => { setShowStudySelector(false); setIsReviewStudy(false); setStudyCards(studyFlashcards); setIsStudying(true) }}>
-                            <span><span className="block text-sm">Flip cards</span><span className="mt-1 block text-xs font-normal text-muted-foreground">Turn the card and mark whether you knew it.</span></span>
+                          <Button variant="outline" className="h-auto w-full min-w-0 justify-start p-3 sm:p-4 text-left whitespace-normal" onClick={() => { setShowStudySelector(false); setIsReviewStudy(false); setStudyCards(studyFlashcards); setIsStudying(true) }}>
+                            <span className="w-full min-w-0"><span className="block text-sm">Flip cards</span><span className="mt-1 block text-xs font-normal text-muted-foreground whitespace-normal break-words">Turn the card and mark whether you knew it.</span></span>
                           </Button>
                         </div>
                       </DialogContent>

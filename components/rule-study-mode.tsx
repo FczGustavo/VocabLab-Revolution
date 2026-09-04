@@ -138,30 +138,46 @@ export function RuleStudyMode({
     setExiting(null)
   }
 
+  const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null)
+  const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
   const swipedRef = useRef(false)
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (mode !== "flip" || exiting || e.touches.length !== 1) return
     const touch = e.touches[0]
     touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() }
+    dragOffsetRef.current = { x: 0, y: 0 }
+    setDragOffset({ x: 0, y: 0 })
+    setIsDragging(true)
     swipedRef.current = false
   }
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (mode !== "flip" || !touchStartRef.current || exiting || e.touches.length !== 1) return
+    const touch = e.touches[0]
+    const dx = touch.clientX - touchStartRef.current.x
+    const dy = touch.clientY - touchStartRef.current.y
+    dragOffsetRef.current = { x: dx, y: dy }
+    setDragOffset({ x: dx, y: dy })
+  }
+
+  const handleTouchEnd = () => {
     if (mode !== "flip" || !touchStartRef.current || exiting) return
-    const touch = e.changedTouches[0]
-    const deltaX = touch.clientX - touchStartRef.current.x
-    const deltaY = touch.clientY - touchStartRef.current.y
+    const { x: deltaX, y: deltaY } = dragOffsetRef.current
     const elapsed = Date.now() - touchStartRef.current.time
     touchStartRef.current = null
+    setIsDragging(false)
 
     const absX = Math.abs(deltaX)
     const absY = Math.abs(deltaY)
-    const minDistance = 45
+    const minDistance = elapsed < 320 ? 40 : 70
 
-    if (elapsed < 800 && (absX >= minDistance || absY >= minDistance)) {
+    if (absX >= minDistance || absY >= minDistance) {
       swipedRef.current = true
+      setTimeout(() => { swipedRef.current = false }, 350)
+      setDragOffset({ x: 0, y: 0 })
       if (absX > absY) {
         if (deltaX > 0) {
           void advance(true)
@@ -175,7 +191,20 @@ export function RuleStudyMode({
           setFlipped(false)
         }
       }
+    } else {
+      setDragOffset({ x: 0, y: 0 })
+      if (absX < 8 && absY < 8) {
+        swipedRef.current = true
+        setTimeout(() => { swipedRef.current = false }, 350)
+        setFlipped((value) => !value)
+      }
     }
+  }
+
+  const handleTouchCancel = () => {
+    touchStartRef.current = null
+    setIsDragging(false)
+    setDragOffset({ x: 0, y: 0 })
   }
 
   useStudyKeyboardShortcuts({
@@ -287,11 +316,23 @@ export function RuleStudyMode({
         <div className="my-auto flex w-full max-w-[min(100%,350px)] flex-col justify-center sm:max-w-xl">
           <article
             className={cn(
-              "surface-card surface-card-elevated flex w-full aspect-square max-h-[calc(100dvh-205px)] sm:aspect-auto sm:max-h-none sm:h-[430px] flex-col overflow-hidden rounded-[22px] sm:rounded-[26px] bg-card p-5 sm:p-7 select-none touch-pan-y",
+              "surface-card surface-card-elevated relative flex w-full aspect-square max-h-[calc(100dvh-205px)] sm:aspect-auto sm:max-h-none sm:h-[430px] flex-col overflow-hidden rounded-[22px] sm:rounded-[26px] bg-card p-5 sm:p-7 select-none",
               mode === "flip" && "cursor-pointer",
               exiting === "known" && "study-card-exit-known",
               exiting === "again" && "study-card-exit-again",
             )}
+            style={mode === "flip" ? {
+              transform: isDragging
+                ? `translate3d(${dragOffset.x}px, ${dragOffset.y * 0.4}px, 0) rotate(${dragOffset.x * 0.08}deg)`
+                : undefined,
+              transition: isDragging ? "none" : "transform 0.26s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease",
+              boxShadow: isDragging && dragOffset.x > 25
+                ? `0 0 0 2px rgba(34,197,94,${Math.min(0.8, dragOffset.x / 100)}), 0 10px 25px -5px rgba(34,197,94,0.3)`
+                : isDragging && dragOffset.x < -25
+                ? `0 0 0 2px rgba(239,68,68,${Math.min(0.8, -dragOffset.x / 100)}), 0 10px 25px -5px rgba(239,68,68,0.3)`
+                : undefined,
+              touchAction: "none",
+            } : undefined}
             onClick={() => {
               if (swipedRef.current) {
                 swipedRef.current = false
@@ -300,7 +341,9 @@ export function RuleStudyMode({
               if (mode === "flip" && !exiting) setFlipped((value) => !value)
             }}
             onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
+            onTouchCancel={handleTouchCancel}
             onKeyDown={(event) => {
               if (mode === "flip" && event.key === "Enter" && !exiting) {
                 setFlipped((value) => !value)
@@ -309,6 +352,22 @@ export function RuleStudyMode({
             role={mode === "flip" ? "button" : undefined}
             tabIndex={mode === "flip" ? 0 : undefined}
           >
+            {mode === "flip" && isDragging && dragOffset.x > 35 && (
+              <div
+                className="pointer-events-none absolute top-4 right-4 z-20 rounded-full bg-success/20 border border-success/40 px-3 py-1 text-xs font-bold uppercase tracking-wider text-success"
+                style={{ opacity: Math.min(1, (dragOffset.x - 35) / 45) }}
+              >
+                I knew it
+              </div>
+            )}
+            {mode === "flip" && isDragging && dragOffset.x < -35 && (
+              <div
+                className="pointer-events-none absolute top-4 left-4 z-20 rounded-full bg-destructive/20 border border-destructive/40 px-3 py-1 text-xs font-bold uppercase tracking-wider text-destructive"
+                style={{ opacity: Math.min(1, (-dragOffset.x - 35) / 45) }}
+              >
+                Again
+              </div>
+            )}
             <div className="flex items-center">
               <Badge
                 variant="outline"

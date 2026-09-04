@@ -140,30 +140,46 @@ export function StudyMode({ flashcards, folderName, folderId, onExit, onMarkForR
     setExiting(null)
   }, [animationsEnabled, current, exiting, onMarkAsLearned, onMarkForReview, onRecordResult, reviewMistakeThreshold, wrongCount])
 
+  const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null)
+  const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
   const swipedRef = useRef(false)
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (exiting || e.touches.length !== 1) return
     const touch = e.touches[0]
     touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() }
+    dragOffsetRef.current = { x: 0, y: 0 }
+    setDragOffset({ x: 0, y: 0 })
+    setIsDragging(true)
     swipedRef.current = false
   }
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartRef.current || exiting || e.touches.length !== 1) return
+    const touch = e.touches[0]
+    const dx = touch.clientX - touchStartRef.current.x
+    const dy = touch.clientY - touchStartRef.current.y
+    dragOffsetRef.current = { x: dx, y: dy }
+    setDragOffset({ x: dx, y: dy })
+  }
+
+  const handleTouchEnd = () => {
     if (!touchStartRef.current || exiting) return
-    const touch = e.changedTouches[0]
-    const deltaX = touch.clientX - touchStartRef.current.x
-    const deltaY = touch.clientY - touchStartRef.current.y
+    const { x: deltaX, y: deltaY } = dragOffsetRef.current
     const elapsed = Date.now() - touchStartRef.current.time
     touchStartRef.current = null
+    setIsDragging(false)
 
     const absX = Math.abs(deltaX)
     const absY = Math.abs(deltaY)
-    const minDistance = 45
+    const minDistance = elapsed < 320 ? 40 : 70
 
-    if (elapsed < 800 && (absX >= minDistance || absY >= minDistance)) {
+    if (absX >= minDistance || absY >= minDistance) {
       swipedRef.current = true
+      setTimeout(() => { swipedRef.current = false }, 350)
+      setDragOffset({ x: 0, y: 0 })
       if (absX > absY) {
         // Horizontal swipe: Right = Known, Left = Again
         if (deltaX > 0) {
@@ -179,7 +195,21 @@ export function StudyMode({ flashcards, folderName, folderId, onExit, onMarkForR
           setFlipped(false)
         }
       }
+    } else {
+      // Return to center
+      setDragOffset({ x: 0, y: 0 })
+      if (absX < 8 && absY < 8) {
+        swipedRef.current = true
+        setTimeout(() => { swipedRef.current = false }, 350)
+        setFlipped((value) => !value)
+      }
     }
+  }
+
+  const handleTouchCancel = () => {
+    touchStartRef.current = null
+    setIsDragging(false)
+    setDragOffset({ x: 0, y: 0 })
   }
 
   useStudyKeyboardShortcuts({ enabled: !finished && Boolean(current) && !exiting, onKnown: () => void advance(true), onAgain: () => void advance(false), onReveal: () => setFlipped(true), onHide: () => setFlipped(false) })
@@ -199,10 +229,22 @@ export function StudyMode({ flashcards, folderName, folderId, onExit, onMarkForR
         <div className="my-auto flex w-full max-w-[min(100%,350px)] flex-col justify-center sm:max-w-xl">
           <div
             className={cn(
-              "surface-card surface-card-elevated flex w-full aspect-square max-h-[calc(100dvh-205px)] sm:aspect-auto sm:max-h-none sm:h-[430px] cursor-pointer flex-col rounded-[22px] sm:rounded-[26px] bg-card p-5 sm:p-7 text-left select-none touch-pan-y",
+              "surface-card surface-card-elevated relative flex w-full aspect-square max-h-[calc(100dvh-205px)] sm:aspect-auto sm:max-h-none sm:h-[430px] cursor-pointer flex-col rounded-[22px] sm:rounded-[26px] bg-card p-5 sm:p-7 text-left select-none",
               exiting === "known" && "study-card-exit-known",
               exiting === "again" && "study-card-exit-again"
             )}
+            style={{
+              transform: isDragging
+                ? `translate3d(${dragOffset.x}px, ${dragOffset.y * 0.4}px, 0) rotate(${dragOffset.x * 0.08}deg)`
+                : undefined,
+              transition: isDragging ? "none" : "transform 0.26s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease",
+              boxShadow: isDragging && dragOffset.x > 25
+                ? `0 0 0 2px rgba(34,197,94,${Math.min(0.8, dragOffset.x / 100)}), 0 10px 25px -5px rgba(34,197,94,0.3)`
+                : isDragging && dragOffset.x < -25
+                ? `0 0 0 2px rgba(239,68,68,${Math.min(0.8, -dragOffset.x / 100)}), 0 10px 25px -5px rgba(239,68,68,0.3)`
+                : undefined,
+              touchAction: "none",
+            }}
             onClick={() => {
               if (swipedRef.current) {
                 swipedRef.current = false
@@ -211,11 +253,29 @@ export function StudyMode({ flashcards, folderName, folderId, onExit, onMarkForR
               if (!exiting) setFlipped((value) => !value)
             }}
             onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
+            onTouchCancel={handleTouchCancel}
             role="button"
             tabIndex={0}
             onKeyDown={(event) => event.key === "Enter" && !exiting && setFlipped((value) => !value)}
           >
+            {isDragging && dragOffset.x > 35 && (
+              <div
+                className="pointer-events-none absolute top-4 right-4 z-20 rounded-full bg-success/20 border border-success/40 px-3 py-1 text-xs font-bold uppercase tracking-wider text-success"
+                style={{ opacity: Math.min(1, (dragOffset.x - 35) / 45) }}
+              >
+                I knew it
+              </div>
+            )}
+            {isDragging && dragOffset.x < -35 && (
+              <div
+                className="pointer-events-none absolute top-4 left-4 z-20 rounded-full bg-destructive/20 border border-destructive/40 px-3 py-1 text-xs font-bold uppercase tracking-wider text-destructive"
+                style={{ opacity: Math.min(1, (-dragOffset.x - 35) / 45) }}
+              >
+                Again
+              </div>
+            )}
             {flipped ? <VocabularyBack card={current} showContext={showContext} contextInPortuguese={contextInPortuguese} showIPA={showIPA} includeMultipleTranslations={includeMultipleTranslations} translationsShown={showTranslations} onToggleTranslations={() => setShowTranslations((value) => !value)} onSpeak={() => void speak(current.word)} /> : <VocabularyFront card={current} onSpeak={() => void speak(current.word)} />}
           </div>
           <div className="mt-3 sm:mt-5 flex gap-3 shrink-0">

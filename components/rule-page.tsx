@@ -570,27 +570,27 @@ export function RulePage() {
           <DialogHeader>
             <DialogTitle>Start study</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-2">
+          <div className="grid gap-2 w-full min-w-0">
             <Button
               variant="outline"
-              className="h-auto justify-start p-3 sm:p-4 text-left"
+              className="h-auto w-full min-w-0 justify-start p-3 sm:p-4 text-left whitespace-normal"
               onClick={() => startStudy("recall")}
             >
-              <span>
+              <span className="w-full min-w-0">
                 <span className="block text-sm">Active Recall</span>
-                <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                <span className="mt-1 block text-xs font-normal text-muted-foreground whitespace-normal break-words">
                   Write an answer before revealing the back.
                 </span>
               </span>
             </Button>
             <Button
               variant="outline"
-              className="h-auto justify-start p-3 sm:p-4 text-left"
+              className="h-auto w-full min-w-0 justify-start p-3 sm:p-4 text-left whitespace-normal"
               onClick={() => startStudy("flip")}
             >
-              <span>
+              <span className="w-full min-w-0">
                 <span className="block text-sm">Flip Cards</span>
-                <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                <span className="mt-1 block text-xs font-normal text-muted-foreground whitespace-normal break-words">
                   Turn the card and rate whether you knew it.
                 </span>
               </span>

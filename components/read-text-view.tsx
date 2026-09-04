@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useCallback, useEffect, useLayoutEffect, useMemo, type ReactNode } from "react"
-import { BookOpen, Check, Folder as FolderIcon, Loader2, RotateCcw, Volume2, X } from "lucide-react"
+import { BookOpen, Check, FileText, Folder as FolderIcon, Loader2, RotateCcw, Volume2, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { ReadLabText, ReadLabHighlight, Folder } from "@/lib/types"
 import { useFlashcardsDB, readAllFlashcardsFromDB, readAllFoldersFromDB } from "@/hooks/use-flashcards-db"
@@ -157,6 +157,47 @@ function normalizeDeckWord(value: string) {
   return value.trim().toLocaleLowerCase("en-US").replace(/\s+/g, " ")
 }
 
+function extractSentenceAroundSnippet(fullText: string, snippet: string): string {
+  if (!fullText || !snippet) return snippet
+  const cleanSnippet = snippet.trim()
+  const idx = fullText.indexOf(cleanSnippet)
+  if (idx === -1) return snippet
+
+  let start = idx
+  while (start > 0) {
+    const char = fullText[start - 1]
+    if (char === "." || char === "?" || char === "!" || char === "\n") break
+    start--
+  }
+
+  let end = idx + cleanSnippet.length
+  while (end < fullText.length) {
+    const char = fullText[end]
+    if (char === "." || char === "?" || char === "!" || char === "\n") {
+      end++
+      break
+    }
+    end++
+  }
+
+  const sentence = fullText.slice(start, end).trim()
+  return sentence || snippet
+}
+
+function expandSnippetByOneWord(fullText: string, snippet: string): string {
+  if (!fullText || !snippet) return snippet
+  const cleanSnippet = snippet.trim()
+  const idx = fullText.indexOf(cleanSnippet)
+  if (idx === -1) return snippet
+
+  const after = fullText.slice(idx + cleanSnippet.length)
+  const match = after.match(/^(\s*\S+)/)
+  if (match) {
+    return (cleanSnippet + match[1]).trim()
+  }
+  return snippet
+}
+
 interface ReadTextViewProps {
   text: ReadLabText
   onUpdateText: (text: ReadLabText) => Promise<boolean>
@@ -175,7 +216,7 @@ export function ReadTextView({ text, onUpdateText }: ReadTextViewProps) {
 
   const [highlights, setHighlights] = useState<ReadLabHighlight[]>(text.highlights || [])
   const [popover, setPopover] = useState<PopoverState>(INITIAL_POPOVER)
-  const [mobileSelection, setMobileSelection] = useState<{ text: string; start: number; end: number } | null>(null)
+  const [mobileSelection, setMobileSelection] = useState<{ text: string; start?: number; end?: number } | null>(null)
   const [showFolderSelector, setShowFolderSelector] = useState(false)
   // Local copy of VocabLab folders, refreshed from IndexedDB every time the
   // folder selector opens. The hook's `folders` from useFlashcardsDB can be
@@ -423,22 +464,52 @@ export function ReadTextView({ text, onUpdateText }: ReadTextViewProps) {
 
   const touchHandledRef = useRef(false)
 
+  // Listen to selectionchange on document so when users drag mobile selection handles,
+  // we capture the multi-word selection as soon as they finish dragging the handle.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>
+    const handleSelectionChange = () => {
+      clearTimeout(timer)
+      timer = setTimeout(() => {
+        const selection = window.getSelection()
+        if (!selection || selection.isCollapsed || !selection.rangeCount) return
+        const rawSelected = selection.toString()
+        const trimmed = rawSelected.trim()
+        if (!trimmed || trimmed.split(/\s+/).length < 2) return
+
+        const range = selection.getRangeAt(0)
+        if (!contentRef.current || !contentRef.current.contains(range.commonAncestorContainer)) return
+
+        const rect = range.getBoundingClientRect()
+        if (rect.width === 0 && rect.height === 0) return
+        touchHandledRef.current = true
+        setTimeout(() => { touchHandledRef.current = false }, 400)
+        processSelection(rawSelected, rect, range, true)
+      }, 350)
+    }
+
+    document.addEventListener("selectionchange", handleSelectionChange)
+    return () => {
+      clearTimeout(timer)
+      document.removeEventListener("selectionchange", handleSelectionChange)
+    }
+  }, [processSelection])
+
   const handleTouchEnd = useCallback(() => {
-    setTimeout(() => {
-      const selection = window.getSelection()
-      if (!selection || selection.isCollapsed || !selection.rangeCount) {
-        return
-      }
-      const rawSelectedText = selection.toString()
-      const selectedText = rawSelectedText.trim()
-      if (!selectedText || selectedText.length < 2) {
-        return
-      }
-      touchHandledRef.current = true
-      const range = selection.getRangeAt(0)
-      const rect = range.getBoundingClientRect()
-      processSelection(rawSelectedText, rect, range, true)
-    }, 120)
+    const selection = window.getSelection()
+    if (!selection || selection.isCollapsed || !selection.rangeCount) {
+      return
+    }
+    const rawSelectedText = selection.toString()
+    const selectedText = rawSelectedText.trim()
+    if (!selectedText || selectedText.length < 2) {
+      return
+    }
+    touchHandledRef.current = true
+    setTimeout(() => { touchHandledRef.current = false }, 400)
+    const range = selection.getRangeAt(0)
+    const rect = range.getBoundingClientRect()
+    processSelection(rawSelectedText, rect, range, true)
   }, [processSelection])
 
   const handleClick = useCallback(
@@ -451,6 +522,9 @@ export function ReadTextView({ text, onUpdateText }: ReadTextViewProps) {
       if (selection && !selection.isCollapsed && selection.toString().trim().length >= 2) {
         return
       }
+      if (popoverRef.current && popoverRef.current.contains(e.target as Node)) {
+        return
+      }
       const wordData = getWordRangeAtPoint(e.clientX, e.clientY)
       if (wordData) {
         processSelection(wordData.text, wordData.range.getBoundingClientRect(), wordData.range, true)
@@ -458,6 +532,64 @@ export function ReadTextView({ text, onUpdateText }: ReadTextViewProps) {
     },
     [processSelection]
   )
+
+  const handleSelectWholeSentence = useCallback(() => {
+    const snippet = popover.selectedText.trim()
+    if (!snippet) return
+    const sentence = extractSentenceAroundSnippet(text.content, snippet)
+    if (!sentence || sentence === snippet) return
+
+    const anchorRect = popover.anchor
+      ? ({
+          top: popover.anchor.top,
+          right: popover.anchor.right,
+          bottom: popover.anchor.bottom,
+          left: popover.anchor.left,
+          width: popover.anchor.right - popover.anchor.left,
+          height: popover.anchor.bottom - popover.anchor.top,
+        } as DOMRect)
+      : (popoverRef.current?.getBoundingClientRect() ||
+          ({
+            top: popover.y,
+            right: popover.x + 100,
+            bottom: popover.y + 30,
+            left: popover.x,
+            width: 100,
+            height: 30,
+          } as DOMRect))
+
+    setMobileSelection({ text: sentence })
+    processSelection(sentence, anchorRect, null, true)
+  }, [popover.anchor, popover.selectedText, popover.x, popover.y, processSelection, text.content])
+
+  const handleExpandOneWord = useCallback(() => {
+    const snippet = popover.selectedText.trim()
+    if (!snippet) return
+    const expanded = expandSnippetByOneWord(text.content, snippet)
+    if (!expanded || expanded === snippet) return
+
+    const anchorRect = popover.anchor
+      ? ({
+          top: popover.anchor.top,
+          right: popover.anchor.right,
+          bottom: popover.anchor.bottom,
+          left: popover.anchor.left,
+          width: popover.anchor.right - popover.anchor.left,
+          height: popover.anchor.bottom - popover.anchor.top,
+        } as DOMRect)
+      : (popoverRef.current?.getBoundingClientRect() ||
+          ({
+            top: popover.y,
+            right: popover.x + 100,
+            bottom: popover.y + 30,
+            left: popover.x,
+            width: 100,
+            height: 30,
+          } as DOMRect))
+
+    setMobileSelection({ text: expanded })
+    processSelection(expanded, anchorRect, null, true)
+  }, [popover.anchor, popover.selectedText, popover.x, popover.y, processSelection, text.content])
 
   useLayoutEffect(() => {
     if (!popover.visible || !popover.anchor || !popoverRef.current) return
@@ -829,8 +961,29 @@ export function ReadTextView({ text, onUpdateText }: ReadTextViewProps) {
             </button>
 
             {/* Selected text */}
-            <div className="mb-2 line-clamp-3 pr-6 whitespace-pre-wrap text-[13px] font-medium text-foreground/80">
+            <div className="mb-1.5 line-clamp-3 pr-6 whitespace-pre-wrap text-[13px] font-medium text-foreground/80">
               &ldquo;{popover.selectedText}&rdquo;
+            </div>
+
+            {/* Quick sentence/phrase expansion chips */}
+            <div className="mb-2.5 flex items-center gap-1.5 flex-wrap">
+              <button
+                type="button"
+                onClick={handleSelectWholeSentence}
+                className="inline-flex items-center gap-1 rounded-md bg-muted/70 hover:bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+                title="Selecionar e traduzir toda a frase ao redor"
+              >
+                <FileText className="size-3" />
+                <span>Frase toda</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleExpandOneWord}
+                className="inline-flex items-center gap-0.5 rounded-md bg-muted/70 hover:bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+                title="Adicionar próxima palavra à seleção"
+              >
+                <span>+1 palavra</span>
+              </button>
             </div>
 
             {/* Translation */}

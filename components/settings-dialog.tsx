@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react"
 import { Settings, RotateCcw, BarChart3, Sun, Moon, Laptop, Sparkles, RefreshCcw, Clock3, Volume2, BookOpen, GraduationCap, FileText, Library, MousePointer2, Database, BrainCircuit, Cloud, WifiOff, CheckCircle2, LockKeyhole, UnlockKeyhole, Loader2, Link2, Download, Upload, Smartphone, Tablet, Monitor, Unplug } from "lucide-react"
@@ -337,7 +337,14 @@ export function SettingsDialog() {
       // A status entry is disposable; synchronization data lives in IndexedDB.
     }
     const update = (event: Event) => {
-      setSyncState((event as CustomEvent<AutoSyncState>).detail)
+      const detail = (event as CustomEvent<AutoSyncState>).detail
+      if (detail) {
+        setSyncState((prev) => ({
+          ...prev,
+          ...detail,
+          labs: detail.labs ? { ...prev.labs, ...detail.labs } : prev.labs,
+        }))
+      }
     }
     window.addEventListener(AUTO_SYNC_STATUS_EVENT, update)
     return () => window.removeEventListener(AUTO_SYNC_STATUS_EVENT, update)
@@ -797,12 +804,32 @@ export function SettingsDialog() {
                       )
                     )}
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                      {(["general", "vocab", "regency", "rule", "read", "question"] as const).map((lab) => (
-                        <div key={lab} className="rounded-lg border border-border/40 bg-muted/20 px-3 py-2">
-                          <p className="text-[10px] font-medium capitalize">{lab === "general" ? "Geral" : `${lab}Lab`}</p>
-                          <p className="mt-0.5 text-[9px] text-muted-foreground">rev. {syncState.labs?.[lab] ?? 0}</p>
-                        </div>
-                      ))}
+                      {(["general", "vocab", "regency", "rule", "read", "question"] as const).map((lab) => {
+                        const revision = syncState.labs?.[lab] ?? 0
+                        const isConnecting = syncState.state === "connecting"
+                        const isError = syncState.state === "error" || syncState.state === "conflict"
+                        return (
+                          <div key={lab} className="flex flex-col justify-between rounded-lg border border-border/40 bg-muted/20 p-2.5 transition-colors">
+                            <div className="flex items-center justify-between gap-1.5">
+                              <p className="text-[11px] font-medium capitalize">{lab === "general" ? "Geral" : `${lab}Lab`}</p>
+                              <span
+                                className={cn(
+                                  "size-1.5 rounded-full shrink-0",
+                                  isError
+                                    ? "bg-destructive"
+                                    : isConnecting
+                                      ? "bg-primary animate-pulse"
+                                      : "bg-emerald-500"
+                                )}
+                              />
+                            </div>
+                            <div className="mt-1 flex items-center justify-between text-[9px] text-muted-foreground">
+                              <span>{isConnecting ? "Sincronizando…" : "Sincronizado"}</span>
+                              <span className="font-mono text-[8.5px] opacity-75">rev. {revision}</span>
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
                     <p className="text-[10px] leading-relaxed text-muted-foreground">Cada alteração é enviada após um pequeno intervalo. Antes de salvar, o app recebe a revisão atual e mescla cards, pastas e preferências por identificador. Exclusões e edições concorrentes não substituem silenciosamente um Lab inteiro.</p>
                   </section>

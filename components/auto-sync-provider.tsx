@@ -73,6 +73,13 @@ export function AutoSyncProvider() {
     let timer: ReturnType<typeof setTimeout> | null = null
     const pending = new Set<SyncLabId>()
     const revisions: Partial<Record<SyncLabId, number>> = {}
+    try {
+      const raw = localStorage.getItem("vocablab_sync_status")
+      if (raw) {
+        const prev = JSON.parse(raw) as { labs?: Partial<Record<SyncLabId, number>> }
+        if (prev?.labs) Object.assign(revisions, prev.labs)
+      }
+    } catch {}
 
     const schedule = (delay = 900, labs: SyncLabId[] = SYNC_LABS) => {
       for (const lab of labs) pending.add(lab)
@@ -83,13 +90,13 @@ export function AutoSyncProvider() {
     const run = async () => {
       if (disposed || running) return
       if (!navigator.onLine) {
-        publishAutoSyncState({ state: "offline", message: "Sem conexão. Alterações aguardando envio." })
+        publishAutoSyncState({ state: "offline", message: "Sem conexão. Alterações aguardando envio.", labs: revisions })
         return
       }
       running = true
       const requested = pending.size ? [...pending] : [...SYNC_LABS]
       pending.clear()
-      publishAutoSyncState({ state: "connecting", message: "Enviando e recebendo alterações…" })
+      publishAutoSyncState({ state: "connecting", message: "Enviando e recebendo alterações…", labs: revisions })
       try {
         for (const lab of requested) revisions[lab] = await synchronizeLab(syncCode, lab)
         if (!disposed) publishAutoSyncState({

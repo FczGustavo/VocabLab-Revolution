@@ -635,6 +635,19 @@ export async function synchronizeLab(syncCode: string, lab: SyncLabId) {
 }
 
 export function publishAutoSyncState(state: AutoSyncState) {
-  localStorage.setItem("vocablab_sync_status", JSON.stringify(state))
-  window.dispatchEvent(new CustomEvent(AUTO_SYNC_STATUS_EVENT, { detail: state }))
+  let mergedState = state
+  try {
+    const raw = localStorage.getItem("vocablab_sync_status")
+    if (raw) {
+      const prev = JSON.parse(raw) as AutoSyncState
+      if (prev?.labs) {
+        mergedState = {
+          ...state,
+          labs: state.labs ? { ...prev.labs, ...state.labs } : prev.labs,
+        }
+      }
+    }
+  } catch {}
+  localStorage.setItem("vocablab_sync_status", JSON.stringify(mergedState))
+  window.dispatchEvent(new CustomEvent(AUTO_SYNC_STATUS_EVENT, { detail: mergedState }))
 }

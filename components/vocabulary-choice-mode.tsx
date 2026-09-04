@@ -233,10 +233,10 @@ export function VocabularyChoiceMode({
     <div className="fixed inset-0 z-50 flex flex-col bg-background">
       <StudyHeader folderName={folderName} subtitle={`Multiple choice · ${queue.length} remaining`} progress={progress} current={knownIds.size} total={flashcards.length} collapsed={headerCollapsed} onCollapsedChange={setHeaderCollapsed} onExit={onExit} trailing={studyTime.enabled ? <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold tabular-nums text-muted-foreground sm:text-sm"><Clock3 className="size-3.5 shrink-0" />{studyTime.formatted}</span> : undefined} />
       <main className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto p-3 sm:px-8 sm:py-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)]">
-        <div className="my-auto flex w-full max-w-[min(100%,340px)] flex-col justify-center sm:max-w-xl">
+        <div className="my-auto flex w-full max-w-[min(100%,340px)] flex-col justify-center sm:max-w-[550px]">
           <div
             className={cn(
-              "surface-card surface-card-elevated flex w-full aspect-square max-h-[calc(100dvh-320px)] sm:aspect-auto sm:max-h-none sm:h-[clamp(260px,calc(100dvh-280px),420px)] flex-col overflow-hidden rounded-[22px] sm:rounded-[26px] bg-card p-4 sm:p-7",
+              "surface-card surface-card-elevated border-0 flex w-full aspect-square max-h-[calc(100dvh-320px)] sm:aspect-auto sm:max-h-none sm:h-[clamp(260px,calc(100dvh-280px),420px)] flex-col overflow-hidden rounded-[22px] sm:rounded-[26px] bg-card p-4 sm:p-7",
               exiting === "known" && "study-card-exit-known",
               exiting === "again" && "study-card-exit-again",
             )}
@@ -254,31 +254,35 @@ export function VocabularyChoiceMode({
                 {showGrammaticalForm && <GrammaticalFormBadge form={current.grammaticalForm} />}
                 <VerbTypeBadge verbType={current.verbType} />
               </div>
-              <div className="flex shrink-0 gap-1">
+              <div className="flex shrink-0 items-center gap-0.5">
                 {selectedId && current.exampleTranslation && (
                   <Button
                     variant="ghost"
                     size="icon"
                     className={cn(
-                      "size-7",
-                      showTranslations && "bg-primary/10 text-primary",
+                      "size-6 rounded-md",
+                      showTranslations ? "bg-primary/15 text-primary hover:bg-primary/20 hover:text-primary" : "text-muted-foreground hover:text-primary",
                     )}
                     onClick={() => setShowTranslations((value) => !value)}
+                    title={showTranslations ? "Ocultar traduções" : "Mostrar traduções"}
+                    aria-label="Toggle translations"
                   >
-                    <Languages className="size-4" />
+                    <Languages className="size-3.5" />
                   </Button>
                 )}
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-7"
+                  className="size-6 rounded-md text-muted-foreground hover:text-primary"
                   onClick={() => void speak()}
+                  title="Ouvir pronúncia"
+                  aria-label="Ouvir pronúncia"
                 >
                   {resultFor(current.word, pronunciationVoice).status ===
                   "loading" ? (
-                    <Loader2 className="size-4 animate-spin" />
+                    <Loader2 className="size-3.5 animate-spin text-primary" />
                   ) : (
-                    <Volume2 className="size-4" />
+                    <Volume2 className="size-3.5" />
                   )}
                 </Button>
               </div>

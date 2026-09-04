@@ -631,10 +631,20 @@
 .study-swipe-card {
   touch-action: pan-y !important;
   will-change: transform, opacity;
-  transition-property: background-color, border-color, box-shadow !important;
-  transition-duration: 0.2s !important;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease, background-color 0.2s ease;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .study-swipe-card:not(.study-card-exit-known):not(.study-card-exit-again):hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 32px -8px rgba(0, 0, 0, 0.16), 0 4px 12px -2px rgba(0, 0, 0, 0.08);
+  }
+  .dark .study-swipe-card:not(.study-card-exit-known):not(.study-card-exit-again):hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 32px -8px rgba(0, 0, 0, 0.45), 0 4px 12px -2px rgba(0, 0, 0, 0.25);
+  }
 }
 }
 

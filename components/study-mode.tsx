@@ -227,6 +227,12 @@ export function StudyMode({ flashcards, folderName, folderId, onExit, onMarkForR
         el.style.transition = "transform 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.1), border-color 0.2s ease"
         el.style.transform = "translate3d(0, 0, 0) rotate(0deg)"
         el.style.borderColor = ""
+        setTimeout(() => {
+          if (cardRef.current === el && !touchStartRef.current && !isFlingingRef.current) {
+            el.style.transform = ""
+            el.style.transition = ""
+          }
+        }, 260)
       }
       if (absX < 8) {
         swipedRef.current = true
@@ -248,6 +254,12 @@ export function StudyMode({ flashcards, folderName, folderId, onExit, onMarkForR
       el.style.transition = "transform 0.2s ease, border-color 0.2s ease"
       el.style.transform = "translate3d(0, 0, 0) rotate(0deg)"
       el.style.borderColor = ""
+      setTimeout(() => {
+        if (cardRef.current === el && !touchStartRef.current && !isFlingingRef.current) {
+          el.style.transform = ""
+          el.style.transition = ""
+        }
+      }, 210)
     }
   }
 
@@ -265,12 +277,12 @@ export function StudyMode({ flashcards, folderName, folderId, onExit, onMarkForR
       <StudyShortcutCoach visible={showShortcutCoach} animated={animationsEnabled} />
 
       <main className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto bg-background p-3 sm:p-8 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)]">
-        <div className="my-auto flex w-full max-w-[min(100%,350px)] flex-col justify-center sm:max-w-xl">
+        <div className="my-auto flex w-full max-w-[min(100%,360px)] flex-col justify-center sm:max-w-[550px]">
           <div
             ref={cardRef}
             key={`${current.id}-${cardKeyIndex}`}
             className={cn(
-              "surface-card surface-card-elevated study-swipe-card relative flex w-full aspect-square max-h-[calc(100dvh-205px)] sm:aspect-auto sm:max-h-none sm:h-[430px] cursor-pointer flex-col rounded-[22px] sm:rounded-[26px] border-2 border-border/40 bg-card p-5 sm:p-7 text-left select-none",
+              "surface-card surface-card-elevated study-swipe-card group relative flex w-full cursor-pointer flex-col rounded-[22px] sm:rounded-[26px] border-0 bg-card p-5 sm:px-6 sm:py-5 text-left select-none min-h-[380px] max-h-[calc(100dvh-170px)] sm:min-h-0 sm:max-h-none sm:h-[460px]",
               exiting === "known" && "study-card-exit-known",
               exiting === "again" && "study-card-exit-again"
             )}
@@ -302,7 +314,33 @@ export function StudyMode({ flashcards, folderName, folderId, onExit, onMarkForR
 }
 
 function VocabularyFront({ card, onSpeak }: { card: Flashcard; onSpeak: () => void }) {
-  return <><div className="flex items-center justify-between"><CardBadges card={card} /><Button variant="ghost" size="icon" className="size-7 rounded-lg text-muted-foreground hover:text-primary" onClick={(event) => { event.stopPropagation(); onSpeak() }}><Volume2 className="size-4" /></Button></div><div className="flex flex-1 flex-col items-center justify-center text-center"><h2 className="text-4xl xs:text-5xl font-medium tracking-tight text-foreground/80 sm:text-6xl break-words px-2">{card.word}</h2></div></>
+  return (
+    <>
+      <div className="flex shrink-0 items-center justify-between">
+        <CardBadges card={card} />
+        <div className="opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 sm:focus-within:opacity-100">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-6 rounded-md text-muted-foreground hover:text-primary"
+            onClick={(event) => {
+              event.stopPropagation()
+              onSpeak()
+            }}
+            title="Ouvir pronúncia"
+            aria-label="Ouvir pronúncia"
+          >
+            <Volume2 className="size-3.5" />
+          </Button>
+        </div>
+      </div>
+      <div className="flex flex-1 flex-col items-center justify-center text-center px-4">
+        <h2 className="text-3xl xs:text-4xl font-medium tracking-tight text-foreground/80 sm:text-4xl md:text-[2.65rem] break-words">
+          {card.word}
+        </h2>
+      </div>
+    </>
+  )
 }
 
 function VocabularyBack({ card, showContext, contextInPortuguese, showIPA, includeMultipleTranslations, translationsShown, onToggleTranslations, onSpeak }: { card: Flashcard; showContext: boolean; contextInPortuguese: boolean; showIPA: boolean; includeMultipleTranslations: boolean; translationsShown: boolean; onToggleTranslations: () => void; onSpeak: () => void }) {
@@ -312,7 +350,83 @@ function VocabularyBack({ card, showContext, contextInPortuguese, showIPA, inclu
   const falseCognateSecondary = contextInPortuguese ? card.falseCognate?.warningEn : card.falseCognate?.warning
   const showFalseCognateContrast = card.catalogId?.startsWith("false-cognate-") === true && card.falseCognate?.isFalseCognate === true
   const translation = includeMultipleTranslations ? card.translation : card.translation.split("/")[0]?.trim()
-  return <div className="animate-in fade-in duration-200 flex h-full min-h-0 flex-col"><div className="flex items-center justify-between"><CardBadges card={card} /><div className="flex gap-1"><Button variant="ghost" size="icon" className={cn("size-7 rounded-lg", translationsShown ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-primary")} onClick={(event) => { event.stopPropagation(); onToggleTranslations() }}><Languages className="size-4" /></Button><Button variant="ghost" size="icon" className="size-7 rounded-lg text-muted-foreground hover:text-primary" onClick={(event) => { event.stopPropagation(); onSpeak() }}><Volume2 className="size-4" /></Button></div></div><div className="flex-1 min-h-0 space-y-3 sm:space-y-4 overflow-y-auto pt-3 sm:pt-5 pr-1 scrollbar-hide"><p className="text-xl sm:text-2xl font-medium text-foreground/80 sm:text-4xl">{translation}</p>{showIPA && card.ipa && <p className="-mt-2 text-sm text-muted-foreground">/{card.ipa}/</p>}<div className="border-t border-border/40" /><section><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Example</p><p className="mt-2 sm:mt-3 text-base sm:text-lg italic leading-relaxed text-foreground/80">&ldquo;{card.example}&rdquo;</p>{translationsShown && card.exampleTranslation && <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-muted-foreground">{card.exampleTranslation}</p>}</section>{showContext && (card.usageNote || card.usageNoteEn) && <section className="rounded-xl bg-muted/30 p-3 sm:p-4"><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Context</p>{contextPrimary && <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm text-foreground/80">{contextPrimary}</p>}{translationsShown && contextSecondary && <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm text-muted-foreground">{contextSecondary}</p>}{showFalseCognateContrast && falseCognatePrimary && <div className="mt-3 sm:mt-4 border-t border-border/50 pt-3 sm:pt-4"><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">False cognate</p><p className="mt-1.5 sm:mt-2 text-xs sm:text-sm text-foreground/80">{falseCognatePrimary}</p>{translationsShown && falseCognateSecondary && <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm text-muted-foreground">{falseCognateSecondary}</p>}</div>}</section>}</div></div>
+  return (
+    <div className="animate-in fade-in duration-200 flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="flex shrink-0 items-center justify-between">
+        <CardBadges card={card} />
+        <div className="flex shrink-0 items-center gap-0.5">
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "size-6 rounded-md",
+              translationsShown
+                ? "bg-primary/15 text-primary hover:bg-primary/20 hover:text-primary"
+                : "text-muted-foreground hover:text-primary"
+            )}
+            onClick={(event) => {
+              event.stopPropagation()
+              onToggleTranslations()
+            }}
+            title={translationsShown ? "Ocultar traduções" : "Mostrar traduções"}
+            aria-label="Toggle translations"
+          >
+            <Languages className="size-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-6 rounded-md text-muted-foreground hover:text-primary"
+            onClick={(event) => {
+              event.stopPropagation()
+              onSpeak()
+            }}
+            title="Ouvir pronúncia"
+            aria-label="Ouvir pronúncia"
+          >
+            <Volume2 className="size-3.5" />
+          </Button>
+        </div>
+      </div>
+      <div className="flex-1 min-h-0 flex flex-col justify-start space-y-2 sm:space-y-2.5 overflow-y-auto pt-2.5 pr-1 no-scrollbar">
+        <div>
+          <p className={cn(
+            "max-w-full break-words font-medium leading-snug text-foreground/85",
+            translation.length > 30 ? "text-lg sm:text-[1.3rem]" : "text-xl sm:text-2xl"
+          )}>
+            {translation}
+          </p>
+          {showIPA && card.ipa && <p className="mt-0.5 text-xs text-muted-foreground/80">/{card.ipa}/</p>}
+        </div>
+        <div className="border-t border-border/40" />
+        <section className="space-y-1">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Example</p>
+          <p className="text-sm sm:text-base italic leading-relaxed text-foreground/90">&ldquo;{card.example}&rdquo;</p>
+          {translationsShown && card.exampleTranslation && (
+            <p className="text-xs sm:text-sm leading-relaxed text-muted-foreground">{card.exampleTranslation}</p>
+          )}
+        </section>
+        {showContext && (card.usageNote || card.usageNoteEn) && (
+          <section className="rounded-xl bg-muted/25 p-2.5 sm:p-3 space-y-1 mt-auto">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Context</p>
+            {contextPrimary && <p className="text-xs sm:text-sm leading-relaxed text-foreground/80">{contextPrimary}</p>}
+            {translationsShown && contextSecondary && (
+              <p className="border-t border-border/30 pt-1 text-xs sm:text-sm leading-relaxed text-muted-foreground">{contextSecondary}</p>
+            )}
+            {showFalseCognateContrast && falseCognatePrimary && (
+              <div className="border-t border-border/30 pt-1.5 mt-1.5 space-y-0.5">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">False cognate</p>
+                <p className="text-xs sm:text-sm leading-relaxed text-foreground/80">{falseCognatePrimary}</p>
+                {translationsShown && falseCognateSecondary && (
+                  <p className="text-xs sm:text-sm leading-relaxed text-muted-foreground">{falseCognateSecondary}</p>
+                )}
+              </div>
+            )}
+          </section>
+        )}
+      </div>
+    </div>
+  )
 }
 
 function CardBadges({ card }: { card: Flashcard }) {

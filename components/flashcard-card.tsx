@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react"
 import { Trash2, Volume2, Loader2, Languages, VolumeX, AlertCircle, RefreshCw, Pause, Pencil } from "lucide-react"
@@ -141,10 +141,9 @@ function PronunciationButton({
       }
     }
   }
-  const isSm = size === "sm"
-  const iconClass = isSm ? "size-3" : "size-4"
+  const iconClass = "size-3.5"
   const audioIconClass = cn(iconClass, "text-muted-foreground")
-  const btnClass = isSm ? "size-6 rounded-lg" : "size-8 rounded-lg"
+  const btnClass = "size-6 rounded-md"
   const normalized = word.trim().toLowerCase()
   const result = resultFor(normalized, pronunciationVoice)
   const hasSavedSrc = !!savedAudioSrc
@@ -209,15 +208,12 @@ const statusLabel =
         <Button
           variant="ghost"
           size="icon"
-          className={cn(
-            isSm ? "size-5" : "size-6",
-            "opacity-50 hover:opacity-100"
-          )}
+          className="size-5 opacity-50 hover:opacity-100"
           onClick={handleRegenerate}
           title="Regerar pronúncia (limpa cache)"
           aria-label="Regerar pronúncia"
         >
-          <RefreshCw className={isSm ? "size-2.5" : "size-3"} />
+          <RefreshCw className="size-2.5" />
         </Button>
       )}
     </div>
@@ -469,21 +465,39 @@ export function FlashcardCard({ flashcard, onDelete, onCreateFromAlternative, on
         >
           <div className="flex items-center gap-2">
             <h3 className="max-w-[45%] min-w-0 shrink break-words text-lg font-medium leading-snug text-foreground/80 [overflow-wrap:anywhere]">{flashcard.word}</h3>
-            <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+            <div className={cn(
+              "flex shrink-0 items-center gap-0.5 transition-opacity",
+              !isFlipped ? "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100" : "opacity-100"
+            )}>
+              {hasTranslationToggle && isFlipped && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn(
+                    "size-6 rounded-md",
+                    translationsVisible
+                      ? "bg-primary/15 text-primary hover:bg-primary/20 hover:text-primary"
+                      : "text-muted-foreground hover:text-primary"
+                  )}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setTranslationsVisible((v) => !v)
+                  }}
+                  title={translationsVisible ? "Ocultar traduções" : "Mostrar traduções"}
+                  aria-label="Toggle translations"
+                >
+                  <Languages className="size-3.5" />
+                </Button>
+              )}
               <PronunciationButton word={flashcard.word} size="sm" savedAudioSrc={flashcard.audioSrc} />
               {onUpdateFlashcard && (
-                <Button variant="ghost" size="icon" className="size-7" onClick={openCardEditor} title="Editar card" aria-label="Editar card">
-                  <Pencil className="size-3.5 text-muted-foreground" />
+                <Button variant="ghost" size="icon" className="size-6 rounded-md text-muted-foreground hover:text-primary" onClick={openCardEditor} title="Editar card" aria-label="Editar card">
+                  <Pencil className="size-3.5" />
                 </Button>
               )}
               {onDelete && (
-                <Button variant="ghost" size="icon" className="size-7 text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); onDelete(flashcard.id) }}>
-                  <Trash2 className="size-3.5 text-muted-foreground" />
-                </Button>
-              )}
-              {hasTranslationToggle && isFlipped && (
-                <Button variant="ghost" size="icon" className={cn("size-7 rounded-lg", translationsVisible ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-primary")} onClick={(e) => { e.stopPropagation(); setTranslationsVisible((v) => !v) }} title={translationsVisible ? "Hide translations" : "Show translations"}>
-                  <Languages className="size-4" />
+                <Button variant="ghost" size="icon" className="size-6 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); onDelete(flashcard.id) }} title="Excluir card" aria-label="Excluir card">
+                  <Trash2 className="size-3.5" />
                 </Button>
               )}
             </div>
@@ -642,16 +656,16 @@ export function FlashcardCard({ flashcard, onDelete, onCreateFromAlternative, on
               ))}
             </div>
           ) : null}
-          <div className="flex justify-center gap-1 mt-2">
+          <div className="flex justify-center gap-0.5 mt-2">
             <PronunciationButton word={flashcard.word} size="sm" savedAudioSrc={flashcard.audioSrc} />
             {onUpdateFlashcard && (
-              <Button variant="ghost" size="icon" className="size-6 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100" onClick={openCardEditor} title="Editar card" aria-label="Editar card">
-                <Pencil className="size-3 text-muted-foreground" />
+              <Button variant="ghost" size="icon" className="size-6 rounded-md text-muted-foreground hover:text-primary" onClick={openCardEditor} title="Editar card" aria-label="Editar card">
+                <Pencil className="size-3.5" />
               </Button>
             )}
             {onDelete && (
-              <Button variant="ghost" size="icon" className="size-6 text-destructive" onClick={(e) => { e.stopPropagation(); onDelete(flashcard.id); }}>
-                <Trash2 className="size-3 text-muted-foreground" />
+              <Button variant="ghost" size="icon" className="size-6 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); onDelete(flashcard.id); }} title="Excluir card" aria-label="Excluir card">
+                <Trash2 className="size-3.5" />
               </Button>
             )}
           </div>
@@ -696,21 +710,23 @@ export function FlashcardCard({ flashcard, onDelete, onCreateFromAlternative, on
             <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
               <PronunciationButton word={flashcard.word} size="sm" savedAudioSrc={flashcard.audioSrc} />
               {onUpdateFlashcard && (
-                <Button variant="ghost" size="icon" className="size-7" onClick={openCardEditor} title="Editar card" aria-label="Editar card">
-                  <Pencil className="size-3.5 text-muted-foreground" />
+                <Button variant="ghost" size="icon" className="size-6 rounded-md text-muted-foreground hover:text-primary" onClick={openCardEditor} title="Editar card" aria-label="Editar card">
+                  <Pencil className="size-3.5" />
                 </Button>
               )}
               {onDelete && (
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-7 text-destructive hover:text-destructive"
+                  className="size-6 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                   onClick={(e) => {
                     e.stopPropagation()
                     onDelete(flashcard.id)
                   }}
+                  title="Excluir card"
+                  aria-label="Excluir card"
                 >
-                  <Trash2 className="size-3.5 text-muted-foreground" />
+                  <Trash2 className="size-3.5" />
                 </Button>
               )}
             </div>
@@ -738,9 +754,9 @@ export function FlashcardCard({ flashcard, onDelete, onCreateFromAlternative, on
               {hasTranslationToggle && (
                 <Button
                   variant="ghost"
-                  size="icon-sm"
+                  size="icon"
                   className={cn(
-                    "size-7 rounded-lg",
+                    "size-6 rounded-md",
                     translationsVisible
                       ? "bg-primary/15 text-primary hover:bg-primary/20 hover:text-primary"
                       : "text-muted-foreground hover:text-primary"
@@ -749,16 +765,38 @@ export function FlashcardCard({ flashcard, onDelete, onCreateFromAlternative, on
                     e.stopPropagation()
                     setTranslationsVisible((v) => !v)
                   }}
-                  title={translationsVisible ? "Hide translations" : "Show translations"}
+                  title={translationsVisible ? "Ocultar traduções" : "Mostrar traduções"}
                   aria-label="Toggle translations"
                 >
-                  <Languages className="size-4" />
+                  <Languages className="size-3.5" />
                 </Button>
               )}
               <PronunciationButton word={flashcard.word} size="sm" savedAudioSrc={flashcard.audioSrc} />
               {onUpdateFlashcard && (
-                <Button variant="ghost" size="icon" className="size-8 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100" onClick={openCardEditor} title="Editar card" aria-label="Editar card">
-                  <Pencil className="size-4 text-muted-foreground" />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-6 rounded-md text-muted-foreground hover:text-primary"
+                  onClick={openCardEditor}
+                  title="Editar card"
+                  aria-label="Editar card"
+                >
+                  <Pencil className="size-3.5" />
+                </Button>
+              )}
+              {onDelete && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-6 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onDelete(flashcard.id)
+                  }}
+                  title="Excluir card"
+                  aria-label="Excluir card"
+                >
+                  <Trash2 className="size-3.5" />
                 </Button>
               )}
             </div>

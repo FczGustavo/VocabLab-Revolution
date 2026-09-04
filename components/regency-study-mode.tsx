@@ -337,6 +337,12 @@ export function RegencyStudyMode({
         el.style.transition = "transform 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.1), border-color 0.2s ease";
         el.style.transform = "translate3d(0, 0, 0) rotate(0deg)";
         el.style.borderColor = "";
+        setTimeout(() => {
+          if (cardRef.current === el && !touchStartRef.current && !isFlingingRef.current) {
+            el.style.transform = "";
+            el.style.transition = "";
+          }
+        }, 260);
       }
       if (absX < 8) {
         swipedRef.current = true;
@@ -358,6 +364,12 @@ export function RegencyStudyMode({
       el.style.transition = "transform 0.2s ease, border-color 0.2s ease";
       el.style.transform = "translate3d(0, 0, 0) rotate(0deg)";
       el.style.borderColor = "";
+      setTimeout(() => {
+        if (cardRef.current === el && !touchStartRef.current && !isFlingingRef.current) {
+          el.style.transform = "";
+          el.style.transition = "";
+        }
+      }, 210);
     }
   };
 
@@ -409,15 +421,15 @@ export function RegencyStudyMode({
 
       {current && (
         <main className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto bg-background p-3 sm:px-8 sm:py-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)]">
-          <div className="my-auto flex w-full max-w-[min(100%,350px)] flex-col justify-center sm:max-w-xl">
+          <div className="my-auto flex w-full max-w-[min(100%,360px)] flex-col justify-center sm:max-w-[550px]">
             <div
               ref={cardRef}
               key={`${current.id}-${cardKeyIndex}`}
               className={cn(
-                "surface-card surface-card-elevated study-swipe-card relative flex w-full flex-col rounded-[22px] sm:rounded-[26px] border-2 border-border/40 bg-card p-5 sm:p-7 text-left select-none",
+                "surface-card surface-card-elevated study-swipe-card group relative flex w-full flex-col rounded-[22px] sm:rounded-[26px] border-0 bg-card p-5 sm:px-6 sm:py-5 text-left select-none",
                 mode === "choice"
                   ? "aspect-square max-h-[calc(100dvh-320px)] sm:aspect-auto sm:max-h-none sm:h-[clamp(260px,calc(100dvh-280px),420px)] overflow-hidden"
-                  : "aspect-square max-h-[calc(100dvh-205px)] sm:aspect-auto sm:max-h-none sm:h-[430px]",
+                  : "min-h-[380px] max-h-[calc(100dvh-205px)] sm:min-h-0 sm:max-h-none sm:h-[460px]",
                 mode === "flip" && "cursor-pointer",
                 exiting === "known" && "study-card-exit-known",
                 exiting === "again" && "study-card-exit-again",

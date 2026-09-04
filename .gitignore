@@ -17,8 +17,12 @@ node_modules
 .next/
 .DS_Store
 
+# Command Code internal state and AI context
+/.commandcode/
+
 # Local Classic Build materials
 /Classic Build/
+/classic_build/
 
 # Local temporary files and generated reports
 /temp/

@@ -280,7 +280,30 @@ function stable(value: unknown): string {
 }
 
 function labPayloadFingerprint(payload: SyncLabPayload) {
-  return stable({ stores: payload.stores, preferences: payload.preferences })
+  const stores = Object.fromEntries(
+    Object.entries(payload.stores).map(([storeName, values]) => [
+      storeName,
+      [...values].sort((left, right) => {
+        const leftKey = stable(left)
+        const rightKey = stable(right)
+        return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0
+      }),
+    ]),
+  )
+  return stable({ stores, preferences: payload.preferences })
+}
+
+function stableDatabaseStores(stores: Record<string, unknown[]>, storeNames: string[]): string {
+  const filtered: Record<string, unknown[]> = {}
+  for (const name of storeNames) {
+    const values = stores[name] ?? []
+    filtered[name] = [...values].sort((a, b) => {
+      const sa = stable(a)
+      const sb = stable(b)
+      return sa < sb ? -1 : sa > sb ? 1 : 0
+    })
+  }
+  return stable(filtered)
 }
 
 function stripLocalOnlyData(databaseName: string, storeName: string, value: unknown) {
@@ -329,13 +352,18 @@ async function replaceDatabase(
 ) {
   const db = await openDatabase(definition)
   try {
-    // This second check happens after IndexedDB is open and directly before
-    // the replacement transaction. It closes the race where a user action
-    // lands while the sync request is waiting for the database connection.
-    if (expectedStores && stable(await readDatabaseStores(definition, db)) !== stable(expectedStores)) {
-      return false
-    }
+    // Only compare actual IndexedDB stores defined in this database definition.
+    // Notice expectedStores from exportLabData includes syncTombstones (stored in localStorage),
+    // which is not an IndexedDB object store.
     const storeNames = definition.stores.map((store) => store.name)
+    if (expectedStores) {
+      const currentStores = await readDatabaseStores(definition, db)
+      const currentFingerprint = stableDatabaseStores(currentStores, storeNames)
+      const expectedFingerprint = stableDatabaseStores(expectedStores, storeNames)
+      if (currentFingerprint !== expectedFingerprint) {
+        return false
+      }
+    }
     const transaction = db.transaction(storeNames, "readwrite")
     const done = transactionDone(transaction)
 

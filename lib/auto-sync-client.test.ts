@@ -30,6 +30,25 @@ describe("mergeLabPayloads", () => {
     expect(payloadFingerprint(first)).toBe(payloadFingerprint(second))
   })
 
+  it("ignores tombstone order when comparing sync payloads", () => {
+    const first = payload({
+      flashcards: [],
+      syncTombstones: [
+        { id: "1", storeName: "flashcards", entityId: "a", deletedAt: 10 },
+        { id: "2", storeName: "flashcards", entityId: "b", deletedAt: 20 },
+      ],
+    })
+    const second = payload({
+      flashcards: [],
+      syncTombstones: [
+        { id: "2", storeName: "flashcards", entityId: "b", deletedAt: 20 },
+        { id: "1", storeName: "flashcards", entityId: "a", deletedAt: 10 },
+      ],
+    })
+
+    expect(payloadFingerprint(first)).toBe(payloadFingerprint(second))
+  })
+
   it("preserves independent cards created concurrently", () => {
     const merged = mergeLabPayloads(
       payload({ flashcards: [] }),

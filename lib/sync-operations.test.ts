@@ -179,4 +179,33 @@ describe("multiwriter sync operations", () => {
       deletedAt: 200,
     }))
   })
+
+  it("strips audioSrc from flashcards and normalizes tombstones canonically", () => {
+    const local: SyncLabPayload = {
+      version: 1,
+      lab: "vocab",
+      exportedAt: 1_000,
+      stores: {
+        flashcards: [
+          { id: "c1", word: "test", partOfSpeech: "noun", audioSrc: "blob:http://localhost/123", updatedAt: 100 },
+        ],
+        syncTombstones: [
+          { id: "old-1", storeName: "folders", entityId: "catalogId:f1", deletedAt: 50 } as any,
+          { id: "old-2", storeName: "folders", entityId: "f1", deletedAt: 100 } as any,
+        ],
+      },
+      preferences: {},
+    }
+    const merged = applySyncOperations(local, [])
+
+    expect((merged.stores.flashcards[0] as any).audioSrc).toBeUndefined()
+    expect(merged.stores.syncTombstones).toHaveLength(1)
+    expect(merged.stores.syncTombstones[0]).toEqual({
+      id: "old-2",
+      storeName: "folders",
+      entityId: "f1",
+      deletedAt: 100,
+    })
+  })
 })
+

@@ -545,20 +545,14 @@ async function synchronizeLabByOperations(syncCode: string, lab: SyncLabId) {
   const ownerToken = getSyncOwnerToken(syncCode)
   if (!ownerToken) throw new Error("Este navegador ainda não foi autorizado.")
   const key = `${syncCode}:${lab}`
-  let lastLocalFingerprint = ""
   for (let attempt = 0; attempt < 5; attempt++) {
+    if (attempt > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 60 * attempt))
+    }
     const stored = await getBaseline(key)
     const baseline = stored?.protocol === OPERATION_PROTOCOL ? stored : undefined
     const initialLocal = await exportLabData(lab)
     let local = initialLocal
-
-    // Detect loops that make no progress: if the local state is identical to
-    // the previous attempt there is nothing new to try — bail out immediately.
-    const currentFingerprint = payloadFingerprint(initialLocal)
-    if (attempt > 0 && currentFingerprint === lastLocalFingerprint) {
-      throw new Error("A sincronização não convergiu: o estado local não mudou entre tentativas.")
-    }
-    lastLocalFingerprint = currentFingerprint
 
     // Existing installations can still have their only copy in the old snapshot
     // tables. Merge it once, then publish it as independent operations.

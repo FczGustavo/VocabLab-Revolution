@@ -46,8 +46,15 @@ export function replaceSyncTombstones(lab: string, values: SyncTombstone[]) {
     value && typeof value.id === "string" && typeof value.storeName === "string"
     && typeof value.entityId === "string" && Number.isFinite(value.deletedAt)
   ))
-  const deduped = new Map(valid.map((value) => [value.id, value]))
-  all[lab] = [...deduped.values()].sort((left, right) => left.deletedAt - right.deletedAt).slice(-5000)
+  const byKey = new Map<string, SyncTombstone>()
+  for (const value of valid) {
+    const key = `${value.storeName}:${value.entityId}`
+    const existing = byKey.get(key)
+    if (!existing || existing.deletedAt < value.deletedAt) {
+      byKey.set(key, value)
+    }
+  }
+  all[lab] = [...byKey.values()].sort((left, right) => left.deletedAt - right.deletedAt).slice(-5000)
   writeAll(all)
 }
 

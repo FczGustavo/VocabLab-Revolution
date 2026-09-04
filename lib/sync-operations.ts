@@ -257,7 +257,7 @@ function normalizeOperationState(
 
   // VocabLab has a unique IndexedDB index for word + part of speech. Keep the
   // newest record when old operation rows or simultaneous device creation
-  // produce two records for that key.
+  // produce two records for that key. Also strip local-only audioSrc.
   const flashcards = stores.flashcards
   if (flashcards) {
     const byWordAndPartOfSpeech = new Map<string, { index: number; value: unknown }>()
@@ -268,28 +268,58 @@ function normalizeOperationState(
         continue
       }
       const record = value as Record<string, unknown>
-      const word = typeof record.word === "string" ? record.word.trim().toLocaleLowerCase("en-US") : ""
-      const partOfSpeech = typeof record.partOfSpeech === "string" ? record.partOfSpeech : ""
+      const { audioSrc: _audioSrc, ...syncable } = record
+      const word = typeof syncable.word === "string" ? syncable.word.trim().toLocaleLowerCase("en-US") : ""
+      const partOfSpeech = typeof syncable.partOfSpeech === "string" ? syncable.partOfSpeech : ""
       if (!word || !partOfSpeech) {
-        deduped.push(value)
+        deduped.push(syncable)
         continue
       }
       const uniqueKey = `${word}\u0000${partOfSpeech}`
       const existing = byWordAndPartOfSpeech.get(uniqueKey)
       if (!existing) {
-        byWordAndPartOfSpeech.set(uniqueKey, { index: deduped.length, value })
-        deduped.push(value)
+        byWordAndPartOfSpeech.set(uniqueKey, { index: deduped.length, value: syncable })
+        deduped.push(syncable)
         continue
       }
-      if (syncRecordTimestamp(value, 0) >= syncRecordTimestamp(existing.value, 0)) {
-        deduped[existing.index] = value
-        existing.value = value
+      if (syncRecordTimestamp(syncable, 0) >= syncRecordTimestamp(existing.value, 0)) {
+        deduped[existing.index] = syncable
+        existing.value = syncable
       }
     }
     stores.flashcards = deduped
   }
 
   applyTombstones(stores)
+
+  // Ensure all tombstones are valid, canonical SyncTombstone records deduplicated by storeName:entityId
+  if (stores.syncTombstones) {
+    const valid = stores.syncTombstones
+      .filter((v): v is Record<string, unknown> => Boolean(v && typeof v === "object"))
+      .map((tombstone) => {
+        const storeName = String(tombstone.storeName ?? "")
+        const rawEntityId = String(tombstone.entityId ?? "")
+        const entityId = rawEntityId.replace(/^(id|key|questionId|catalogId):/, "")
+        const deletedAt = Number(tombstone.deletedAt)
+        const id = typeof tombstone.id === "string" && tombstone.id ? tombstone.id : `${storeName}:${entityId}`
+        return {
+          id,
+          storeName,
+          entityId,
+          deletedAt: Number.isFinite(deletedAt) ? deletedAt : 0,
+        }
+      })
+      .filter((t) => t.storeName && t.entityId)
+    const byKey = new Map<string, typeof valid[0]>()
+    for (const t of valid) {
+      const key = `${t.storeName}:${t.entityId}`
+      const prev = byKey.get(key)
+      if (!prev || prev.deletedAt < t.deletedAt) {
+        byKey.set(key, t)
+      }
+    }
+    stores.syncTombstones = [...byKey.values()].sort((a, b) => a.deletedAt - b.deletedAt)
+  }
 }
 
 function findOperationEntityIndex(

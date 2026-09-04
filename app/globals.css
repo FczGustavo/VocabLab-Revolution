@@ -627,6 +627,15 @@
 .animate-slide-down {
   animation: slide-down 0.28s ease-out both;
 }
+
+.study-swipe-card {
+  touch-action: pan-y !important;
+  will-change: transform, opacity;
+  transition-property: background-color, border-color, box-shadow !important;
+  transition-duration: 0.2s !important;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
 }
 
 /* Flashcard 3D flip styles */

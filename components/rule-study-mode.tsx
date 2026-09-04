@@ -99,22 +99,20 @@ export function RuleStudyMode({
     savedRef.current = true
   }, [cards, finished, folderId, folderName, mode, saveStudySession, studyTime.elapsedSeconds, wrongCounts])
 
-  const [cardKeyIndex, setCardKeyIndex] = useState(0)
-  const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
-  const [isDragging, setIsDragging] = useState(false)
-  const [isFlinging, setIsFlinging] = useState(false)
+  const cardRef = useRef<HTMLElement>(null)
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null)
-  const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
+  const dragOffsetRef = useRef<{ x: number }>({ x: 0 })
+  const rafIdRef = useRef<number | null>(null)
   const swipedRef = useRef(false)
+  const isFlingingRef = useRef(false)
+  const [cardKeyIndex, setCardKeyIndex] = useState(0)
 
   const advance = async (known: boolean, fromSwipe?: boolean) => {
     if (!current || exiting) return
     setShowCoach(false)
     setLastRating(known ? "known" : "again")
 
-    if (fromSwipe) {
-      await new Promise((resolve) => window.setTimeout(resolve, 200))
-    } else if (animationsEnabled) {
+    if (!fromSwipe && animationsEnabled) {
       setExiting(known ? "known" : "again")
       await new Promise((resolve) => window.setTimeout(resolve, 260))
     }
@@ -147,50 +145,81 @@ export function RuleStudyMode({
     setRevealed(false)
     setAnswer("")
     setExiting(null)
-    setIsFlinging(false)
-    setDragOffset({ x: 0, y: 0 })
+    isFlingingRef.current = false
     setCardKeyIndex((i) => i + 1)
   }
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (mode !== "flip" || exiting || isFlinging || e.touches.length !== 1) return
+    if (mode !== "flip" || exiting || isFlingingRef.current || e.touches.length !== 1) return
     const touch = e.touches[0]
     touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() }
-    dragOffsetRef.current = { x: 0, y: 0 }
-    setDragOffset({ x: 0, y: 0 })
-    setIsDragging(true)
+    dragOffsetRef.current.x = 0
     swipedRef.current = false
+    if (cardRef.current) {
+      cardRef.current.style.transition = "none"
+    }
   }
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (mode !== "flip" || !touchStartRef.current || exiting || isFlinging || e.touches.length !== 1) return
+    if (mode !== "flip" || !touchStartRef.current || exiting || isFlingingRef.current || e.touches.length !== 1) return
     const touch = e.touches[0]
     const dx = touch.clientX - touchStartRef.current.x
-    dragOffsetRef.current = { x: dx, y: 0 }
-    setDragOffset({ x: dx, y: 0 })
+    dragOffsetRef.current.x = dx
+
+    if (rafIdRef.current === null) {
+      rafIdRef.current = requestAnimationFrame(() => {
+        rafIdRef.current = null
+        const el = cardRef.current
+        if (!el) return
+        const currentX = dragOffsetRef.current.x
+        el.style.transform = `translate3d(${currentX}px, 0, 0) rotate(${currentX * 0.05}deg)`
+        if (currentX > 20) {
+          el.style.borderColor = `rgba(34, 197, 94, ${Math.min(1, (currentX - 20) / 60)})`
+        } else if (currentX < -20) {
+          el.style.borderColor = `rgba(239, 68, 68, ${Math.min(1, (-currentX - 20) / 60)})`
+        } else {
+          el.style.borderColor = ""
+        }
+      })
+    }
   }
 
   const handleTouchEnd = () => {
-    if (mode !== "flip" || !touchStartRef.current || exiting || isFlinging) return
-    const { x: deltaX } = dragOffsetRef.current
+    if (mode !== "flip" || !touchStartRef.current || exiting || isFlingingRef.current) return
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current)
+      rafIdRef.current = null
+    }
+    const deltaX = dragOffsetRef.current.x
     const elapsed = Date.now() - touchStartRef.current.time
     touchStartRef.current = null
-    setIsDragging(false)
 
     const absX = Math.abs(deltaX)
     const minDistance = elapsed < 320 ? 45 : 75
 
-    if (absX >= minDistance) {
+    if (absX >= minDistance && cardRef.current) {
       swipedRef.current = true
-      setTimeout(() => { swipedRef.current = false }, 350)
-      setIsFlinging(true)
+      isFlingingRef.current = true
+      setTimeout(() => { swipedRef.current = false }, 400)
       const targetX = deltaX > 0
         ? (typeof window !== "undefined" ? window.innerWidth + 120 : 500)
         : (typeof window !== "undefined" ? -window.innerWidth - 120 : -500)
-      setDragOffset({ x: targetX, y: 0 })
-      void advance(deltaX > 0, true)
+
+      const el = cardRef.current
+      el.style.transition = "transform 0.22s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.2s ease-in, border-color 0.2s ease"
+      el.style.transform = `translate3d(${targetX}px, 0, 0) rotate(${targetX * 0.05}deg)`
+      el.style.opacity = "0"
+
+      setTimeout(() => {
+        void advance(deltaX > 0, true)
+      }, 210)
     } else {
-      setDragOffset({ x: 0, y: 0 })
+      if (cardRef.current) {
+        const el = cardRef.current
+        el.style.transition = "transform 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.1), border-color 0.2s ease"
+        el.style.transform = "translate3d(0, 0, 0) rotate(0deg)"
+        el.style.borderColor = ""
+      }
       if (absX < 8) {
         swipedRef.current = true
         setTimeout(() => { swipedRef.current = false }, 350)
@@ -200,10 +229,18 @@ export function RuleStudyMode({
   }
 
   const handleTouchCancel = () => {
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current)
+      rafIdRef.current = null
+    }
     touchStartRef.current = null
-    setIsDragging(false)
-    setIsFlinging(false)
-    setDragOffset({ x: 0, y: 0 })
+    isFlingingRef.current = false
+    if (cardRef.current) {
+      const el = cardRef.current
+      el.style.transition = "transform 0.2s ease, border-color 0.2s ease"
+      el.style.transform = "translate3d(0, 0, 0) rotate(0deg)"
+      el.style.borderColor = ""
+    }
   }
 
   useStudyKeyboardShortcuts({
@@ -314,65 +351,33 @@ export function RuleStudyMode({
       <main className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto bg-background p-3 sm:p-8 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)]">
         <div className="my-auto flex w-full max-w-[min(100%,350px)] flex-col justify-center sm:max-w-xl">
           <article
+            ref={cardRef}
             key={`${current.id}-${cardKeyIndex}`}
             className={cn(
-              "surface-card surface-card-elevated relative flex w-full aspect-square max-h-[calc(100dvh-205px)] sm:aspect-auto sm:max-h-none sm:h-[430px] flex-col overflow-hidden rounded-[22px] sm:rounded-[26px] bg-card p-5 sm:p-7 select-none",
+              "surface-card surface-card-elevated study-swipe-card relative flex w-full aspect-square max-h-[calc(100dvh-205px)] sm:aspect-auto sm:max-h-none sm:h-[430px] flex-col overflow-hidden rounded-[22px] sm:rounded-[26px] border-2 border-border/40 bg-card p-5 sm:p-7 select-none",
               mode === "flip" && "cursor-pointer",
-              !isFlinging && exiting === "known" && "study-card-exit-known",
-              !isFlinging && exiting === "again" && "study-card-exit-again",
+              exiting === "known" && "study-card-exit-known",
+              exiting === "again" && "study-card-exit-again",
             )}
-            style={mode === "flip" ? {
-              transform: isDragging || isFlinging
-                ? `translate3d(${dragOffset.x}px, 0, 0) rotate(${dragOffset.x * 0.08}deg)`
-                : undefined,
-              opacity: isFlinging ? 0 : undefined,
-              transition: isFlinging
-                ? "transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease-in"
-                : isDragging
-                ? "none"
-                : "transform 0.26s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease",
-              boxShadow: isDragging && dragOffset.x > 25
-                ? `0 0 0 2px rgba(34,197,94,${Math.min(0.8, dragOffset.x / 100)}), 0 10px 25px -5px rgba(34,197,94,0.3)`
-                : isDragging && dragOffset.x < -25
-                ? `0 0 0 2px rgba(239,68,68,${Math.min(0.8, -dragOffset.x / 100)}), 0 10px 25px -5px rgba(239,68,68,0.3)`
-                : undefined,
-              touchAction: "pan-y",
-            } : undefined}
             onClick={() => {
               if (swipedRef.current) {
                 swipedRef.current = false
                 return
               }
-              if (mode === "flip" && !exiting && !isFlinging) setFlipped((value) => !value)
+              if (mode === "flip" && !exiting && !isFlingingRef.current) setFlipped((value) => !value)
             }}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
             onTouchCancel={handleTouchCancel}
             onKeyDown={(event) => {
-              if (mode === "flip" && event.key === "Enter" && !exiting && !isFlinging) {
+              if (mode === "flip" && event.key === "Enter" && !exiting && !isFlingingRef.current) {
                 setFlipped((value) => !value)
               }
             }}
             role={mode === "flip" ? "button" : undefined}
             tabIndex={mode === "flip" ? 0 : undefined}
           >
-            {mode === "flip" && isDragging && dragOffset.x > 35 && (
-              <div
-                className="pointer-events-none absolute top-4 right-4 z-20 rounded-full bg-success/20 border border-success/40 px-3 py-1 text-xs font-bold uppercase tracking-wider text-success"
-                style={{ opacity: Math.min(1, (dragOffset.x - 35) / 45) }}
-              >
-                I knew it
-              </div>
-            )}
-            {mode === "flip" && isDragging && dragOffset.x < -35 && (
-              <div
-                className="pointer-events-none absolute top-4 left-4 z-20 rounded-full bg-destructive/20 border border-destructive/40 px-3 py-1 text-xs font-bold uppercase tracking-wider text-destructive"
-                style={{ opacity: Math.min(1, (-dragOffset.x - 35) / 45) }}
-              >
-                Again
-              </div>
-            )}
             <div className="flex items-center">
               <Badge
                 variant="outline"

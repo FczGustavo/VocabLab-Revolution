@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react"
 import { Trash2, Volume2, Loader2, Languages, VolumeX, AlertCircle, RefreshCw, Pause, Pencil } from "lucide-react"
@@ -351,11 +351,17 @@ export function FlashcardCard({ flashcard, onDelete, onCreateFromAlternative, on
   const blockFlipTemporarily = (ms = 300) => {
     suppressFlipUntilRef.current = Date.now() + ms
   }
-  const toggleFlipSafely = () => {
+  const toggleFlipSafely = (event?: React.MouseEvent) => {
     if (editOpen || editBusy) return
     if (consumeNextFlipRef.current) {
       consumeNextFlipRef.current = false
       return
+    }
+    if (event) {
+      const target = event.target as HTMLElement | null
+      if (target?.closest("button, [role='button'], a, input, select, textarea, [data-interactive='true']")) {
+        return
+      }
     }
     if (Date.now() < suppressFlipUntilRef.current) return
     setIsFlipped((value) => !value)

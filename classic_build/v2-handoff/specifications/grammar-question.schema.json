@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vocalab.local/schemas/v8-grammar-question.json",
+  "title": "QuestionLab Grammar Question",
+  "type": "object",
+  "required": [
+    "id",
+    "topic",
+    "questionText",
+    "questionType",
+    "options",
+    "createdAt"
+  ],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "topic": { "type": "string", "minLength": 1 },
+    "subtopic": { "type": "string" },
+    "questionText": { "type": "string", "minLength": 1 },
+    "contextPassage": { "type": "string" },
+    "questionType": { "enum": ["correct", "incorrect"] },
+    "options": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["letter", "text", "isAnswer", "explanation"],
+        "properties": {
+          "letter": { "enum": ["A", "B", "C", "D", "E"] },
+          "text": { "type": "string" },
+          "isAnswer": { "type": "boolean" },
+          "explanation": { "type": "string" }
+        }
+      }
+    },
+    "createdAt": { "type": "integer", "minimum": 0 },
+    "updatedAt": { "type": "integer", "minimum": 0 }
+  },
+  "allOf": [
+    { "properties": { "options": { "contains": { "properties": { "letter": { "const": "A" } }, "required": ["letter"] }, "minContains": 1, "maxContains": 1 } } },
+    { "properties": { "options": { "contains": { "properties": { "letter": { "const": "B" } }, "required": ["letter"] }, "minContains": 1, "maxContains": 1 } } },
+    { "properties": { "options": { "contains": { "properties": { "letter": { "const": "C" } }, "required": ["letter"] }, "minContains": 1, "maxContains": 1 } } },
+    { "properties": { "options": { "contains": { "properties": { "letter": { "const": "D" } }, "required": ["letter"] }, "minContains": 1, "maxContains": 1 } } },
+    { "properties": { "options": { "contains": { "properties": { "letter": { "const": "E" } }, "required": ["letter"] }, "minContains": 1, "maxContains": 1 } } },
+    { "properties": { "options": { "contains": { "properties": { "isAnswer": { "const": true } }, "required": ["isAnswer"] }, "minContains": 1, "maxContains": 1 } } }
+  ],
+  "additionalProperties": true
+}

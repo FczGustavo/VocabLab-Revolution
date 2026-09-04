@@ -5,3 +5,8 @@
 - Remove any revision/validation step from the flashcard AI generation pipeline — generate all fields in a single pass without post-hoc review stages that could interfere with field completion. Confidence: 0.70
 - usageNoteEn must be concise and dictionary-like — direct, to the point, without irrelevant or rambling information. Confidence: 0.70
 - The PT usageNote translation must correspond exactly to the English usageNoteEn content — no mismatched or diverging information between the two versions. Confidence: 0.70
+- Split large requests into separate, focused prompts/balloons (e.g. one visual, one backend) rather than one giant combined prompt, to avoid overtaxing a single model and to parallelize. Confidence: 0.8
+- Use a fast/cheap model (Luna, Granite) for construction/implementation and a stronger reviewer model (Sol) only for final verification/audit — don't waste the strong model on building. Confidence: 0.8
+- When delegating UI/visual work to an external visual model (Gemini/Claude) that lacks repo access, attach reference screenshots from the project/temp folders and reference the hosted site as the visual source of truth. Confidence: 0.8
+- All AI model/toggle selection must be adjustable by editing `.env.local`; keep `.env.local` organized and in sync with the committed `.env.local.example`. Confidence: 0.85
+- Continuously optimize for token/resource cost — user frequently complains about excessive token spend and asks to streamline processes. Confidence: 0.8

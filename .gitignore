@@ -16,3 +16,9 @@ next.user-config.*
 node_modules
 .next/
 .DS_Store
+
+# Local Classic Build materials
+/Classic Build/
+
+# Local temporary files and generated reports
+/temp/

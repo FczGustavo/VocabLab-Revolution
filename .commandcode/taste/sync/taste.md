@@ -1,0 +1,4 @@
+# sync / data-integrity
+- Synchronization must never overwrite or delete another user's data — concurrent writes with the same pairing key must be rejected/guarded so nobody's data is wiped. User is highly sensitive to accidental data loss during sync. Confidence: 0.9
+- Sync pairing/everyone must be uniquely keyed per user/session (e.g. a user-chosen word + 4-digit PIN from the system); the same key must not allow two users to clobber each other's data simultaneously. Confidence: 0.8
+- Make the sync flow explicit and safe: confirm before writing, allow tying/locking edits after confirmation, and allow unlocking to view another user's data. Confidence: 0.75

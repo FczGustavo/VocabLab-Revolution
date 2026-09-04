@@ -7,3 +7,4 @@
 - When pronunciation audio is ready/completed, show a volume/sound icon (like Volume2), not a checkmark icon. Confidence: 0.70
 - Pronunciation audio must be persisted/cached permanently — never regenerate audio on server start or page refresh. Confidence: 0.85
 - When pronunciation audio fails/gives an error, show a red-colored icon on the audio button. Clicking the red icon should regenerate the audio. Confidence: 0.85
+- Audio must be generated and saved strictly on-demand (only when the user clicks the play/audio icon) — never auto-generate during card creation or on load. Confidence: 0.9

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vocalab.local/schemas/v8-ai-environment.json",
+  "title": "VocabLab V8 AI environment map",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "OPENROUTER_API_KEY": { "type": "string", "minLength": 1, "writeOnly": true },
+    "DEFAULT_AI_MODEL": { "$ref": "#/$defs/model" },
+    "NEXT_PUBLIC_DEFAULT_AI_MODEL": { "$ref": "#/$defs/model" },
+    "PREDICT_AI_MODEL": { "$ref": "#/$defs/model" },
+    "LEXICOGRAPHER_REVIEW_AI_MODEL": { "$ref": "#/$defs/model" },
+    "DERIVATION_AI_MODEL": { "$ref": "#/$defs/model" },
+    "VALIDATE_DERIVATIONS_AI_MODEL": { "$ref": "#/$defs/model" },
+    "REGENCY_AI_MODEL": { "$ref": "#/$defs/model" },
+    "REGENCY_GENERATOR_FALLBACK_MODEL": { "$ref": "#/$defs/model" },
+    "REGENCY_REVIEW_AI_MODEL": { "$ref": "#/$defs/model" },
+    "READLAB_AI_MODEL": { "$ref": "#/$defs/model" },
+    "READLAB_LOOKUP_AI_MODEL": { "$ref": "#/$defs/model" },
+    "READLAB_OCR_MODEL": { "$ref": "#/$defs/model" },
+    "GRAMMAR_AI_MODEL": { "$ref": "#/$defs/model" },
+    "REVISOR_AI_MODEL": { "$ref": "#/$defs/model" },
+    "QUIZLET_IMPORT_OCR_MODEL": { "$ref": "#/$defs/model" },
+    "QUIZLET_IMPORT_REVIEW_AI_MODEL": { "$ref": "#/$defs/model" },
+    "PRONUNCIATION_AI_MODEL": { "$ref": "#/$defs/model" },
+    "READLAB_AUDIO_AI_MODEL": { "$ref": "#/$defs/model" },
+    "PRONUNCIATION_AI_VOICE": { "type": "string" },
+    "PRONUNCIATION_AI_FORMAT": { "type": "string" },
+    "GRANITE_BACKUP_MODEL": { "$ref": "#/$defs/model" },
+    "GRANITE_HIGH_LATENCY_MS": { "type": "string", "pattern": "^\\d+$" },
+    "GRANITE_LOW_TOKENS_PER_SECOND": { "type": "string", "pattern": "^\\d+(\\.\\d+)?$" },
+    "GRANITE_DEGRADED_SAMPLES": { "type": "string", "pattern": "^\\d+$" },
+    "GRANITE_FAILOVER_COOLDOWN_MS": { "type": "string", "pattern": "^\\d+$" }
+  },
+  "$defs": {
+    "model": { "type": "string", "pattern": "^[^/\\s]+/[^\\s]+$" }
+  }
+}

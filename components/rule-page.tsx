@@ -566,14 +566,14 @@ export function RulePage() {
         </DialogContent>
       </Dialog>
       <Dialog open={studyPickerOpen} onOpenChange={setStudyPickerOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>Start study</DialogTitle>
           </DialogHeader>
           <div className="grid gap-2">
             <Button
               variant="outline"
-              className="h-auto justify-start p-4 text-left"
+              className="h-auto justify-start p-3 sm:p-4 text-left"
               onClick={() => startStudy("recall")}
             >
               <span>
@@ -585,7 +585,7 @@ export function RulePage() {
             </Button>
             <Button
               variant="outline"
-              className="h-auto justify-start p-4 text-left"
+              className="h-auto justify-start p-3 sm:p-4 text-left"
               onClick={() => startStudy("flip")}
             >
               <span>

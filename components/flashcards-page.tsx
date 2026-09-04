@@ -1662,17 +1662,17 @@ export function FlashcardsPage() {
               </div>
 
               {/* Study button - aligned with search bar */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
                 {!isLoading && studyFlashcards.length > 0 && (
                   isReviewFolderSelected ? (
                     <Dialog open={showReviewStudySelector} onOpenChange={setShowReviewStudySelector}>
                       <DialogTrigger asChild>
-                        <Button size="sm" variant="outline" className="h-9 gap-1.5 rounded-full px-3 text-[13px]">
+                        <Button size="sm" variant="outline" className="h-9 gap-1.5 rounded-full px-3 text-[13px] w-full sm:w-auto justify-center">
                           <GraduationCap className="size-3.5" />
                           Study in <span className="font-medium text-blue-600 dark:text-blue-400">{studyFolderName}</span> as {studyFlashcards.length} words{studyFilterChip}
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="max-w-sm">
+                      <DialogContent className="max-w-sm p-4 sm:p-6">
                         <DialogHeader>
                           <DialogTitle>Start study</DialogTitle>
                           <DialogDescription>Choose how you want to review this folder.</DialogDescription>
@@ -1680,7 +1680,7 @@ export function FlashcardsPage() {
                         <div className="grid gap-2">
                           <Button
                             variant="outline"
-                            className="h-auto justify-start p-4 text-left"
+                            className="h-auto justify-start p-3 sm:p-4 text-left"
                             disabled={!canUseVocabularyMultipleChoice(studyFlashcards, includeMultipleTranslations)}
                             onClick={() => {
                               setShowReviewStudySelector(false)
@@ -1694,7 +1694,7 @@ export function FlashcardsPage() {
                           </Button>
                           <Button
                             variant="outline"
-                            className="h-auto justify-start p-4 text-left"
+                            className="h-auto justify-start p-3 sm:p-4 text-left"
                             onClick={() => {
                               setShowReviewStudySelector(false)
                               // Study only the cards from this specific review folder
@@ -1708,7 +1708,7 @@ export function FlashcardsPage() {
                           </Button>
                           <Button
                             variant="outline"
-                            className="h-auto justify-start p-4 text-left"
+                            className="h-auto justify-start p-3 sm:p-4 text-left"
                             onClick={() => {
                               setShowReviewStudySelector(false)
                               setIsReviewStudy(true)
@@ -1726,24 +1726,24 @@ export function FlashcardsPage() {
                   ) : (
                     <Dialog open={showStudySelector} onOpenChange={setShowStudySelector}>
                       <DialogTrigger asChild>
-                        <Button size="sm" variant="outline" className="h-9 gap-1.5 rounded-full px-3 text-[13px]">
+                        <Button size="sm" variant="outline" className="h-9 gap-1.5 rounded-full px-3 text-[13px] w-full sm:w-auto justify-center">
                           <GraduationCap className="size-3.5" />
                           Study in <span className="font-medium text-blue-600 dark:text-blue-400">{isViewingGeneral ? generalFolderName : selectedFolder?.name ?? "all"}</span> as {studyFlashcards.length} words{studyFilterChip}
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="max-w-sm">
+                      <DialogContent className="max-w-sm p-4 sm:p-6">
                         <DialogHeader>
                           <DialogTitle>Start study</DialogTitle>
                           <DialogDescription>Choose how you want to review this folder.</DialogDescription>
                         </DialogHeader>
                         <div className="grid gap-2">
-                          <Button variant="outline" disabled={!canUseVocabularyMultipleChoice(studyFlashcards, includeMultipleTranslations)} className="h-auto justify-start p-4 text-left" onClick={() => { setShowStudySelector(false); setIsReviewStudy(false); setStudyCards(studyFlashcards); setIsChoiceMode(true) }}>
+                          <Button variant="outline" disabled={!canUseVocabularyMultipleChoice(studyFlashcards, includeMultipleTranslations)} className="h-auto justify-start p-3 sm:p-4 text-left" onClick={() => { setShowStudySelector(false); setIsReviewStudy(false); setStudyCards(studyFlashcards); setIsChoiceMode(true) }}>
                             <span><span className="block text-sm">Multiple choice</span><span className="mt-1 block text-xs font-normal text-muted-foreground">{canUseVocabularyMultipleChoice(studyFlashcards, includeMultipleTranslations) ? "Choose the correct meaning among related word-family alternatives." : "Requires at least 10 cards and 4 distinct answers."}</span></span>
                           </Button>
-                          <Button variant="outline" className="h-auto justify-start p-4 text-left" onClick={() => { setShowStudySelector(false); setIsReviewStudy(false); setWritingModeCards([...studyFlashcards]); setIsWritingMode(true) }}>
+                          <Button variant="outline" className="h-auto justify-start p-3 sm:p-4 text-left" onClick={() => { setShowStudySelector(false); setIsReviewStudy(false); setWritingModeCards([...studyFlashcards]); setIsWritingMode(true) }}>
                             <span><span className="block text-sm">Active recall</span><span className="mt-1 block text-xs font-normal text-muted-foreground">Try to remember the meaning before revealing it.</span></span>
                           </Button>
-                          <Button variant="outline" className="h-auto justify-start p-4 text-left" onClick={() => { setShowStudySelector(false); setIsReviewStudy(false); setStudyCards(studyFlashcards); setIsStudying(true) }}>
+                          <Button variant="outline" className="h-auto justify-start p-3 sm:p-4 text-left" onClick={() => { setShowStudySelector(false); setIsReviewStudy(false); setStudyCards(studyFlashcards); setIsStudying(true) }}>
                             <span><span className="block text-sm">Flip cards</span><span className="mt-1 block text-xs font-normal text-muted-foreground">Turn the card and mark whether you knew it.</span></span>
                           </Button>
                         </div>

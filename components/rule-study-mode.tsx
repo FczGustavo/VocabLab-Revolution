@@ -138,6 +138,46 @@ export function RuleStudyMode({
     setExiting(null)
   }
 
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null)
+  const swipedRef = useRef(false)
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (mode !== "flip" || exiting || e.touches.length !== 1) return
+    const touch = e.touches[0]
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() }
+    swipedRef.current = false
+  }
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (mode !== "flip" || !touchStartRef.current || exiting) return
+    const touch = e.changedTouches[0]
+    const deltaX = touch.clientX - touchStartRef.current.x
+    const deltaY = touch.clientY - touchStartRef.current.y
+    const elapsed = Date.now() - touchStartRef.current.time
+    touchStartRef.current = null
+
+    const absX = Math.abs(deltaX)
+    const absY = Math.abs(deltaY)
+    const minDistance = 45
+
+    if (elapsed < 800 && (absX >= minDistance || absY >= minDistance)) {
+      swipedRef.current = true
+      if (absX > absY) {
+        if (deltaX > 0) {
+          void advance(true)
+        } else {
+          void advance(false)
+        }
+      } else {
+        if (deltaY < 0) {
+          setFlipped(true)
+        } else {
+          setFlipped(false)
+        }
+      }
+    }
+  }
+
   useStudyKeyboardShortcuts({
     enabled: !finished && Boolean(current) && !exiting,
     onKnown: mode === "flip" ? () => void advance(true) : undefined,
@@ -221,7 +261,7 @@ export function RuleStudyMode({
     <div className="fixed inset-0 z-50 flex flex-col bg-background">
       <StudyHeader
         folderName={folderName}
-        subtitle={`${title} · ${queue.length} remaining`}
+        subtitle={title}
         progress={progress}
         current={knownIds.size}
         total={cards.length}
@@ -243,20 +283,24 @@ export function RuleStudyMode({
         animated={animationsEnabled}
       />
 
-      <main className="flex min-h-0 flex-1 items-center justify-center bg-background p-4 sm:p-8">
-        <div className="w-full max-w-xl">
+      <main className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto bg-background p-3 sm:p-8 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)]">
+        <div className="my-auto flex w-full max-w-[min(100%,350px)] flex-col justify-center sm:max-w-xl">
           <article
             className={cn(
-              "surface-card surface-card-elevated flex h-[430px] w-full flex-col overflow-hidden rounded-[26px] bg-card p-7",
+              "surface-card surface-card-elevated flex w-full aspect-square max-h-[calc(100dvh-205px)] sm:aspect-auto sm:max-h-none sm:h-[430px] flex-col overflow-hidden rounded-[22px] sm:rounded-[26px] bg-card p-5 sm:p-7 select-none touch-pan-y",
               mode === "flip" && "cursor-pointer",
               exiting === "known" && "study-card-exit-known",
               exiting === "again" && "study-card-exit-again",
             )}
-            onClick={
-              mode === "flip" && !exiting
-                ? () => setFlipped((value) => !value)
-                : undefined
-            }
+            onClick={() => {
+              if (swipedRef.current) {
+                swipedRef.current = false
+                return
+              }
+              if (mode === "flip" && !exiting) setFlipped((value) => !value)
+            }}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
             onKeyDown={(event) => {
               if (mode === "flip" && event.key === "Enter" && !exiting) {
                 setFlipped((value) => !value)
@@ -274,7 +318,7 @@ export function RuleStudyMode({
               </Badge>
             </div>
             <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto px-2 text-center scrollbar-hide">
-              <p className="max-w-full whitespace-pre-wrap text-[clamp(1.5rem,5vw,3rem)] font-medium leading-relaxed tracking-tight text-foreground/80">
+              <p className="max-w-full whitespace-pre-wrap text-[clamp(1.25rem,4vw,3rem)] font-medium leading-relaxed tracking-tight text-foreground/80 break-words">
                 {faceContent}
               </p>
             </div>
@@ -287,14 +331,14 @@ export function RuleStudyMode({
               onKnown={() => void advance(true)}
             />
           ) : (
-            <div className="mt-5 flex gap-2">
+            <div className="mt-3 sm:mt-5 flex gap-2 shrink-0">
               <textarea
                 value={answer}
                 onChange={(event) => setAnswer(event.target.value)}
                 placeholder="Your answer (optional)"
-                className="h-11 min-h-11 flex-1 resize-none rounded-xl border border-border/50 bg-card px-3 py-2.5 text-sm outline-none focus:border-primary/50"
+                className="h-10 sm:h-11 min-h-10 sm:min-h-11 flex-1 resize-none rounded-xl border border-border/50 bg-card px-3 py-2 sm:py-2.5 text-xs sm:text-sm outline-none focus:border-primary/50"
               />
-              <Button className="h-11 shrink-0" onClick={() => setRevealed(true)}>
+              <Button className="h-10 sm:h-11 shrink-0" onClick={() => setRevealed(true)}>
                 Reveal
               </Button>
             </div>
@@ -315,11 +359,11 @@ function StudyActions({
   onKnown: () => void
 }) {
   return (
-    <div className="mt-5 flex gap-3">
+    <div className="mt-3 sm:mt-5 flex gap-3 shrink-0">
       <Button
         disabled={disabled}
         variant="outline"
-        className="h-11 flex-1 border-destructive/20 text-destructive hover:bg-destructive/10"
+        className="h-10 sm:h-11 flex-1 border-destructive/20 text-destructive hover:bg-destructive/10"
         onClick={onAgain}
       >
         <XCircle className="mr-1.5 size-4" />
@@ -327,7 +371,7 @@ function StudyActions({
       </Button>
       <Button
         disabled={disabled}
-        className="h-11 flex-1 bg-success text-white hover:bg-success/90"
+        className="h-10 sm:h-11 flex-1 bg-success text-white hover:bg-success/90"
         onClick={onKnown}
       >
         <CheckCircle2 className="mr-1.5 size-4" />

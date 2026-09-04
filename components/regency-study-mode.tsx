@@ -249,28 +249,69 @@ export function RegencyStudyMode({
     if (correct) setKnown((value) => value + 1);
     setRevealed(false);
     setFlipped(false);
-    setAnswer("");
-    setSelectedChoice(null);
     setTranslationVisible(false);
+    setSelectedChoice(null);
     setExiting(null);
   };
 
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const swipedRef = useRef(false);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (mode !== "flip" || exiting || e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+    swipedRef.current = false;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (mode !== "flip" || !touchStartRef.current || exiting) return;
+    const touch = e.changedTouches[0];
+    const deltaX = touch.clientX - touchStartRef.current.x;
+    const deltaY = touch.clientY - touchStartRef.current.y;
+    const elapsed = Date.now() - touchStartRef.current.time;
+    touchStartRef.current = null;
+
+    const absX = Math.abs(deltaX);
+    const absY = Math.abs(deltaY);
+    const minDistance = 45;
+
+    if (elapsed < 800 && (absX >= minDistance || absY >= minDistance)) {
+      swipedRef.current = true;
+      if (absX > absY) {
+        if (deltaX > 0) {
+          void advance(true);
+        } else {
+          void advance(false);
+        }
+      } else {
+        if (deltaY < 0) {
+          setFlipped(true);
+        } else {
+          setFlipped(false);
+        }
+      }
+    }
+  };
+
   const choosePattern = (pattern: string) => {
-    if (!current || selectedChoice || exiting) return;
+    if (selectedChoice || exiting) return;
     setSelectedChoice(pattern);
   };
 
   const continueChoice = () => {
-    if (!current || !selectedChoice) return;
-    void advance(normalized(selectedChoice) === normalized(current.pattern));
+    if (!selectedChoice) return;
+    const correct =
+      normalized(selectedChoice) === normalized(current?.pattern ?? "");
+    void advance(correct);
   };
 
   useStudyKeyboardShortcuts({
-    enabled: !finished && Boolean(current) && !exiting,
-    onKnown: mode === "flip" ? () => void advance(true) : undefined,
-    onAgain: mode === "flip" ? () => void advance(false) : undefined,
-    onReveal: mode === "flip" ? () => setFlipped(true) : mode === "recall" ? () => setRevealed(true) : undefined,
-    onHide: mode === "flip" ? () => setFlipped(false) : mode === "recall" ? () => setRevealed(false) : undefined,
+    enabled: Boolean(current) && !finished && !exiting,
+    onKnown: () => (mode === "flip" || revealed ? void advance(true) : undefined),
+    onAgain: () => (mode === "flip" || revealed ? void advance(false) : undefined),
+    onReveal: () => (mode === "recall" ? setRevealed(true) : setFlipped(true)),
+    onHide: () => (mode === "recall" ? setRevealed(false) : setFlipped(false)),
   });
 
   if (finished) {
@@ -300,21 +341,27 @@ export function RegencyStudyMode({
       <StudyShortcutCoach visible={showShortcutCoach && mode === "flip"} animated={animationsEnabled} />
 
       {current && (
-        <main className="flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-background p-3 sm:px-8 sm:py-3">
-          <div className="w-full max-w-xl">
+        <main className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto bg-background p-3 sm:px-8 sm:py-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)]">
+          <div className="my-auto flex w-full max-w-[min(100%,350px)] flex-col justify-center sm:max-w-xl">
             <div
               className={cn(
-                "surface-card surface-card-elevated relative flex w-full flex-col rounded-[26px] bg-card p-7 text-left",
+                "surface-card surface-card-elevated relative flex w-full flex-col rounded-[22px] sm:rounded-[26px] bg-card p-5 sm:p-7 text-left select-none touch-pan-y",
                 mode === "choice"
-                  ? "h-[clamp(260px,calc(100dvh-280px),420px)] overflow-hidden"
-                  : "h-[430px]",
+                  ? "aspect-square max-h-[calc(100dvh-320px)] sm:aspect-auto sm:max-h-none sm:h-[clamp(260px,calc(100dvh-280px),420px)] overflow-hidden"
+                  : "aspect-square max-h-[calc(100dvh-205px)] sm:aspect-auto sm:max-h-none sm:h-[430px]",
                 mode === "flip" && "cursor-pointer",
                 exiting === "known" && "study-card-exit-known",
                 exiting === "again" && "study-card-exit-again",
               )}
-              onClick={() =>
-                mode === "flip" && !exiting && setFlipped((value) => !value)
-              }
+              onClick={() => {
+                if (swipedRef.current) {
+                  swipedRef.current = false;
+                  return;
+                }
+                if (mode === "flip" && !exiting) setFlipped((value) => !value);
+              }}
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
               role={mode === "flip" ? "button" : undefined}
               tabIndex={mode === "flip" ? 0 : undefined}
               onKeyDown={(event) =>
@@ -425,8 +472,8 @@ export function RegencyStudyMode({
             </div>
 
             {mode === "choice" && (
-              <div className="mt-3 space-y-2">
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <div className="mt-2.5 sm:mt-3 space-y-1.5 sm:space-y-2 shrink-0">
+                <div className="grid grid-cols-1 gap-1.5 sm:gap-2 sm:grid-cols-2">
                   {choices.map((pattern) => {
                     const isCorrect =
                       normalized(pattern) === normalized(current.pattern);
@@ -438,7 +485,7 @@ export function RegencyStudyMode({
                         disabled={Boolean(selectedChoice) || Boolean(exiting)}
                         variant="outline"
                         className={cn(
-                          "h-auto min-h-10 justify-start whitespace-normal px-4 py-2 text-left",
+                          "h-auto min-h-9 sm:min-h-10 justify-start whitespace-normal px-3 sm:px-4 py-1.5 sm:py-2 text-left text-xs sm:text-sm",
                           selectedChoice &&
                             isCorrect &&
                             "border-success/50 bg-success/10 text-success",
@@ -458,7 +505,7 @@ export function RegencyStudyMode({
                   disabled={!selectedChoice || Boolean(exiting)}
                   aria-hidden={!selectedChoice}
                   tabIndex={selectedChoice ? 0 : -1}
-                  className={cn("h-10 w-full transition-none", !selectedChoice && "invisible pointer-events-none")}
+                  className={cn("h-9 sm:h-10 w-full transition-none text-xs sm:text-sm", !selectedChoice && "invisible pointer-events-none")}
                   onClick={continueChoice}
                 >
                   Continue
@@ -467,7 +514,7 @@ export function RegencyStudyMode({
             )}
 
             {mode === "recall" && !revealed && (
-              <div className="mt-5 flex gap-2">
+              <div className="mt-3 sm:mt-5 flex gap-2 shrink-0">
                 <input
                   value={answer}
                   onChange={(event) => setAnswer(event.target.value)}
@@ -475,17 +522,17 @@ export function RegencyStudyMode({
                     event.key === "Enter" && setRevealed(true)
                   }
                   placeholder="Type the missing construction (optional)"
-                  className="h-11 flex-1 rounded-xl border border-border/50 bg-card px-3 text-sm outline-none focus:border-primary/50"
+                  className="h-10 sm:h-11 flex-1 rounded-xl border border-border/50 bg-card px-3 text-xs sm:text-sm outline-none focus:border-primary/50"
                 />
-                <Button onClick={() => setRevealed(true)}>Reveal</Button>
+                <Button className="h-10 sm:h-11" onClick={() => setRevealed(true)}>Reveal</Button>
               </div>
             )}
             {(mode === "flip" || revealed) && (
-              <div className="mt-5 flex gap-3">
+              <div className="mt-3 sm:mt-5 flex gap-3 shrink-0">
                 <Button
                   disabled={Boolean(exiting)}
                   variant="outline"
-                  className="h-11 flex-1 border-destructive/20 text-destructive hover:bg-destructive/10"
+                  className="h-10 sm:h-11 flex-1 border-destructive/20 text-destructive hover:bg-destructive/10"
                   onClick={() => void advance(false)}
                 >
                   <XCircle className="mr-1.5 size-4" />
@@ -493,7 +540,7 @@ export function RegencyStudyMode({
                 </Button>
                 <Button
                   disabled={Boolean(exiting)}
-                  className="h-11 flex-1 bg-success text-white hover:bg-success/90"
+                  className="h-10 sm:h-11 flex-1 bg-success text-white hover:bg-success/90"
                   onClick={() => void advance(true)}
                 >
                   <CheckCircle2 className="mr-1.5 size-4" />I knew it

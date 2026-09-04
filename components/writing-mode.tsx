@@ -203,34 +203,34 @@ export function WritingMode({ flashcards, folderName, folderId, onExit, onMarkFo
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background">
       <StudyHeader folderName={folderName} subtitle={`Active recall · ${queue.length} remaining`} progress={progress} current={correct} total={totalCards} rating={lastRating} collapsed={headerCollapsed} onCollapsedChange={setHeaderCollapsed} onExit={onExit} trailing={studyTimerEnabled ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground sm:text-sm"><Clock3 className="size-3.5" />{formatElapsedTime(elapsedSeconds)}</span> : undefined} />
-      <main className="flex flex-1 items-center justify-center bg-background p-4 sm:p-8">
-        <div className="w-full max-w-xl">
-          <div className="relative h-[430px] w-full select-none">
+      <main className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto bg-background p-3 sm:p-8 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)]">
+        <div className="my-auto flex w-full max-w-[min(100%,350px)] flex-col justify-center sm:max-w-xl">
+          <div className="relative w-full aspect-square max-h-[calc(100dvh-220px)] sm:aspect-auto sm:max-h-none sm:h-[430px] select-none">
             {!revealed ? (
-              <div className={cn("surface-card surface-card-elevated flex h-full flex-col rounded-[26px] bg-card p-7", animationsEnabled && "animate-in fade-in duration-200", exiting === "known" && "study-card-exit-known", exiting === "again" && "study-card-exit-again")}>
+              <div className={cn("surface-card surface-card-elevated flex h-full flex-col rounded-[22px] sm:rounded-[26px] bg-card p-5 sm:p-7", animationsEnabled && "animate-in fade-in duration-200", exiting === "known" && "study-card-exit-known", exiting === "again" && "study-card-exit-again")}>
                 <CardHeader card={current} onSpeak={() => speak(current.word)} />
-                <div className="flex flex-1 flex-col items-center justify-center text-center"><h2 className="text-5xl font-medium tracking-tight text-foreground/80 sm:text-6xl">{current.word}</h2><p className="mt-4 text-sm text-muted-foreground">Recall its translation before revealing the card.</p></div>
+                <div className="flex flex-1 flex-col items-center justify-center text-center"><h2 className="text-4xl xs:text-5xl font-medium tracking-tight text-foreground/80 sm:text-6xl break-words px-2">{current.word}</h2><p className="mt-2 sm:mt-4 text-xs sm:text-sm text-muted-foreground">Recall its translation before revealing the card.</p></div>
               </div>
             ) : (
-              <div className={cn("surface-card surface-card-elevated flex h-full flex-col overflow-hidden rounded-[26px] bg-card p-7", animationsEnabled && "animate-in fade-in duration-200", exiting === "known" && "study-card-exit-known", exiting === "again" && "study-card-exit-again")}>
+              <div className={cn("surface-card surface-card-elevated flex h-full min-h-0 flex-col overflow-hidden rounded-[22px] sm:rounded-[26px] bg-card p-5 sm:p-7", animationsEnabled && "animate-in fade-in duration-200", exiting === "known" && "study-card-exit-known", exiting === "again" && "study-card-exit-again")}>
                 <CardHeader card={current} onSpeak={() => speak(current.word)} onToggleTranslations={() => setShowTranslations((value) => !value)} translationsShown={showTranslations} />
-                <div className="flex-1 space-y-4 overflow-y-auto pr-1 scrollbar-hide sm:space-y-5">
-                  <p className="text-2xl font-medium text-foreground/80 sm:text-4xl">{includeMultipleTranslations ? current.translation : current.translation.split("/")[0]?.trim()}</p>
-                  {showIPA && current.ipa && <p className="-mt-2 text-sm font-medium tracking-wide text-muted-foreground/80">/{current.ipa}/</p>}
+                <div className="flex-1 min-h-0 space-y-3 sm:space-y-4 overflow-y-auto pr-1 scrollbar-hide sm:space-y-5">
+                  <p className="text-xl sm:text-2xl font-medium text-foreground/80 sm:text-4xl">{includeMultipleTranslations ? current.translation : current.translation.split("/")[0]?.trim()}</p>
+                  {showIPA && current.ipa && <p className="-mt-2 text-xs sm:text-sm font-medium tracking-wide text-muted-foreground/80">/{current.ipa}/</p>}
                   <div className="border-t border-border/40" />
-                  <section><p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Example</p><p className="mt-2 text-base italic leading-relaxed text-foreground">&ldquo;{current.example}&rdquo;</p>{showTranslations && current.exampleTranslation && <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{current.exampleTranslation}</p>}</section>
-                  {showContext && (current.usageNote || current.usageNoteEn) && <section className="rounded-xl bg-muted/30 p-4"><p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Context</p>{contextPrimary && <p className="mt-2 text-sm leading-relaxed text-foreground">{contextPrimary}</p>}{showTranslations && contextSecondary && <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{contextSecondary}</p>}{showFalseCognateContrast && falseCognatePrimary && <div className="mt-4 border-t border-border/50 pt-4"><p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">False cognate</p><p className="mt-2 text-sm leading-relaxed text-foreground">{falseCognatePrimary}</p>{showTranslations && falseCognateSecondary && <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{falseCognateSecondary}</p>}</div>}</section>}
+                  <section><p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-muted-foreground">Example</p><p className="mt-1.5 sm:mt-2 text-sm sm:text-base italic leading-relaxed text-foreground">&ldquo;{current.example}&rdquo;</p>{showTranslations && current.exampleTranslation && <p className="mt-1 sm:mt-2 text-xs sm:text-sm leading-relaxed text-muted-foreground">{current.exampleTranslation}</p>}</section>
+                  {showContext && (current.usageNote || current.usageNoteEn) && <section className="rounded-xl bg-muted/30 p-3 sm:p-4"><p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-muted-foreground">Context</p>{contextPrimary && <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm leading-relaxed text-foreground">{contextPrimary}</p>}{showTranslations && contextSecondary && <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm leading-relaxed text-muted-foreground">{contextSecondary}</p>}{showFalseCognateContrast && falseCognatePrimary && <div className="mt-3 sm:mt-4 border-t border-border/50 pt-3 sm:pt-4"><p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-muted-foreground">False cognate</p><p className="mt-1.5 sm:mt-2 text-xs sm:text-sm leading-relaxed text-foreground">{falseCognatePrimary}</p>{showTranslations && falseCognateSecondary && <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm leading-relaxed text-muted-foreground">{falseCognateSecondary}</p>}</div>}</section>}
                 </div>
               </div>
             )}
           </div>
 
           {!revealed ? (
-            <div className="mt-5 flex gap-2"><input ref={answerRef} value={answer} onChange={(event) => setAnswer(event.target.value)} onKeyDown={(event) => event.key === "Enter" && setRevealed(true)} placeholder="Your answer (optional)" className="h-11 flex-1 rounded-xl border border-border/50 bg-card px-3 text-sm outline-none focus:border-primary/50" /><Button className="h-11" onClick={() => setRevealed(true)}>Reveal</Button></div>
+            <div className="mt-3 sm:mt-5 flex gap-2 shrink-0"><input ref={answerRef} value={answer} onChange={(event) => setAnswer(event.target.value)} onKeyDown={(event) => event.key === "Enter" && setRevealed(true)} placeholder="Your answer (optional)" className="h-10 sm:h-11 flex-1 rounded-xl border border-border/50 bg-card px-3 text-xs sm:text-sm outline-none focus:border-primary/50" /><Button className="h-10 sm:h-11" onClick={() => setRevealed(true)}>Reveal</Button></div>
           ) : (
-            <div className="mt-5 flex gap-3">
-              <Button disabled={Boolean(exiting)} variant="outline" className="h-11 flex-1 border-destructive/20 text-destructive hover:bg-destructive/10" onClick={() => void advance(false)}><XCircle className="mr-1.5 size-4" />Again</Button>
-              <Button disabled={Boolean(exiting)} className="h-11 flex-1 bg-success text-white hover:bg-success/90" onClick={() => void advance(true)}><CheckCircle2 className="mr-1.5 size-4" />I knew it</Button>
+            <div className="mt-3 sm:mt-5 flex gap-3 shrink-0">
+              <Button disabled={Boolean(exiting)} variant="outline" className="h-10 sm:h-11 flex-1 border-destructive/20 text-destructive hover:bg-destructive/10" onClick={() => void advance(false)}><XCircle className="mr-1.5 size-4" />Again</Button>
+              <Button disabled={Boolean(exiting)} className="h-10 sm:h-11 flex-1 bg-success text-white hover:bg-success/90" onClick={() => void advance(true)}><CheckCircle2 className="mr-1.5 size-4" />I knew it</Button>
             </div>
           )}
         </div>

@@ -232,11 +232,11 @@ export function VocabularyChoiceMode({
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background">
       <StudyHeader folderName={folderName} subtitle={`Multiple choice · ${queue.length} remaining`} progress={progress} current={knownIds.size} total={flashcards.length} collapsed={headerCollapsed} onCollapsedChange={setHeaderCollapsed} onExit={onExit} trailing={studyTime.enabled ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground sm:text-sm"><Clock3 className="size-3.5" />{studyTime.formatted}</span> : undefined} />
-      <main className="flex min-h-0 flex-1 items-center justify-center overflow-hidden p-3 sm:px-8 sm:py-3">
-        <div className="w-full max-w-xl">
+      <main className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto p-3 sm:px-8 sm:py-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)]">
+        <div className="my-auto flex w-full max-w-[min(100%,340px)] flex-col justify-center sm:max-w-xl">
           <div
             className={cn(
-              "surface-card surface-card-elevated flex h-[clamp(260px,calc(100dvh-280px),420px)] w-full flex-col overflow-hidden rounded-[26px] bg-card p-7",
+              "surface-card surface-card-elevated flex w-full aspect-square max-h-[calc(100dvh-320px)] sm:aspect-auto sm:max-h-none sm:h-[clamp(260px,calc(100dvh-280px),420px)] flex-col overflow-hidden rounded-[22px] sm:rounded-[26px] bg-card p-4 sm:p-7",
               exiting === "known" && "study-card-exit-known",
               exiting === "again" && "study-card-exit-again",
             )}
@@ -283,7 +283,7 @@ export function VocabularyChoiceMode({
                 </Button>
               </div>
             </div>
-            <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-hidden text-center">
+            <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto text-center scrollbar-hide">
               {selectedId ? (
                 <>
                   <p
@@ -294,39 +294,39 @@ export function VocabularyChoiceMode({
                   >
                     {correct ? "Correct" : "Review this word"}
                   </p>
-                  <h2 className="mt-3 text-4xl font-medium text-foreground/80">
+                  <h2 className="mt-1.5 sm:mt-3 text-2xl sm:text-4xl font-medium text-foreground/80">
                     {current.word}
                   </h2>
-                  <p className="mt-4 text-2xl text-foreground/75">
+                  <p className="mt-2 sm:mt-4 text-lg sm:text-2xl text-foreground/75">
                     {visibleTranslation(current.translation, includeMultipleTranslations)}
                   </p>
                   {showIPA && current.ipa && (
-                    <p className="mt-2 text-sm text-muted-foreground">
+                    <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-muted-foreground">
                       /{current.ipa}/
                     </p>
                   )}
-                  <p className="mt-5 text-base italic text-foreground/70">
+                  <p className="mt-2 sm:mt-5 text-sm sm:text-base italic text-foreground/70">
                     “{current.example}”
                   </p>
                   {showTranslations && current.exampleTranslation && (
-                    <p className="mt-2 text-sm text-muted-foreground">
+                    <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-muted-foreground">
                       {current.exampleTranslation}
                     </p>
                   )}
                   {showContext && contextPrimary && (
-                    <div className="mt-4 w-full rounded-xl bg-muted/30 p-3 text-left text-sm text-foreground/75">
+                    <div className="mt-2 sm:mt-4 w-full rounded-xl bg-muted/30 p-2.5 sm:p-3 text-left text-xs sm:text-sm text-foreground/75">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Context</p>
-                      <p className="mt-2">{contextPrimary}</p>
+                      <p className="mt-1 sm:mt-2">{contextPrimary}</p>
                       {showTranslations && contextSecondary && (
-                        <p className="mt-2 text-muted-foreground">
+                        <p className="mt-1 sm:mt-2 text-muted-foreground">
                           {contextSecondary}
                         </p>
                       )}
                       {showFalseCognateContrast && falseCognatePrimary && (
-                        <div className="mt-3 border-t border-border/50 pt-3">
+                        <div className="mt-2 sm:mt-3 border-t border-border/50 pt-2 sm:pt-3">
                           <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">False cognate</p>
-                          <p className="mt-2">{falseCognatePrimary}</p>
-                          {showTranslations && falseCognateSecondary && <p className="mt-2 text-muted-foreground">{falseCognateSecondary}</p>}
+                          <p className="mt-1 sm:mt-2">{falseCognatePrimary}</p>
+                          {showTranslations && falseCognateSecondary && <p className="mt-1 sm:mt-2 text-muted-foreground">{falseCognateSecondary}</p>}
                         </div>
                       )}
                     </div>
@@ -334,25 +334,25 @@ export function VocabularyChoiceMode({
                 </>
               ) : (
                 <>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                     Choose the correct meaning
                   </p>
-                  <h2 className="mt-4 text-5xl font-medium tracking-tight text-foreground/80">
+                  <h2 className="mt-2 sm:mt-4 text-3xl xs:text-4xl sm:text-5xl font-medium tracking-tight text-foreground/80 px-2 break-words">
                     {current.word}
                   </h2>
                 </>
               )}
             </div>
           </div>
-          <div className="mt-3 space-y-2">
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="mt-2.5 sm:mt-3 space-y-1.5 sm:space-y-2 shrink-0">
+            <div className="grid grid-cols-1 gap-1.5 sm:gap-2 sm:grid-cols-2">
               {choices.map((choice) => (
                 <Button
                   key={choice.id}
                   disabled={Boolean(selectedId) || Boolean(exiting)}
                   variant="outline"
                   className={cn(
-                    "h-auto min-h-10 justify-start whitespace-normal px-4 py-2 text-left",
+                    "h-auto min-h-9 sm:min-h-10 justify-start whitespace-normal px-3 sm:px-4 py-1.5 sm:py-2 text-left text-xs sm:text-sm",
                     selectedId &&
                       choice.id === current.id &&
                       "border-success/50 bg-success/10 text-success",
@@ -370,7 +370,7 @@ export function VocabularyChoiceMode({
               disabled={!selectedId || Boolean(exiting)}
               aria-hidden={!selectedId}
               tabIndex={selectedId ? 0 : -1}
-              className={cn("h-10 w-full transition-none", !selectedId && "invisible pointer-events-none")}
+              className={cn("h-9 sm:h-10 w-full transition-none text-xs sm:text-sm", !selectedId && "invisible pointer-events-none")}
               onClick={() => void continueStudy()}
             >
               <CheckCircle2 className="mr-2 size-4" />

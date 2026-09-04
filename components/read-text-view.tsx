@@ -87,6 +87,64 @@ function selectionOffsetWithin(root: Node, range: Range, rawSelection: string): 
   }
 }
 
+function getWordRangeAtPoint(x: number, y: number): { text: string; range: Range } | null {
+  if (typeof document === "undefined") return null
+  let range: Range | null = null
+  if (typeof document.caretPositionFromPoint === "function") {
+    const pos = document.caretPositionFromPoint(x, y)
+    if (pos && pos.offsetNode && pos.offsetNode.nodeType === Node.TEXT_NODE) {
+      range = document.createRange()
+      range.setStart(pos.offsetNode, pos.offset)
+      range.setEnd(pos.offsetNode, pos.offset)
+    }
+  } else if (typeof (document as unknown as { caretRangeFromPoint?: (x: number, y: number) => Range }).caretRangeFromPoint === "function") {
+    range = (document as unknown as { caretRangeFromPoint: (x: number, y: number) => Range }).caretRangeFromPoint(x, y)
+  }
+
+  if (!range || !range.startContainer || range.startContainer.nodeType !== Node.TEXT_NODE) {
+    return null
+  }
+
+  const node = range.startContainer as Text
+  const textContent = node.nodeValue || ""
+  let offset = range.startOffset
+
+  const isWordChar = (char: string) => /[\p{L}\p{N}'-]/u.test(char)
+
+  if (offset >= textContent.length && offset > 0) offset = textContent.length - 1
+  if (!isWordChar(textContent[offset] || "") && offset > 0 && isWordChar(textContent[offset - 1])) {
+    offset--
+  }
+
+  if (!isWordChar(textContent[offset] || "")) return null
+
+  let start = offset
+  while (start > 0 && isWordChar(textContent[start - 1])) {
+    start--
+  }
+
+  let end = offset
+  while (end < textContent.length && isWordChar(textContent[end])) {
+    end++
+  }
+
+  const rawWord = textContent.slice(start, end)
+  const trimmed = rawWord.replace(/^['-]+|['-]+$/g, "")
+  if (trimmed.length < 2) return null
+
+  const wordStart = start + rawWord.indexOf(trimmed)
+  const wordEnd = wordStart + trimmed.length
+
+  try {
+    const wordRange = document.createRange()
+    wordRange.setStart(node, wordStart)
+    wordRange.setEnd(node, wordEnd)
+    return { text: trimmed, range: wordRange }
+  } catch {
+    return null
+  }
+}
+
 // Whether a selection is too long to become a flashcard. The limit is 4 words:
 // single words, short phrases, and idiomatic expressions all qualify;
 // anything longer (5+ words) or a multi-sentence paragraph is excluded.
@@ -117,6 +175,7 @@ export function ReadTextView({ text, onUpdateText }: ReadTextViewProps) {
 
   const [highlights, setHighlights] = useState<ReadLabHighlight[]>(text.highlights || [])
   const [popover, setPopover] = useState<PopoverState>(INITIAL_POPOVER)
+  const [mobileSelection, setMobileSelection] = useState<{ text: string; start: number; end: number } | null>(null)
   const [showFolderSelector, setShowFolderSelector] = useState(false)
   // Local copy of VocabLab folders, refreshed from IndexedDB every time the
   // folder selector opens. The hook's `folders` from useFlashcardsDB can be
@@ -241,6 +300,108 @@ export function ReadTextView({ text, onUpdateText }: ReadTextViewProps) {
     [text, onUpdateText]
   )
 
+  const processSelection = useCallback(
+    (selectedText: string, rect: DOMRect, range: Range | null, isTouch = false) => {
+      const rawSelectedText = selectedText
+      const cleanText = rawSelectedText.trim()
+      if (!cleanText || cleanText.length < 2) return
+
+      const occurrenceStart =
+        range && contentRef.current
+          ? selectionOffsetWithin(contentRef.current, range, rawSelectedText)
+          : null
+      const safeOccurrenceStart =
+        occurrenceStart !== null
+          ? occurrenceStart
+          : text.content.toLocaleLowerCase("en-US").indexOf(cleanText.toLocaleLowerCase("en-US"))
+      const occurrenceEnd = Math.max(0, safeOccurrenceStart) + cleanText.length
+      const contextKey = contextualCacheKey(
+        Math.max(0, safeOccurrenceStart),
+        occurrenceEnd,
+        cleanText
+      )
+      const sourceContext = extractFocusContext(text.content, cleanText, {
+        occurrenceStart: safeOccurrenceStart >= 0 ? safeOccurrenceStart : undefined,
+      })
+      const contextualTranslation = contextualMap[contextKey]
+      const dictionaryResult = lookupInMap(normalizedMap, cleanText)
+      const result = contextualTranslation
+        ? {
+            translation: contextualTranslation,
+            isJoinedFallback: false,
+            shouldQueryOnDemand: false,
+          }
+        : {
+            ...dictionaryResult,
+            isJoinedFallback: Boolean(dictionaryResult.translation),
+            shouldQueryOnDemand: true,
+          }
+
+      // Wider/taller popover for long selections so paragraph translations fit.
+      const isLongSelection =
+        cleanText.length > 60 || cleanText.split(/\s+/).length > 8
+      const viewportWidth = window.innerWidth
+      const viewportHeight = window.innerHeight
+      const popoverWidth = Math.min(viewportWidth - 16, isLongSelection ? 380 : 280)
+      const popoverMaxHeight = Math.min(360, viewportHeight - 32)
+      const estimatedHeight = isLongSelection
+        ? Math.min(popoverMaxHeight, 220 + cleanText.length / 4)
+        : 120
+
+      let x = rect.left + rect.width / 2 - popoverWidth / 2
+      let y = rect.top - estimatedHeight - 12
+
+      if (x < 8) x = 8
+      if (x + popoverWidth > viewportWidth - 8) x = viewportWidth - popoverWidth - 8
+      // Prefer above; flip below only if there's room below but not above.
+      const roomAbove = rect.top - 12
+      const roomBelow = viewportHeight - rect.bottom - 12
+      if (y < 8) {
+        if (roomBelow >= estimatedHeight || roomBelow >= roomAbove) {
+          y = rect.bottom + 12
+        } else {
+          y = 16
+        }
+      }
+      if (y + estimatedHeight > viewportHeight - 8) {
+        y = Math.max(8, viewportHeight - estimatedHeight - 8)
+      }
+
+      const status: PopoverStatus = result.shouldQueryOnDemand ? "loading" : result.translation ? "ready" : "idle"
+
+      if (isTouch) {
+        setMobileSelection({
+          text: cleanText,
+          start: safeOccurrenceStart,
+          end: occurrenceEnd,
+        })
+        // Dismiss native browser selection so Android/iOS floating menu ("Traduzir, Copiar") disappears!
+        try {
+          window.getSelection()?.removeAllRanges()
+        } catch {}
+      }
+
+      setPopover({
+        visible: true,
+        x,
+        y,
+        selectedText: cleanText,
+        translation: result.translation,
+        isJoinedFallback: result.isJoinedFallback,
+        status,
+        isLongSelection,
+        contextKey,
+        sourceContext,
+        anchor: { top: rect.top, right: rect.right, bottom: rect.bottom, left: rect.left },
+      })
+
+      if (result.shouldQueryOnDemand) {
+        runOnDemandLookup(cleanText, sourceContext, contextKey)
+      }
+    },
+    [contextualMap, normalizedMap, runOnDemandLookup, text.content]
+  )
+
   const handleMouseUp = useCallback(() => {
     setTimeout(() => {
       const selection = window.getSelection()
@@ -256,94 +417,47 @@ export function ReadTextView({ text, onUpdateText }: ReadTextViewProps) {
 
       const range = selection.getRangeAt(0)
       const rect = range.getBoundingClientRect()
-      const occurrenceStart =
-        contentRef.current
-          ? selectionOffsetWithin(contentRef.current, range, rawSelectedText)
-          : null
-      const safeOccurrenceStart =
-        occurrenceStart !== null
-          ? occurrenceStart
-          : text.content.toLocaleLowerCase("en-US").indexOf(selectedText.toLocaleLowerCase("en-US"))
-      const occurrenceEnd = Math.max(0, safeOccurrenceStart) + selectedText.length
-      const contextKey = contextualCacheKey(
-        Math.max(0, safeOccurrenceStart),
-        occurrenceEnd,
-        selectedText
-      )
-      const sourceContext = extractFocusContext(text.content, selectedText, {
-        occurrenceStart: safeOccurrenceStart >= 0 ? safeOccurrenceStart : undefined,
-      })
-      const contextualTranslation = contextualMap[contextKey]
-      const dictionaryResult = lookupInMap(normalizedMap, selectedText)
-      const result = contextualTranslation
-        ? {
-            translation: contextualTranslation,
-            isJoinedFallback: false,
-            shouldQueryOnDemand: false,
-          }
-        : {
-            ...dictionaryResult,
-            // The old bulk dictionary is displayed immediately as a hint, but
-            // System B reviews every occurrence once and may overwrite it.
-            isJoinedFallback: Boolean(dictionaryResult.translation),
-            shouldQueryOnDemand: true,
-          }
-
-      // Wider/taller popover for long selections so paragraph translations fit.
-      const isLongSelection =
-        selectedText.length > 60 || selectedText.split(/\s+/).length > 8
-      const popoverWidth = isLongSelection ? 380 : 280
-      const popoverMaxHeight = Math.min(360, window.innerHeight - 32)
-      const estimatedHeight = isLongSelection
-        ? Math.min(popoverMaxHeight, 220 + selectedText.length / 4)
-        : 120
-      const viewportWidth = window.innerWidth
-      const viewportHeight = window.innerHeight
-
-      let x = rect.left + rect.width / 2 - popoverWidth / 2
-      let y = rect.top - estimatedHeight - 12
-
-      if (x < 8) x = 8
-      if (x + popoverWidth > viewportWidth - 8) x = viewportWidth - popoverWidth - 8
-      // Prefer above; flip below only if there's room below but not above.
-      const roomAbove = rect.top - 12
-      const roomBelow = viewportHeight - rect.bottom - 12
-      if (y < 8) {
-        if (roomBelow >= estimatedHeight || roomBelow >= roomAbove) {
-          y = rect.bottom + 12
-        } else {
-          // Neither side fits a tall popover — pin to top and let it scroll.
-          y = 16
-        }
-      }
-      // Final clamp so the popover never overflows the bottom of the viewport.
-      if (y + estimatedHeight > viewportHeight - 8) {
-        y = Math.max(8, viewportHeight - estimatedHeight - 8)
-      }
-
-      const status: PopoverStatus = result.shouldQueryOnDemand ? "loading" : result.translation ? "ready" : "idle"
-
-      setPopover({
-        visible: true,
-        x,
-        y,
-        selectedText,
-        translation: result.translation,
-        isJoinedFallback: result.isJoinedFallback,
-        status,
-        isLongSelection,
-        contextKey,
-        sourceContext,
-        anchor: { top: rect.top, right: rect.right, bottom: rect.bottom, left: rect.left },
-      })
-
-      // Every source occurrence is reviewed once. Subsequent selections use
-      // the occurrence-scoped contextual cache instantly.
-      if (result.shouldQueryOnDemand) {
-        runOnDemandLookup(selectedText, sourceContext, contextKey)
-      }
+      processSelection(rawSelectedText, rect, range, false)
     }, 10)
-  }, [contextualMap, normalizedMap, runOnDemandLookup, text.content])
+  }, [processSelection])
+
+  const touchHandledRef = useRef(false)
+
+  const handleTouchEnd = useCallback(() => {
+    setTimeout(() => {
+      const selection = window.getSelection()
+      if (!selection || selection.isCollapsed || !selection.rangeCount) {
+        return
+      }
+      const rawSelectedText = selection.toString()
+      const selectedText = rawSelectedText.trim()
+      if (!selectedText || selectedText.length < 2) {
+        return
+      }
+      touchHandledRef.current = true
+      const range = selection.getRangeAt(0)
+      const rect = range.getBoundingClientRect()
+      processSelection(rawSelectedText, rect, range, true)
+    }, 120)
+  }, [processSelection])
+
+  const handleClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (touchHandledRef.current) {
+        touchHandledRef.current = false
+        return
+      }
+      const selection = window.getSelection()
+      if (selection && !selection.isCollapsed && selection.toString().trim().length >= 2) {
+        return
+      }
+      const wordData = getWordRangeAtPoint(e.clientX, e.clientY)
+      if (wordData) {
+        processSelection(wordData.text, wordData.range.getBoundingClientRect(), wordData.range, true)
+      }
+    },
+    [processSelection]
+  )
 
   useLayoutEffect(() => {
     if (!popover.visible || !popover.anchor || !popoverRef.current) return
@@ -351,7 +465,7 @@ export function ReadTextView({ text, onUpdateText }: ReadTextViewProps) {
     element.style.maxHeight = ""
     element.style.overflowY = ""
     const panel = element.getBoundingClientRect()
-    const margin = 10
+    const margin = 8
     const gap = 12
     const anchor = popover.anchor
     const roomAbove = anchor.top - margin - gap
@@ -386,17 +500,22 @@ export function ReadTextView({ text, onUpdateText }: ReadTextViewProps) {
   }, [audioVoice, generateReadLabAudio, popover.selectedText])
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
       const target = e.target as HTMLElement
       if (!target.closest("[data-readlab-popover]") && !target.closest("[data-folder-selector]")) {
         setPopover((prev) => ({ ...prev, visible: false }))
+        setMobileSelection(null)
       }
     }
 
     if (popover.visible) {
       document.addEventListener("mousedown", handleClickOutside)
+      document.addEventListener("touchstart", handleClickOutside)
     }
-    return () => document.removeEventListener("mousedown", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+      document.removeEventListener("touchstart", handleClickOutside)
+    }
   }, [popover.visible])
 
   const handleHighlight = useCallback(
@@ -413,6 +532,7 @@ export function ReadTextView({ text, onUpdateText }: ReadTextViewProps) {
       setHighlights(updatedHighlights)
       await onUpdateText({ ...text, highlights: updatedHighlights })
 
+      setMobileSelection(null)
       setPopover((prev) => ({ ...prev, visible: false }))
       window.getSelection()?.removeAllRanges()
 
@@ -453,6 +573,7 @@ export function ReadTextView({ text, onUpdateText }: ReadTextViewProps) {
     const existing = await findExistingDeckCards(selectedText)
     if (existing.length) {
       reportExistingDeckCards(selectedText, existing)
+      setMobileSelection(null)
       window.getSelection()?.removeAllRanges()
       return
     }
@@ -483,6 +604,7 @@ export function ReadTextView({ text, onUpdateText }: ReadTextViewProps) {
       if (existing.length) {
         setShowFolderSelector(false)
         reportExistingDeckCards(selectedText, existing)
+        setMobileSelection(null)
         window.getSelection()?.removeAllRanges()
         return
       }
@@ -561,27 +683,43 @@ export function ReadTextView({ text, onUpdateText }: ReadTextViewProps) {
       // user returns to the text. The background work is unaffected.
       window.setTimeout(() => {
         setPopover((prev) => ({ ...prev, visible: false }))
+        setMobileSelection(null)
       }, 900)
     },
     [popover.selectedText, popover.translation, popover.sourceContext, addFlashcard, updateFlashcard, allFlashcards, model, prefs, findExistingDeckCards, reportExistingDeckCards, text.content]
   )
 
   const renderContent = () => {
-    if (highlights.length === 0) {
+    const allItems: Array<{ id: string; text: string; color?: string; isMobileSel?: boolean }> = [...highlights]
+    if (mobileSelection) {
+      allItems.push({
+        id: "__mobile_sel__",
+        text: mobileSelection.text,
+        isMobileSel: true,
+      })
+    }
+
+    if (allItems.length === 0) {
       return <>{text.content}</>
     }
 
-    const sortedHighlights = [...highlights].sort((a, b) => {
-      const idxA = text.content.indexOf(a.text)
-      const idxB = text.content.indexOf(b.text)
-      return idxA - idxB
-    })
+    const sortedHighlights = allItems
+      .map((item) => {
+        const idx = text.content.indexOf(item.text)
+        return { ...item, idx }
+      })
+      .filter((item) => item.idx !== -1)
+      .sort((a, b) => a.idx - b.idx)
+
+    if (sortedHighlights.length === 0) {
+      return <>{text.content}</>
+    }
 
     const parts: ReactNode[] = []
     let lastIndex = 0
 
-    for (const highlight of sortedHighlights) {
-      const idx = text.content.indexOf(highlight.text, lastIndex)
+    for (const item of sortedHighlights) {
+      const idx = text.content.indexOf(item.text, lastIndex)
       if (idx === -1) continue
 
       if (idx > lastIndex) {
@@ -592,22 +730,36 @@ export function ReadTextView({ text, onUpdateText }: ReadTextViewProps) {
         )
       }
 
-      const colorClass = highlightColorMap[highlight.color] || highlightColorMap.yellow
-      parts.push(
-        <span
-          key={highlight.id}
-          className={cn("relative cursor-pointer group/highlight rounded px-0.5", colorClass)}
-          onClick={() => handleRemoveHighlight(highlight.id)}
-          title="Click to remove highlight"
-        >
-          {highlight.text}
-          <span className="absolute -top-1 -right-1 hidden group-hover/highlight:flex size-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground">
-            <X className="size-2.5" />
+      if (item.isMobileSel) {
+        parts.push(
+          <span
+            key="mobile-sel"
+            className="rounded bg-primary/20 text-foreground px-0.5 ring-1 ring-primary/40"
+          >
+            {item.text}
           </span>
-        </span>
-      )
+        )
+      } else {
+        const colorClass = highlightColorMap[item.color || "yellow"] || highlightColorMap.yellow
+        parts.push(
+          <span
+            key={item.id}
+            className={cn("relative cursor-pointer group/highlight rounded px-0.5", colorClass)}
+            onClick={(e) => {
+              e.stopPropagation()
+              handleRemoveHighlight(item.id)
+            }}
+            title="Click to remove highlight"
+          >
+            {item.text}
+            <span className="absolute -top-1 -right-1 hidden group-hover/highlight:flex size-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground">
+              <X className="size-2.5" />
+            </span>
+          </span>
+        )
+      }
 
-      lastIndex = idx + highlight.text.length
+      lastIndex = idx + item.text.length
     }
 
     if (lastIndex < text.content.length) {
@@ -642,6 +794,8 @@ export function ReadTextView({ text, onUpdateText }: ReadTextViewProps) {
           readTextLayout !== "original" && "text-justify"
         )}
         onMouseUp={handleMouseUp}
+        onTouchEnd={handleTouchEnd}
+        onClick={handleClick}
       >
         {renderContent()}
       </div>
@@ -655,8 +809,8 @@ export function ReadTextView({ text, onUpdateText }: ReadTextViewProps) {
           style={{
             left: popover.x,
             top: popover.y,
-            width: popover.isLongSelection ? "min(92vw, 380px)" : 280,
-            maxWidth: "min(92vw, 380px)",
+            width: popover.isLongSelection ? "min(92vw, 380px)" : "min(88vw, 280px)",
+            maxWidth: "calc(100vw - 16px)",
           }}
         >
           <div className="relative rounded-xl border border-border/50 bg-background/95 p-3 shadow-lg backdrop-blur-sm w-full">
@@ -665,6 +819,7 @@ export function ReadTextView({ text, onUpdateText }: ReadTextViewProps) {
               type="button"
               onClick={() => {
                 setPopover((prev) => ({ ...prev, visible: false }))
+                setMobileSelection(null)
                 window.getSelection()?.removeAllRanges()
               }}
               className="absolute top-1.5 right-1.5 flex size-6 items-center justify-center rounded-lg text-muted-foreground/60 transition-colors hover:bg-muted hover:text-foreground"

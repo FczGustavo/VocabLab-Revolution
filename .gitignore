@@ -26,3 +26,4 @@ node_modules
 
 # Local temporary files and generated reports
 /temp/
+docs/technical_audit_report.md

@@ -496,7 +496,7 @@ export function RegencyStudyMode({
                 </Button>
               </div>
               {mode === "flip" && flipped ? (
-                <div className="flex h-full animate-in fade-in duration-200">
+                <div className="flex-1 min-h-0 flex flex-col animate-in fade-in duration-200">
                   <BackContent
                     card={current}
                     translationVisible={translationVisible}
@@ -759,7 +759,7 @@ function BackContent({
   display: RegencyDisplayPreferences;
 }) {
   return (
-    <div className="flex flex-1 flex-col justify-center overflow-y-auto py-8 text-center scrollbar-hide">
+    <div className="flex flex-1 flex-col justify-center overflow-y-auto py-4 sm:py-6 text-center scrollbar-hide">
       <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
         Pattern
       </p>

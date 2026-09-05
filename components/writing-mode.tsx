@@ -214,34 +214,38 @@ export function WritingMode({ flashcards, folderName, folderId, onExit, onMarkFo
             ) : (
               <div className={cn("surface-card surface-card-elevated flex h-full min-h-0 flex-col overflow-hidden rounded-[22px] sm:rounded-[26px] border-0 bg-card p-5 sm:px-6 sm:py-5", animationsEnabled && "animate-in fade-in duration-200", exiting === "known" && "study-card-exit-known", exiting === "again" && "study-card-exit-again")}>
                 <CardHeader card={current} onSpeak={() => speak(current.word)} onToggleTranslations={() => setShowTranslations((value) => !value)} translationsShown={showTranslations} />
-                <div className="flex-1 min-h-0 space-y-2 sm:space-y-2.5 overflow-y-auto pr-1 no-scrollbar">
+                <div className="flex-1 min-h-0 space-y-3 sm:space-y-3.5 overflow-y-auto pt-3 pr-1 scrollbar-hide">
                   <div>
                     <p className={cn(
-                      "max-w-full break-words font-medium leading-snug text-foreground/85",
-                      (includeMultipleTranslations ? current.translation : current.translation.split("/")[0]?.trim()).length > 30 ? "text-lg sm:text-[1.3rem]" : "text-xl sm:text-2xl"
+                      "max-w-full break-words font-medium leading-snug tracking-tight text-foreground/85",
+                      (includeMultipleTranslations ? current.translation : current.translation.split("/")[0]?.trim()).length > 40
+                        ? "text-lg sm:text-xl"
+                        : (includeMultipleTranslations ? current.translation : current.translation.split("/")[0]?.trim()).length > 22
+                        ? "text-xl sm:text-2xl"
+                        : "text-2xl sm:text-[1.75rem]"
                     )}>
                       {includeMultipleTranslations ? current.translation : current.translation.split("/")[0]?.trim()}
                     </p>
-                    {showIPA && current.ipa && <p className="mt-0.5 text-xs text-muted-foreground/80">/{current.ipa}/</p>}
+                    {showIPA && current.ipa && <p className="mt-1 text-xs text-muted-foreground/80">/{current.ipa}/</p>}
                   </div>
                   <div className="border-t border-border/40" />
                   <section className="space-y-1">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Example</p>
+                    <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Example</p>
                     <p className="text-sm sm:text-base italic leading-relaxed text-foreground/90">&ldquo;{current.example}&rdquo;</p>
                     {showTranslations && current.exampleTranslation && (
                       <p className="text-xs sm:text-sm leading-relaxed text-muted-foreground">{current.exampleTranslation}</p>
                     )}
                   </section>
                   {showContext && (current.usageNote || current.usageNoteEn) && (
-                    <section className="rounded-xl bg-muted/25 p-2.5 sm:p-3 space-y-1 mt-auto">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Context</p>
+                    <section className="rounded-2xl bg-muted/30 p-3 sm:p-3.5 space-y-1.5">
+                      <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Context</p>
                       {contextPrimary && <p className="text-xs sm:text-sm leading-relaxed text-foreground/80">{contextPrimary}</p>}
                       {showTranslations && contextSecondary && (
-                        <p className="border-t border-border/30 pt-1 text-xs sm:text-sm leading-relaxed text-muted-foreground">{contextSecondary}</p>
+                        <p className="border-t border-border/30 pt-1.5 text-xs sm:text-sm leading-relaxed text-muted-foreground">{contextSecondary}</p>
                       )}
                       {showFalseCognateContrast && falseCognatePrimary && (
-                        <div className="border-t border-border/30 pt-1.5 mt-1.5 space-y-0.5">
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">False cognate</p>
+                        <div className="border-t border-border/30 pt-2 space-y-1">
+                          <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">False cognate</p>
                           <p className="text-xs sm:text-sm leading-relaxed text-foreground/80">{falseCognatePrimary}</p>
                           {showTranslations && falseCognateSecondary && (
                             <p className="text-xs sm:text-sm leading-relaxed text-muted-foreground">{falseCognateSecondary}</p>

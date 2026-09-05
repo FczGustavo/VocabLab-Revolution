@@ -388,34 +388,38 @@ function VocabularyBack({ card, showContext, contextInPortuguese, showIPA, inclu
           </Button>
         </div>
       </div>
-      <div className="flex-1 min-h-0 flex flex-col justify-start space-y-2 sm:space-y-2.5 overflow-y-auto pt-2.5 pr-1 no-scrollbar">
+      <div className="flex-1 min-h-0 space-y-3 sm:space-y-3.5 overflow-y-auto pt-3 pr-1 scrollbar-hide">
         <div>
           <p className={cn(
-            "max-w-full break-words font-medium leading-snug text-foreground/85",
-            translation.length > 30 ? "text-lg sm:text-[1.3rem]" : "text-xl sm:text-2xl"
+            "max-w-full break-words font-medium leading-snug tracking-tight text-foreground/85",
+            translation.length > 40
+              ? "text-lg sm:text-xl"
+              : translation.length > 22
+              ? "text-xl sm:text-2xl"
+              : "text-2xl sm:text-[1.75rem]"
           )}>
             {translation}
           </p>
-          {showIPA && card.ipa && <p className="mt-0.5 text-xs text-muted-foreground/80">/{card.ipa}/</p>}
+          {showIPA && card.ipa && <p className="mt-1 text-xs text-muted-foreground/80">/{card.ipa}/</p>}
         </div>
         <div className="border-t border-border/40" />
         <section className="space-y-1">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Example</p>
+          <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Example</p>
           <p className="text-sm sm:text-base italic leading-relaxed text-foreground/90">&ldquo;{card.example}&rdquo;</p>
           {translationsShown && card.exampleTranslation && (
             <p className="text-xs sm:text-sm leading-relaxed text-muted-foreground">{card.exampleTranslation}</p>
           )}
         </section>
         {showContext && (card.usageNote || card.usageNoteEn) && (
-          <section className="rounded-xl bg-muted/25 p-2.5 sm:p-3 space-y-1 mt-auto">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Context</p>
+          <section className="rounded-2xl bg-muted/30 p-3 sm:p-3.5 space-y-1.5">
+            <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Context</p>
             {contextPrimary && <p className="text-xs sm:text-sm leading-relaxed text-foreground/80">{contextPrimary}</p>}
             {translationsShown && contextSecondary && (
-              <p className="border-t border-border/30 pt-1 text-xs sm:text-sm leading-relaxed text-muted-foreground">{contextSecondary}</p>
+              <p className="border-t border-border/30 pt-1.5 text-xs sm:text-sm leading-relaxed text-muted-foreground">{contextSecondary}</p>
             )}
             {showFalseCognateContrast && falseCognatePrimary && (
-              <div className="border-t border-border/30 pt-1.5 mt-1.5 space-y-0.5">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">False cognate</p>
+              <div className="border-t border-border/30 pt-2 space-y-1">
+                <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">False cognate</p>
                 <p className="text-xs sm:text-sm leading-relaxed text-foreground/80">{falseCognatePrimary}</p>
                 {translationsShown && falseCognateSecondary && (
                   <p className="text-xs sm:text-sm leading-relaxed text-muted-foreground">{falseCognateSecondary}</p>

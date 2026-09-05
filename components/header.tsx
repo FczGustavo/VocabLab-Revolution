@@ -39,9 +39,44 @@ const navItems = [
 
 function VocabLabIcon({ className }: { className?: string }) {
   return (
-    <span className={cn("font-serif", className)}>
-      V
-    </span>
+    <svg
+      viewBox="0 0 180 180"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={cn("size-6 transition-transform duration-200 group-hover:scale-105", className)}
+      aria-hidden="true"
+    >
+      <defs>
+        <linearGradient id="headerVArm1" x1="20" y1="20" x2="90" y2="160" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#818CF8" />
+          <stop offset="100%" stopColor="#4F46E5" />
+        </linearGradient>
+        <linearGradient id="headerVArm2" x1="160" y1="20" x2="80" y2="160" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#22D3EE" />
+          <stop offset="50%" stopColor="#06B6D4" />
+          <stop offset="100%" stopColor="#3B82F6" />
+        </linearGradient>
+        <linearGradient id="headerSparkG" x1="75" y1="40" x2="105" y2="80" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#38BDF8" />
+          <stop offset="100%" stopColor="#818CF8" />
+        </linearGradient>
+      </defs>
+      {/* Left Dynamic Arm */}
+      <path
+        d="M38 30 C32 30 27 35 29 42 L72 150 C76 158 86 160 92 154 L96 150 L60 34 C58 31 54 30 50 30 Z"
+        fill="url(#headerVArm1)"
+      />
+      {/* Right Dynamic Arm */}
+      <path
+        d="M142 30 C148 30 153 35 151 42 L108 150 C104 158 94 160 88 154 L84 150 L120 34 C122 31 126 30 130 30 Z"
+        fill="url(#headerVArm2)"
+      />
+      {/* Center Catalyst Spark */}
+      <path
+        d="M90 40 C92 51 98 57 109 59 C98 61 92 67 90 78 C88 67 82 61 71 59 C82 57 88 51 90 40 Z"
+        fill="url(#headerSparkG)"
+      />
+    </svg>
   )
 }
 
